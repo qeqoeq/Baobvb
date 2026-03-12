@@ -57,10 +57,19 @@ export default function EvaluateScreen() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const completedCount = useMemo(
+    () => Object.values(ratings).filter((v) => v !== null).length,
+    [ratings],
+  );
   const allRated = useMemo(
     () => Object.values(ratings).every((v) => v !== null),
     [ratings],
   );
+  const progress = completedCount / PILLARS.length;
+  const sourceLabel = relation?.source === 'scan' ? 'Added by scan' : 'Added manually';
+  const sourceSubtext = relation?.source === 'scan' && relation.sourceHandle
+    ? `Scanned from ${relation.sourceHandle}`
+    : null;
 
   const setRating = useCallback((key: PillarKey, value: PillarRating) => {
     setRatings((prev) => ({ ...prev, [key]: value }));
@@ -95,18 +104,44 @@ export default function EvaluateScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.kicker}>Foundational reading</Text>
-        <Text style={styles.title}>{relation.name}</Text>
+        <View style={styles.identityRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {(relation.avatarSeed || relation.name.charAt(0) || '?').toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.identityBody}>
+            <Text style={styles.title}>{relation.name}</Text>
+            {relation.handle ? <Text style={styles.handle}>{relation.handle}</Text> : null}
+            <Text style={styles.sourceText}>
+              {sourceLabel}
+              {sourceSubtext ? ` · ${sourceSubtext}` : ''}
+            </Text>
+          </View>
+        </View>
         <Text style={styles.subtitle}>
           Rate each pillar from 1 to 5 to capture your first deep impression of
           this link.
         </Text>
+        <View style={styles.progressWrap}>
+          <View style={styles.progressHead}>
+            <Text style={styles.progressLabel}>Progress</Text>
+            <Text style={styles.progressValue}>
+              {completedCount}/{PILLARS.length}
+            </Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+          </View>
+        </View>
       </View>
 
       <View style={styles.pillarsList}>
-        {PILLARS.map(({ key, label, hint }) => {
+        {PILLARS.map(({ key, label, hint }, idx) => {
           const current = ratings[key];
           return (
             <View key={key} style={styles.pillarCard}>
+              <Text style={styles.pillarStep}>Pillar {idx + 1}</Text>
               <Text style={styles.pillarLabel}>{label}</Text>
               <Text style={styles.pillarHint}>{hint}</Text>
               <View style={styles.ratingRow}>
@@ -133,6 +168,10 @@ export default function EvaluateScreen() {
                   );
                 })}
               </View>
+              <View style={styles.ratingLegendRow}>
+                <Text style={styles.ratingLegendText}>1 low</Text>
+                <Text style={styles.ratingLegendText}>5 high</Text>
+              </View>
             </View>
           );
         })}
@@ -147,7 +186,11 @@ export default function EvaluateScreen() {
         ]}
       >
         <Text style={styles.submitButtonText}>
-          {isSubmitting ? 'Saving...' : 'Save reading'}
+          {isSubmitting
+            ? 'Saving...'
+            : allRated
+              ? 'Save foundational reading'
+              : `Rate ${PILLARS.length - completedCount} more pillar${PILLARS.length - completedCount > 1 ? 's' : ''}`}
         </Text>
       </Pressable>
     </ScrollView>
@@ -169,6 +212,30 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingTop: spacing.sm,
   },
+  identityRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background.tertiary,
+    borderWidth: 1,
+    borderColor: colors.border.strong,
+  },
+  avatarText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  identityBody: {
+    flex: 1,
+    gap: 2,
+  },
   kicker: {
     fontSize: 12,
     textTransform: 'uppercase',
@@ -181,10 +248,51 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text.primary,
   },
+  handle: {
+    fontSize: 13,
+    color: colors.accent.warmGold,
+    fontWeight: '600',
+  },
+  sourceText: {
+    fontSize: 11,
+    color: colors.text.muted,
+  },
   subtitle: {
     fontSize: 14,
     lineHeight: 21,
     color: colors.text.secondary,
+  },
+  progressWrap: {
+    marginTop: spacing.xs,
+    gap: spacing.xs,
+  },
+  progressHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    color: colors.text.muted,
+    fontWeight: '700',
+  },
+  progressValue: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    fontWeight: '600',
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.background.tertiary,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: colors.accent.deepTeal,
   },
 
   pillarsList: {
@@ -197,6 +305,13 @@ const styles = StyleSheet.create({
     borderColor: colors.border.soft,
     padding: spacing.lg,
     gap: spacing.sm,
+  },
+  pillarStep: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    color: colors.text.muted,
+    fontWeight: '700',
   },
   pillarLabel: {
     fontSize: 16,
@@ -234,6 +349,15 @@ const styles = StyleSheet.create({
   },
   ratingTextActive: {
     color: colors.text.primary,
+  },
+  ratingLegendRow: {
+    marginTop: spacing.xs,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  ratingLegendText: {
+    fontSize: 11,
+    color: colors.text.muted,
   },
 
   submitButton: {
