@@ -1,98 +1,122 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [query, setQuery] = useState('');
+  const { activeRelations, archiveRelation } = useRelationsStore();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const filteredRelations = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return activeRelations;
+    }
+
+    return activeRelations.filter((relation) =>
+      relation.name.toLowerCase().includes(normalizedQuery)
+    );
+  }, [activeRelations, query]);
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Garden</Text>
+
+      <TextInput
+        placeholder="Rechercher une relation"
+        placeholderTextColor="#9A958E"
+        value={query}
+        onChangeText={setQuery}
+        style={styles.searchInput}
+      />
+
+      <View style={styles.list}>
+        {filteredRelations.map((relation) => (
+          <View key={relation.id} style={styles.row}>
+            <Text style={styles.name}>{relation.name}</Text>
+            <Pressable onPress={() => archiveRelation(relation.id)} style={styles.rowButton}>
+              <Text style={styles.rowButtonText}>Archiver</Text>
+            </Pressable>
+          </View>
+        ))}
+        {filteredRelations.length === 0 ? <Text style={styles.empty}>Aucun resultat</Text> : null}
+      </View>
+
+      <Pressable onPress={() => router.push('../relation/archived')} style={styles.archivedLink}>
+        <Text style={styles.archivedLinkText}>Voir les archivees</Text>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#0F1115',
+    padding: 20,
+    paddingTop: 48,
+  },
+  title: {
+    color: '#F2EDE8',
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  searchInput: {
+    backgroundColor: '#1A1D23',
+    color: '#F2EDE8',
+    borderWidth: 1,
+    borderColor: '#2B3038',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 20,
+  },
+  list: {
+    flex: 1,
+    gap: 10,
+  },
+  row: {
+    backgroundColor: '#1A1D23',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2B3038',
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  name: {
+    color: '#F2EDE8',
+    fontSize: 16,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  rowButton: {
+    backgroundColor: '#242830',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  rowButtonText: {
+    color: '#F2EDE8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  empty: {
+    color: '#9A958E',
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  archivedLink: {
+    marginTop: 12,
+    backgroundColor: '#2A7C7C',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  archivedLinkText: {
+    color: '#F2EDE8',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
