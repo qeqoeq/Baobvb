@@ -25,7 +25,7 @@ const PILLAR_ORDER: PillarKey[] = [
 ];
 
 export default function RelationDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
   const { relations, evaluations } = useRelationsStore();
 
   const relation = useMemo(
@@ -55,6 +55,7 @@ export default function RelationDetailScreen() {
   const sourceSubtext = relation.source === 'scan' && relation.sourceHandle
     ? `Scanned from ${relation.sourceHandle}`
     : null;
+  const shouldHighlightReadNext = justCreated === '1' && !evaluation;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -142,8 +143,15 @@ export default function RelationDetailScreen() {
             <Text style={styles.sectionLabel}>Foundational reading</Text>
             <View style={styles.sectionLine} />
           </View>
+          {shouldHighlightReadNext ? (
+            <View style={styles.nextStepCard}>
+              <Text style={styles.nextStepText}>
+                This link was added. You can now read it.
+              </Text>
+            </View>
+          ) : null}
 
-          <View style={styles.unreadCard}>
+          <View style={[styles.unreadCard, shouldHighlightReadNext && styles.unreadCardEmphasis]}>
             <Text style={styles.unreadTitle}>This link hasn't been read yet</Text>
             <Text style={styles.unreadText}>
               A foundational reading captures the shape and strength of your
@@ -153,7 +161,7 @@ export default function RelationDetailScreen() {
 
           <Pressable
             onPress={() => router.push(`./evaluate/${relation.id}`)}
-            style={styles.ctaButton}
+            style={[styles.ctaButton, shouldHighlightReadNext && styles.ctaButtonEmphasis]}
           >
             <Text style={styles.ctaButtonText}>Read this link</Text>
           </Pressable>
@@ -325,6 +333,20 @@ const styles = StyleSheet.create({
   unreadSection: {
     gap: spacing.md,
   },
+  nextStepCard: {
+    backgroundColor: colors.accent.warmGold + '16',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + '44',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+  },
+  nextStepText: {
+    fontSize: 13,
+    color: colors.text.primary,
+    lineHeight: 19,
+    fontWeight: '500',
+  },
   unreadCard: {
     backgroundColor: colors.background.secondary,
     borderRadius: radius.lg,
@@ -332,6 +354,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border.soft,
     padding: spacing.lg,
     gap: spacing.sm,
+  },
+  unreadCardEmphasis: {
+    borderColor: colors.accent.warmGold + '55',
   },
   unreadTitle: {
     fontSize: 16,
@@ -348,6 +373,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
+  },
+  ctaButtonEmphasis: {
+    shadowColor: colors.accent.deepTeal,
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   ctaButtonText: {
     color: colors.text.primary,

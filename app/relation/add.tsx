@@ -87,7 +87,10 @@ export default function AddRelationScreen() {
                 }
               : { source: 'manual' });
             if (createdFromName) {
-              router.replace(`../${createdFromName.id}`);
+              router.replace({
+                pathname: `../${createdFromName.id}`,
+                params: { justCreated: '1' },
+              });
             }
           },
         },
@@ -103,7 +106,10 @@ export default function AddRelationScreen() {
         }
       : { source: 'manual' });
     if (!created) return;
-    router.replace(`../${created.id}`);
+    router.replace({
+      pathname: `../${created.id}`,
+      params: { justCreated: '1' },
+    });
   };
 
   return (
