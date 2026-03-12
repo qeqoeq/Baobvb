@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import { getFoundationalReadings } from '../../lib/foundational-reading';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 type Proximity = 'direct' | 'near' | 'far';
@@ -12,6 +13,7 @@ type CircleMember = {
   name: string;
   handle: string;
   proximity: Proximity;
+  readingLabel: string;
 };
 
 const SUFFIXES = ['branch', 'root', 'leaf', 'seed', 'bloom'];
@@ -62,17 +64,40 @@ const PROXIMITY_META: Record<
 const PROXIMITY_ORDER: Proximity[] = ['direct', 'near', 'far'];
 
 export default function CircleScreen() {
-  const { relations } = useRelationsStore();
+  const { relations, evaluations } = useRelationsStore();
+
+  const readings = useMemo(
+    () => getFoundationalReadings(relations, evaluations),
+    [relations, evaluations],
+  );
 
   const members = useMemo<CircleMember[]>(
-    () =>
-      relations.map((r) => ({
-        id: r.id,
-        name: r.name,
-        handle: deriveHandle(r.name, r.id),
-        proximity: r.archived ? ('far' as const) : ('direct' as const),
-      })),
-    [relations],
+    () => readings.map((reading) => {
+      // V1 proximity heuristic:
+      // - direct: active + read + not to nurture
+      // - near: active + read + to nurture
+      // - far: archived OR unread
+      const proximity: Proximity = reading.relation.archived
+        ? 'far'
+        : reading.hasFoundationalReading
+          ? reading.toNurture
+            ? 'near'
+            : 'direct'
+          : 'far';
+
+      const readingLabel = reading.relation.archived
+        ? `Archived · ${reading.badgeLabel}`
+        : reading.badgeLabel;
+
+      return {
+        id: reading.relation.id,
+        name: reading.relation.name,
+        handle: deriveHandle(reading.relation.name, reading.relation.id),
+        proximity,
+        readingLabel,
+      };
+    }),
+    [readings],
   );
 
   const groups = useMemo(() => {
@@ -174,7 +199,7 @@ export default function CircleScreen() {
                           proximity === 'direct' && styles.memberHandleDirect,
                         ]}
                       >
-                        {member.handle}
+                        {member.handle} · {member.readingLabel}
                       </Text>
                     </View>
                     <View style={[styles.proximityBadge, { borderColor: meta.accent + '33' }]}>

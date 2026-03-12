@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import { getFoundationalReadings } from '../../lib/foundational-reading';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 const LINK_TYPES = ['Legend', 'Anchor', 'Vibrant', 'Thrill', 'Spark', 'Ghost'] as const;
@@ -16,7 +18,45 @@ const LINK_META: Record<string, { accent: string; signature: string }> = {
 };
 
 export default function ProfileScreen() {
-  const { activeRelations, archivedRelations } = useRelationsStore();
+  const { evaluations, activeRelations, archivedRelations } = useRelationsStore();
+
+  const activeReadings = useMemo(
+    () => getFoundationalReadings(activeRelations, evaluations),
+    [activeRelations, evaluations],
+  );
+
+  const readCount = useMemo(
+    () => activeReadings.filter((reading) => reading.hasFoundationalReading).length,
+    [activeReadings],
+  );
+  const unreadCount = useMemo(
+    () => activeReadings.filter((reading) => !reading.hasFoundationalReading).length,
+    [activeReadings],
+  );
+  const toNurtureCount = useMemo(
+    () => activeReadings.filter((reading) => reading.toNurture).length,
+    [activeReadings],
+  );
+
+  const tierCounts = useMemo(() => {
+    const counts: Record<(typeof LINK_TYPES)[number], number> = {
+      Ghost: 0,
+      Spark: 0,
+      Thrill: 0,
+      Vibrant: 0,
+      Anchor: 0,
+      Legend: 0,
+    };
+
+    for (const reading of activeReadings) {
+      if (reading.linkTier) {
+        counts[reading.linkTier] += 1;
+      }
+    }
+    return counts;
+  }, [activeReadings]);
+
+  const hasAnyReadings = readCount > 0;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -57,9 +97,21 @@ export default function ProfileScreen() {
           <Text style={styles.statLabel}>Archived</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>0</Text>
+          <Text style={styles.statValue}>{readCount}</Text>
           <View style={[styles.statAccent, { backgroundColor: colors.accent.warmGold }]} />
           <Text style={styles.statLabel}>Read</Text>
+        </View>
+      </View>
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{unreadCount}</Text>
+          <View style={[styles.statAccent, { backgroundColor: colors.text.muted }]} />
+          <Text style={styles.statLabel}>Unread</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{toNurtureCount}</Text>
+          <View style={[styles.statAccent, { backgroundColor: colors.accent.dustyRose }]} />
+          <Text style={styles.statLabel}>To nurture</Text>
         </View>
       </View>
 
@@ -80,7 +132,9 @@ export default function ProfileScreen() {
                   <Text style={styles.landscapeSignature}>{meta.signature}</Text>
                 </View>
               </View>
-              <Text style={[styles.landscapeCount, { color: meta.accent }]}>0</Text>
+              <Text style={[styles.landscapeCount, { color: meta.accent }]}>
+                {tierCounts[type]}
+              </Text>
             </View>
           );
         })}
@@ -98,8 +152,9 @@ export default function ProfileScreen() {
         <View style={styles.trustBody}>
           <Text style={styles.trustTitle}>Identity not yet verified</Text>
           <Text style={styles.trustSub}>
-            Verification will be available in a future update to anchor your
-            identity on the network.
+            {hasAnyReadings
+              ? `${readCount} active link${readCount > 1 ? 's are' : ' is'} read, with ${toNurtureCount} to nurture. Verification will be available in a future update to anchor your identity on the network.`
+              : `No active foundational readings yet. Start reading your links to build your trust passport.`}
           </Text>
         </View>
       </View>
