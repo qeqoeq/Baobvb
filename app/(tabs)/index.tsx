@@ -5,7 +5,7 @@ import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'rea
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { getTierAccent } from '../../lib/evaluation';
-import { getFoundationalReadings } from '../../lib/foundational-reading';
+import { getFoundationalReadings, getGardenMicroSignal } from '../../lib/foundational-reading';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 const QUICK_ACTIONS = [
@@ -212,6 +212,7 @@ export default function GardenScreen() {
               const accent = entry.linkTier
                 ? getTierAccent(entry.linkTier)
                 : colors.accent.warmGold;
+              const signal = getGardenMicroSignal(entry);
 
               return (
                 <Pressable
@@ -233,6 +234,18 @@ export default function GardenScreen() {
                       {entry.readingStatus === 'Read'
                         ? `${entry.badgeLabel} · ${entry.foundationalScore}`
                         : 'Unread'}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.mappingSignal,
+                        signal.tone === 'nurture'
+                          ? styles.mappingSignalNurture
+                          : signal.tone === 'stable'
+                            ? styles.mappingSignalStable
+                            : styles.mappingSignalUnread,
+                      ]}
+                    >
+                      {signal.text}
                     </Text>
                   </View>
                   <Text style={styles.mappingCTA}>Resume</Text>
@@ -554,6 +567,21 @@ const styles = StyleSheet.create({
   mappingMeta: {
     fontSize: 12,
     color: colors.text.muted,
+  },
+  mappingSignal: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  mappingSignalUnread: {
+    color: colors.text.muted,
+  },
+  mappingSignalNurture: {
+    color: colors.accent.softCoral,
+  },
+  mappingSignalStable: {
+    color: colors.accent.mutedSage,
   },
   mappingCTA: {
     fontSize: 12,

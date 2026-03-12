@@ -18,6 +18,11 @@ export type FoundationalReadingDerived = {
   pillarDots: Record<PillarKey, boolean[]> | null;
 };
 
+export type GardenMicroSignal = {
+  text: string;
+  tone: 'unread' | 'nurture' | 'stable';
+};
+
 const NURTURE_THRESHOLD = 60;
 const DOT_STEPS = [1, 2, 3, 4, 5] as const;
 const PILLAR_ORDER: PillarKey[] = [
@@ -177,4 +182,28 @@ export function getGrowthSuggestion(
       : 'Keep nurturing this link through one intentional moment this week.';
   }
   return GROWTH_SUGGESTIONS[weakestPillar];
+}
+
+export function getGardenMicroSignal(
+  reading: FoundationalReadingDerived,
+): GardenMicroSignal {
+  if (!reading.hasFoundationalReading) {
+    return { text: 'Unread', tone: 'unread' };
+  }
+
+  if (reading.toNurture) {
+    return { text: 'To nurture', tone: 'nurture' };
+  }
+
+  if (reading.strongestPillar === 'trust') {
+    return { text: 'Strong trust', tone: 'stable' };
+  }
+  if (reading.weakestPillar === 'sharedNetwork') {
+    return { text: 'Watch shared network', tone: 'stable' };
+  }
+  if (reading.weakestPillar === 'interactions') {
+    return { text: 'Watch interactions', tone: 'stable' };
+  }
+
+  return { text: 'Steady link', tone: 'stable' };
 }
