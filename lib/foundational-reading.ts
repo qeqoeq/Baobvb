@@ -45,6 +45,14 @@ const TIER_NARRATIVES: Record<Tier, string> = {
   Ghost: 'This link feels distant today, and could be rebuilt through gentle %s.',
 };
 
+const GROWTH_SUGGESTIONS: Record<PillarKey, string> = {
+  trust: 'Create one small moment of reliable follow-through this week.',
+  interactions: 'Create more regular touchpoints around this link.',
+  affinity: 'Make space for one more natural, unforced conversation.',
+  support: 'Find one concrete way to show up for this person.',
+  sharedNetwork: 'Introduce more shared context around this link.',
+};
+
 function getLatestEvaluationByRelation(evaluations: Evaluation[]): Map<string, Evaluation> {
   const byRelation = new Map<string, Evaluation>();
   for (const evaluation of evaluations) {
@@ -157,4 +165,16 @@ export function getTierNarrative(
   const base = TIER_NARRATIVES[tier];
   const weakestLabel = getPillarLabel(weakestPillar).toLowerCase();
   return base.includes('%s') ? base.replace('%s', weakestLabel) : base;
+}
+
+export function getGrowthSuggestion(
+  weakestPillar: PillarKey | null,
+  tier: Tier | null,
+): string {
+  if (!weakestPillar) {
+    return tier === 'Legend'
+      ? 'Keep this link warm with one intentional moment this week.'
+      : 'Keep nurturing this link through one intentional moment this week.';
+  }
+  return GROWTH_SUGGESTIONS[weakestPillar];
 }

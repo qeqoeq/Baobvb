@@ -7,6 +7,7 @@ import { radius, spacing } from '../../constants/spacing';
 import { getTierAccent, type PillarKey } from '../../lib/evaluation';
 import {
   getFoundationalReadingForRelation,
+  getGrowthSuggestion,
   getPillarLabel,
   getTierNarrative,
 } from '../../lib/foundational-reading';
@@ -55,6 +56,10 @@ export default function RelationDetailScreen() {
   const strongestLabel = getPillarLabel(reading?.strongestPillar ?? null);
   const weakestLabel = getPillarLabel(reading?.weakestPillar ?? null);
   const tierNarrative = getTierNarrative(reading?.linkTier ?? null, reading?.weakestPillar ?? null);
+  const growthSuggestion = getGrowthSuggestion(
+    reading?.weakestPillar ?? null,
+    reading?.linkTier ?? null,
+  );
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -138,6 +143,10 @@ export default function RelationDetailScreen() {
               <Text style={styles.narrativeReading}>
                 <Text style={styles.narrativeKey}>Reading:</Text> {tierNarrative}
               </Text>
+            </View>
+            <View style={styles.nextActionCard}>
+              <Text style={styles.nextActionLabel}>Next step</Text>
+              <Text style={styles.nextActionText}>{growthSuggestion}</Text>
             </View>
             <Text style={styles.pillarSummary}>
               Strongest: {strongestLabel} · Weakest: {weakestLabel}
@@ -367,6 +376,26 @@ const styles = StyleSheet.create({
   },
   narrativeKey: {
     fontWeight: '700',
+    color: colors.text.primary,
+  },
+  nextActionCard: {
+    backgroundColor: colors.accent.deepTeal + '14',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accent.deepTeal + '44',
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  nextActionLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    color: colors.accent.deepTeal,
+    fontWeight: '700',
+  },
+  nextActionText: {
+    fontSize: 13,
+    lineHeight: 19,
     color: colors.text.primary,
   },
   readingNote: {
