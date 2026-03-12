@@ -5,16 +5,12 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { getTierAccent, type PillarKey } from '../../lib/evaluation';
-import { getFoundationalReadingForRelation } from '../../lib/foundational-reading';
+import {
+  getFoundationalReadingForRelation,
+  getPillarLabel,
+  getTierNarrative,
+} from '../../lib/foundational-reading';
 import { useRelationsStore } from '../../store/useRelationsStore';
-
-const PILLAR_LABELS: Record<PillarKey, string> = {
-  trust: 'Trust',
-  interactions: 'Interactions',
-  affinity: 'Affinity',
-  support: 'Support',
-  sharedNetwork: 'Shared Network',
-};
 
 const PILLAR_ORDER: PillarKey[] = [
   'trust',
@@ -56,6 +52,9 @@ export default function RelationDetailScreen() {
     ? `Scanned from ${relation.sourceHandle}`
     : null;
   const shouldHighlightReadNext = justCreated === '1' && !evaluation;
+  const strongestLabel = getPillarLabel(reading?.strongestPillar ?? null);
+  const weakestLabel = getPillarLabel(reading?.weakestPillar ?? null);
+  const tierNarrative = getTierNarrative(reading?.linkTier ?? null, reading?.weakestPillar ?? null);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -111,7 +110,7 @@ export default function RelationDetailScreen() {
                 const dots = reading?.pillarDots?.[key] ?? [];
                 return (
                   <View key={key} style={styles.pillarRow}>
-                    <Text style={styles.pillarLabel}>{PILLAR_LABELS[key]}</Text>
+                    <Text style={styles.pillarLabel}>{getPillarLabel(key)}</Text>
                     <View style={styles.pillarDots}>
                       {dots.map((isFilled, idx) => (
                         <View
@@ -129,8 +128,19 @@ export default function RelationDetailScreen() {
                 );
               })}
             </View>
+            <View style={styles.narrativeCard}>
+              <Text style={styles.narrativeLine}>
+                <Text style={styles.narrativeKey}>Force:</Text> {strongestLabel}
+              </Text>
+              <Text style={styles.narrativeLine}>
+                <Text style={styles.narrativeKey}>Watch:</Text> {weakestLabel}
+              </Text>
+              <Text style={styles.narrativeReading}>
+                <Text style={styles.narrativeKey}>Reading:</Text> {tierNarrative}
+              </Text>
+            </View>
             <Text style={styles.pillarSummary}>
-              Strongest: {reading?.strongestPillar ?? '-'} · Weakest: {reading?.weakestPillar ?? '-'}
+              Strongest: {strongestLabel} · Weakest: {weakestLabel}
             </Text>
           </View>
 
@@ -336,6 +346,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.muted,
     fontStyle: 'italic',
+  },
+  narrativeCard: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  narrativeLine: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    lineHeight: 19,
+  },
+  narrativeReading: {
+    fontSize: 13,
+    color: colors.text.primary,
+    lineHeight: 20,
+  },
+  narrativeKey: {
+    fontWeight: '700',
+    color: colors.text.primary,
   },
   readingNote: {
     paddingHorizontal: spacing.sm,
