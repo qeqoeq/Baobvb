@@ -14,6 +14,7 @@ type CircleMember = {
   handle: string;
   proximity: Proximity;
   readingLabel: string;
+  avatarSeed?: string;
 };
 
 const SUFFIXES = ['branch', 'root', 'leaf', 'seed', 'bloom'];
@@ -92,9 +93,10 @@ export default function CircleScreen() {
       return {
         id: reading.relation.id,
         name: reading.relation.name,
-        handle: deriveHandle(reading.relation.name, reading.relation.id),
+        handle: reading.relation.handle || deriveHandle(reading.relation.name, reading.relation.id),
         proximity,
         readingLabel,
+        avatarSeed: reading.relation.avatarSeed,
       };
     }),
     [readings],
@@ -179,7 +181,7 @@ export default function CircleScreen() {
                         ]}
                       >
                         <Text style={[styles.avatarLetter, { color: meta.accent }]}>
-                          {member.name.charAt(0).toUpperCase()}
+                          {(member.avatarSeed || member.name.charAt(0) || '?').toUpperCase()}
                         </Text>
                       </View>
                       {proximity === 'far' && <View style={styles.avatarFog} />}

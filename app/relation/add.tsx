@@ -23,6 +23,7 @@ export default function AddRelationScreen() {
   }>();
   const { me, relations, addRelation } = useRelationsStore();
   const [name, setName] = useState(params.prefillName ?? '');
+  const [handle, setHandle] = useState(params.prefillHandle ?? '');
 
   const canSubmit = name.trim().length > 0;
   const fromScan = params.fromScan === '1';
@@ -37,7 +38,12 @@ export default function AddRelationScreen() {
 
     const cleanName = name.trim();
     const normalizedScannedHandle = normalizeHandle(params.prefillHandle ?? '');
+    const normalizedInputHandle = normalizeHandle(handle);
+    const normalizedHandle = fromScan
+      ? normalizedScannedHandle || normalizedInputHandle
+      : normalizedInputHandle;
     const scannedCardMeId = params.scannedMeId?.trim() || '';
+    const scannedAvatarSeed = params.prefillAvatarSeed?.trim().toUpperCase().slice(0, 2);
 
     const existingByCardMeId = scannedCardMeId
       ? relations.find(
@@ -55,10 +61,10 @@ export default function AddRelationScreen() {
       return;
     }
 
-    const existingByHandle = normalizedScannedHandle
+    const existingByHandle = normalizedHandle
       ? relations.find(
           (relation) =>
-            normalizeHandle(relation.sourceHandle ?? '') === normalizedScannedHandle,
+            normalizeHandle(relation.handle ?? relation.sourceHandle ?? '') === normalizedHandle,
         )
       : null;
     if (existingByHandle) {
@@ -82,10 +88,16 @@ export default function AddRelationScreen() {
             const createdFromName = addRelation(cleanName, fromScan
               ? {
                   source: 'scan',
+                  handle: normalizedHandle || undefined,
+                  avatarSeed: scannedAvatarSeed || cleanName.charAt(0).toUpperCase(),
                   sourceCardMeId: scannedCardMeId || undefined,
                   sourceHandle: normalizedScannedHandle || undefined,
                 }
-              : { source: 'manual' });
+              : {
+                  source: 'manual',
+                  handle: normalizedHandle || undefined,
+                  avatarSeed: cleanName.charAt(0).toUpperCase(),
+                });
             if (createdFromName) {
               router.replace({
                 pathname: `../${createdFromName.id}`,
@@ -101,10 +113,16 @@ export default function AddRelationScreen() {
     const created = addRelation(cleanName, fromScan
       ? {
           source: 'scan',
+          handle: normalizedHandle || undefined,
+          avatarSeed: scannedAvatarSeed || cleanName.charAt(0).toUpperCase(),
           sourceCardMeId: scannedCardMeId || undefined,
           sourceHandle: normalizedScannedHandle || undefined,
         }
-      : { source: 'manual' });
+      : {
+          source: 'manual',
+          handle: normalizedHandle || undefined,
+          avatarSeed: cleanName.charAt(0).toUpperCase(),
+        });
     if (!created) return;
     router.replace({
       pathname: `../${created.id}`,
@@ -136,6 +154,15 @@ export default function AddRelationScreen() {
           placeholderTextColor={colors.text.muted}
           style={styles.input}
           autoFocus
+        />
+        <TextInput
+          value={handle}
+          onChangeText={setHandle}
+          placeholder="Handle (optional)"
+          placeholderTextColor={colors.text.muted}
+          style={styles.input}
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <Pressable

@@ -62,10 +62,11 @@ export default function RelationDetailScreen() {
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: accent + '14', borderColor: accent + '44' }]}>
           <Text style={[styles.avatarText, { color: accent }]}>
-            {relation.name.charAt(0).toUpperCase()}
+            {(relation.avatarSeed || relation.name.charAt(0) || '?').toUpperCase()}
           </Text>
         </View>
         <Text style={styles.name}>{relation.name}</Text>
+        {relation.handle ? <Text style={styles.handle}>{relation.handle}</Text> : null}
         <View style={[styles.tierBadge, { backgroundColor: accent + '18' }]}>
           <Text style={[styles.tierBadgeText, { color: accent }]}>
             {evaluation ? `${badgeLabel} · ${evaluation.score}` : badgeLabel}
@@ -203,6 +204,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: colors.text.primary,
+  },
+  handle: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    fontWeight: '600',
   },
   tierBadge: {
     borderRadius: radius.pill,

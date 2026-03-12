@@ -8,6 +8,8 @@ export type Relation = {
   name: string;
   archived: boolean;
   createdAt: string;
+  handle?: string;
+  avatarSeed?: string;
   source: 'manual' | 'scan';
   sourceCardMeId?: string;
   sourceHandle?: string;
@@ -143,6 +145,10 @@ loadPersistedState<StoreState>().then((persisted) => {
     }
     state.relations = persisted.relations.map((relation) => ({
       ...relation,
+      avatarSeed:
+        relation.avatarSeed ||
+        relation.name?.trim().charAt(0).toUpperCase() ||
+        '?',
       source: relation.source === 'scan' ? 'scan' : 'manual',
     }));
     state.evaluations = persisted.evaluations;
@@ -182,6 +188,7 @@ function pushRelation(name: string): Relation | null {
     name: cleanName,
     archived: false,
     createdAt: new Date().toISOString(),
+    avatarSeed: cleanName.charAt(0).toUpperCase() || '?',
     source: 'manual',
   };
   state.relations = [relation, ...state.relations];
@@ -192,6 +199,8 @@ function pushRelation(name: string): Relation | null {
 
 type RelationSourceMeta = {
   source: 'manual' | 'scan';
+  handle?: string;
+  avatarSeed?: string;
   sourceCardMeId?: string;
   sourceHandle?: string;
 };
@@ -208,6 +217,8 @@ function pushRelationWithSource(
     name: cleanName,
     archived: false,
     createdAt: new Date().toISOString(),
+    handle: meta.handle,
+    avatarSeed: meta.avatarSeed || cleanName.charAt(0).toUpperCase() || '?',
     source: meta.source,
     sourceCardMeId: meta.sourceCardMeId,
     sourceHandle: meta.sourceHandle,

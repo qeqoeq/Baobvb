@@ -221,12 +221,15 @@ export default function GardenScreen() {
                 >
                   <View style={[styles.mappingAvatar, { backgroundColor: accent + '16' }]}>
                     <Text style={[styles.mappingInitial, { color: accent }]}>
-                      {entry.relation.name.charAt(0).toUpperCase()}
+                      {(entry.relation.avatarSeed || entry.relation.name.charAt(0) || '?').toUpperCase()}
                     </Text>
                   </View>
                   <View style={styles.mappingBody}>
                     <Text style={styles.mappingName}>{entry.relation.name}</Text>
                     <Text style={styles.mappingMeta}>
+                      {entry.relation.handle
+                        ? `${entry.relation.handle} · `
+                        : ''}
                       {entry.readingStatus === 'Read'
                         ? `${entry.badgeLabel} · ${entry.foundationalScore}`
                         : 'Unread'}
