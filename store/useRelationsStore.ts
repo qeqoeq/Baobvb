@@ -35,6 +35,12 @@ type StoreState = {
   evaluations: Evaluation[];
 };
 
+export type RelationUpdate = {
+  name: string;
+  handle?: string;
+  avatarSeed?: string;
+};
+
 function buildEvaluation(
   id: string,
   relationId: string,
@@ -244,6 +250,11 @@ function normalizeAvatarSeed(raw: string, displayName: string) {
   return fallback || '?';
 }
 
+function normalizeOptionalHandle(raw: string) {
+  const normalized = normalizeHandle(raw);
+  return normalized || undefined;
+}
+
 function setMe(update: MeProfileUpdate): boolean {
   const displayName = update.displayName.trim();
   const handle = normalizeHandle(update.handle);
@@ -257,6 +268,31 @@ function setMe(update: MeProfileUpdate): boolean {
     handle,
     avatarSeed,
   };
+  emitChange();
+  persist();
+  return true;
+}
+
+function setRelation(id: string, update: RelationUpdate): boolean {
+  const cleanName = update.name.trim();
+  if (!cleanName) return false;
+
+  const normalizedHandle = normalizeOptionalHandle(update.handle ?? '');
+  const normalizedAvatarSeed = normalizeAvatarSeed(update.avatarSeed ?? '', cleanName);
+
+  let didUpdate = false;
+  state.relations = state.relations.map((relation) => {
+    if (relation.id !== id) return relation;
+    didUpdate = true;
+    return {
+      ...relation,
+      name: cleanName,
+      handle: normalizedHandle,
+      avatarSeed: normalizedAvatarSeed,
+    };
+  });
+
+  if (!didUpdate) return false;
   emitChange();
   persist();
   return true;
@@ -281,6 +317,7 @@ export function useRelationsStore() {
     return pushRelationWithSource(name, meta);
   };
   const updateMe = (update: MeProfileUpdate) => setMe(update);
+  const updateRelation = (id: string, update: RelationUpdate) => setRelation(id, update);
 
   return {
     me,
@@ -292,6 +329,7 @@ export function useRelationsStore() {
     restoreRelation,
     addEvaluation,
     addRelation,
+    updateRelation,
     updateMe,
     isHydrated,
   };

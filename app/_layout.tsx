@@ -20,6 +20,10 @@ export default function RootLayout() {
         name="relation/add"
         options={{ title: 'Add a person', presentation: 'modal' }}
       />
+      <Stack.Screen
+        name="relation/edit/[id]"
+        options={{ title: 'Edit relation', presentation: 'modal' }}
+      />
       <Stack.Screen name="relation/[id]" options={{ title: 'Relation' }} />
       <Stack.Screen name="relation/evaluate/[id]" options={{ title: 'Foundational reading' }} />
       <Stack.Screen name="relation/archived" options={{ title: 'Relations archivees' }} />

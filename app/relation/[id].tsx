@@ -79,6 +79,9 @@ export default function RelationDetailScreen() {
             <Text style={styles.originSubtext}>{sourceSubtext}</Text>
           ) : null}
         </View>
+        <Pressable onPress={() => router.push(`./edit/${relation.id}`)} style={styles.editLink}>
+          <Text style={styles.editLinkText}>Edit</Text>
+        </Pressable>
       </View>
 
       {evaluation ? (
@@ -247,6 +250,15 @@ const styles = StyleSheet.create({
   originSubtext: {
     fontSize: 12,
     color: colors.text.muted,
+  },
+  editLink: {
+    paddingTop: spacing.xs,
+  },
+  editLinkText: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 
   sectionHeader: {
