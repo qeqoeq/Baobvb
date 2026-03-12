@@ -51,6 +51,10 @@ export default function RelationDetailScreen() {
   const evaluation = reading?.foundationalEvaluation ?? null;
   const accent = reading?.linkTier ? getTierAccent(reading.linkTier) : colors.accent.warmGold;
   const badgeLabel = reading?.badgeLabel ?? 'Unread';
+  const sourceLabel = relation.source === 'scan' ? 'Added by scan' : 'Added manually';
+  const sourceSubtext = relation.source === 'scan' && relation.sourceHandle
+    ? `Scanned from ${relation.sourceHandle}`
+    : null;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -67,6 +71,12 @@ export default function RelationDetailScreen() {
           </Text>
         </View>
         <Text style={styles.statusText}>Status: {reading?.readingStatus ?? 'Unread'}</Text>
+        <View style={styles.originCard}>
+          <Text style={styles.originLabel}>{sourceLabel}</Text>
+          {sourceSubtext ? (
+            <Text style={styles.originSubtext}>{sourceSubtext}</Text>
+          ) : null}
+        </View>
       </View>
 
       {evaluation ? (
@@ -201,6 +211,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.muted,
     fontWeight: '500',
+  },
+  originCard: {
+    marginTop: spacing.xs,
+    alignItems: 'center',
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    gap: 2,
+  },
+  originLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    color: colors.text.secondary,
+    fontWeight: '700',
+  },
+  originSubtext: {
+    fontSize: 12,
+    color: colors.text.muted,
   },
 
   sectionHeader: {
