@@ -8,6 +8,9 @@ export type Relation = {
   name: string;
   archived: boolean;
   createdAt: string;
+  source: 'manual' | 'scan';
+  sourceCardMeId?: string;
+  sourceHandle?: string;
 };
 
 export type MeProfile = {
@@ -41,9 +44,9 @@ function buildEvaluation(
 }
 
 const SEED_RELATIONS: Relation[] = [
-  { id: '1', name: 'Olivier', archived: false, createdAt: '2025-11-10T10:00:00Z' },
-  { id: '2', name: 'Nora', archived: false, createdAt: '2025-12-01T14:30:00Z' },
-  { id: '3', name: 'Jean', archived: true, createdAt: '2025-10-05T09:00:00Z' },
+  { id: '1', name: 'Olivier', archived: false, createdAt: '2025-11-10T10:00:00Z', source: 'manual' },
+  { id: '2', name: 'Nora', archived: false, createdAt: '2025-12-01T14:30:00Z', source: 'manual' },
+  { id: '3', name: 'Jean', archived: true, createdAt: '2025-10-05T09:00:00Z', source: 'manual' },
 ];
 
 const SEED_EVALUATIONS: Evaluation[] = [
@@ -138,7 +141,10 @@ loadPersistedState<StoreState>().then((persisted) => {
         id: persisted.me.id ?? SEED_ME.id,
       };
     }
-    state.relations = persisted.relations;
+    state.relations = persisted.relations.map((relation) => ({
+      ...relation,
+      source: relation.source === 'scan' ? 'scan' : 'manual',
+    }));
     state.evaluations = persisted.evaluations;
   } else {
     persistState<StoreState>({
@@ -176,6 +182,35 @@ function pushRelation(name: string): Relation | null {
     name: cleanName,
     archived: false,
     createdAt: new Date().toISOString(),
+    source: 'manual',
+  };
+  state.relations = [relation, ...state.relations];
+  emitChange();
+  persist();
+  return relation;
+}
+
+type RelationSourceMeta = {
+  source: 'manual' | 'scan';
+  sourceCardMeId?: string;
+  sourceHandle?: string;
+};
+
+function pushRelationWithSource(
+  name: string,
+  meta: RelationSourceMeta,
+): Relation | null {
+  const cleanName = name.trim();
+  if (!cleanName) return null;
+
+  const relation: Relation = {
+    id: `r-${Date.now()}`,
+    name: cleanName,
+    archived: false,
+    createdAt: new Date().toISOString(),
+    source: meta.source,
+    sourceCardMeId: meta.sourceCardMeId,
+    sourceHandle: meta.sourceHandle,
   };
   state.relations = [relation, ...state.relations];
   emitChange();
@@ -230,7 +265,10 @@ export function useRelationsStore() {
   const archiveRelation = (id: string) => { setArchived(id, true); };
   const restoreRelation = (id: string) => { setArchived(id, false); };
   const addEvaluation = (evaluation: Evaluation) => { pushEvaluation(evaluation); };
-  const addRelation = (name: string) => pushRelation(name);
+  const addRelation = (name: string, meta?: RelationSourceMeta) => {
+    if (!meta) return pushRelation(name);
+    return pushRelationWithSource(name, meta);
+  };
   const updateMe = (update: MeProfileUpdate) => setMe(update);
 
   return {

@@ -6,6 +6,13 @@ import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
+function normalizeHandle(raw: string) {
+  const noSpaces = raw.trim().toLowerCase().replace(/\s+/g, '');
+  const noAt = noSpaces.replace(/^@+/, '');
+  const safe = noAt.replace(/[^a-z0-9._-]/g, '');
+  return safe ? `@${safe}` : '';
+}
+
 export default function AddRelationScreen() {
   const params = useLocalSearchParams<{
     prefillName?: string;
@@ -29,18 +36,72 @@ export default function AddRelationScreen() {
     }
 
     const cleanName = name.trim();
-    const existing = relations.find(
-      (relation) => relation.name.trim().toLowerCase() === cleanName.toLowerCase(),
-    );
-    if (existing) {
-      Alert.alert('Person already exists', `${existing.name} is already in your Garden.`, [
+    const normalizedScannedHandle = normalizeHandle(params.prefillHandle ?? '');
+    const scannedCardMeId = params.scannedMeId?.trim() || '';
+
+    const existingByCardMeId = scannedCardMeId
+      ? relations.find(
+          (relation) =>
+            relation.source === 'scan' &&
+            relation.sourceCardMeId &&
+            relation.sourceCardMeId === scannedCardMeId,
+        )
+      : null;
+    if (existingByCardMeId) {
+      Alert.alert('Person already exists', `${existingByCardMeId.name} is already in your Garden.`, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Open link', onPress: () => router.replace(`../${existing.id}`) },
+        { text: 'Open link', onPress: () => router.replace(`../${existingByCardMeId.id}`) },
       ]);
       return;
     }
 
-    const created = addRelation(cleanName);
+    const existingByHandle = normalizedScannedHandle
+      ? relations.find(
+          (relation) =>
+            normalizeHandle(relation.sourceHandle ?? '') === normalizedScannedHandle,
+        )
+      : null;
+    if (existingByHandle) {
+      Alert.alert('Likely duplicate', `${existingByHandle.name} already uses this scanned handle.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Open link', onPress: () => router.replace(`../${existingByHandle.id}`) },
+      ]);
+      return;
+    }
+
+    const existingByName = relations.find(
+      (relation) => relation.name.trim().toLowerCase() === cleanName.toLowerCase(),
+    );
+    if (existingByName) {
+      Alert.alert('Possible duplicate', `${existingByName.name} already exists with the same name.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Open link', onPress: () => router.replace(`../${existingByName.id}`) },
+        {
+          text: 'Create anyway',
+          onPress: () => {
+            const createdFromName = addRelation(cleanName, fromScan
+              ? {
+                  source: 'scan',
+                  sourceCardMeId: scannedCardMeId || undefined,
+                  sourceHandle: normalizedScannedHandle || undefined,
+                }
+              : { source: 'manual' });
+            if (createdFromName) {
+              router.replace(`../${createdFromName.id}`);
+            }
+          },
+        },
+      ]);
+      return;
+    }
+
+    const created = addRelation(cleanName, fromScan
+      ? {
+          source: 'scan',
+          sourceCardMeId: scannedCardMeId || undefined,
+          sourceHandle: normalizedScannedHandle || undefined,
+        }
+      : { source: 'manual' });
     if (!created) return;
     router.replace(`../${created.id}`);
   };

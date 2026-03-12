@@ -32,15 +32,17 @@ export function parsePersonCardPayload(raw: string): PersonCardPayload | null {
     const parsed = JSON.parse(raw) as Partial<PersonCardPayload>;
     if (parsed.type !== BAOBAB_PERSON_CARD_TYPE) return null;
     if (parsed.version !== BAOBAB_PERSON_CARD_VERSION) return null;
-    if (!parsed.displayName || !parsed.handle || !parsed.avatarSeed || !parsed.meId) {
+    if (!parsed.displayName || !parsed.meId) {
       return null;
     }
+    const cleanHandle = typeof parsed.handle === 'string' ? parsed.handle.trim() : '';
+    const cleanAvatarSeed = typeof parsed.avatarSeed === 'string' ? parsed.avatarSeed.trim() : '';
     return {
       type: BAOBAB_PERSON_CARD_TYPE,
       version: BAOBAB_PERSON_CARD_VERSION,
       displayName: parsed.displayName,
-      handle: parsed.handle,
-      avatarSeed: parsed.avatarSeed,
+      handle: cleanHandle,
+      avatarSeed: cleanAvatarSeed || parsed.displayName.charAt(0).toUpperCase() || '?',
       meId: parsed.meId,
     };
   } catch {
