@@ -1,5 +1,5 @@
-import { Link } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Link, router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
@@ -40,8 +40,9 @@ export default function PlacesScreen() {
             const safeRating = sanitizeRating(place.rating);
             const tone = getPlaceTone(safeRating);
             return (
-              <View
+              <Pressable
                 key={place.id}
+                onPress={() => router.push(`../place/${place.id}`)}
                 style={[
                   styles.card,
                   {
@@ -61,7 +62,7 @@ export default function PlacesScreen() {
                   </Text>
                 </View>
                 <Text style={styles.impression}>{getPlaceReading(place)}</Text>
-              </View>
+              </Pressable>
             );
           })
         )}

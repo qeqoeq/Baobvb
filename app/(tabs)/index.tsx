@@ -291,8 +291,9 @@ export default function GardenScreen() {
                 const safeRating = sanitizeRating(place.rating);
                 const tone = getPlaceTone(safeRating);
                 return (
-                  <View
+                  <Pressable
                     key={place.id}
+                    onPress={() => router.push(`../place/${place.id}`)}
                     style={[
                       styles.placeRow,
                       {
@@ -313,7 +314,7 @@ export default function GardenScreen() {
                     <Text style={[styles.placeRowRating, { color: tone.accent }]}>
                       {safeRating}/5
                     </Text>
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>

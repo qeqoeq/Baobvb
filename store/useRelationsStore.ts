@@ -256,6 +256,13 @@ export type PlaceCreateInput = {
   impression?: string;
 };
 
+export type PlaceUpdateInput = {
+  name: string;
+  category: PlaceCategory;
+  rating: 1 | 2 | 3 | 4 | 5;
+  impression?: string;
+};
+
 function pushPlace(input: PlaceCreateInput): Place | null {
   const cleanName = input.name.trim();
   if (!cleanName) return null;
@@ -275,6 +282,33 @@ function pushPlace(input: PlaceCreateInput): Place | null {
   emitChange();
   persist();
   return place;
+}
+
+function setPlace(id: string, update: PlaceUpdateInput): boolean {
+  const cleanName = update.name.trim();
+  if (!cleanName) return false;
+
+  const category = sanitizePlaceCategory(update.category);
+  const rating = sanitizePlaceRating(update.rating);
+  const cleanImpression = update.impression?.trim();
+
+  let didUpdate = false;
+  state.places = state.places.map((place) => {
+    if (place.id !== id) return place;
+    didUpdate = true;
+    return {
+      ...place,
+      name: cleanName,
+      category,
+      rating,
+      impression: cleanImpression ? cleanImpression : undefined,
+    };
+  });
+
+  if (!didUpdate) return false;
+  emitChange();
+  persist();
+  return true;
 }
 
 function pushRelation(name: string): Relation | null {
@@ -412,6 +446,7 @@ export function useRelationsStore() {
   const updateMe = (update: MeProfileUpdate) => setMe(update);
   const updateRelation = (id: string, update: RelationUpdate) => setRelation(id, update);
   const addPlace = (input: PlaceCreateInput) => pushPlace(input);
+  const updatePlace = (id: string, update: PlaceUpdateInput) => setPlace(id, update);
 
   return {
     me,
@@ -425,6 +460,7 @@ export function useRelationsStore() {
     addEvaluation,
     addRelation,
     updateRelation,
+    updatePlace,
     updateMe,
     addPlace,
     isHydrated,
