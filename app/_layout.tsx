@@ -24,22 +24,7 @@ export default function RootLayout() {
         name="relation/edit/[id]"
         options={{ title: 'Edit relation', presentation: 'modal' }}
       />
-      <Stack.Screen
-        name="place/add"
-        options={{ title: 'Rate a place', presentation: 'modal' }}
-      />
-      <Stack.Screen
-        name="place/index"
-        options={{ title: 'Places & tastes' }}
-      />
-      <Stack.Screen
-        name="place/[id]"
-        options={{ title: 'Place' }}
-      />
-      <Stack.Screen
-        name="place/edit/[id]"
-        options={{ title: 'Edit place', presentation: 'modal' }}
-      />
+      {/* Places routes are intentionally hidden from MVP navigation; files are kept parked for later. */}
       <Stack.Screen name="relation/[id]" options={{ title: 'Relation' }} />
       <Stack.Screen name="relation/evaluate/[id]" options={{ title: 'Foundational reading' }} />
       <Stack.Screen name="relation/archived" options={{ title: 'Relations archivees' }} />

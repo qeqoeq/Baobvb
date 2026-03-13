@@ -6,44 +6,31 @@ import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { getTierAccent } from '../../lib/evaluation';
 import { getFoundationalReadings, getGardenMicroSignal } from '../../lib/foundational-reading';
-import {
-  getPlaceCategoryLabel,
-  getPlaceReading,
-  getPlaceRatingSignature,
-  getPlaceTone,
-  sanitizeRating,
-} from '../../lib/places';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 const QUICK_ACTIONS = [
   {
     key: 'add-person',
     title: 'Add a person',
-    subtitle: 'Start mapping a new link',
+    subtitle: 'Add a person to your Garden',
     accent: colors.accent.deepTeal,
   },
   {
     key: 'scan-code',
     title: 'Scan a code',
-    subtitle: 'Connect instantly nearby',
+    subtitle: 'Scan a person card nearby',
     accent: colors.accent.softAmber,
   },
   {
     key: 'share-card',
     title: 'Share my card',
-    subtitle: 'Let others discover you',
+    subtitle: 'Share your card nearby',
     accent: colors.accent.mutedSage,
-  },
-  {
-    key: 'rate-place',
-    title: 'Rate a place',
-    subtitle: 'Add one place memory',
-    accent: colors.accent.dustyRose,
   },
 ] as const;
 
 export default function GardenScreen() {
-  const { me, activeRelations, archivedRelations, evaluations, places } = useRelationsStore();
+  const { me, activeRelations, archivedRelations, evaluations } = useRelationsStore();
 
   const entries = useMemo(
     () => getFoundationalReadings(activeRelations, evaluations),
@@ -74,11 +61,6 @@ export default function GardenScreen() {
     return toNurtureCount > 0 ? 'Trust in motion' : 'Trust growing';
   }, [me.trustPassportStatus, toNurtureCount]);
 
-  const recentPlaces = useMemo(
-    () => [...places].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3),
-    [places],
-  );
-
   const openQrCard = () => {
     router.push('../me/qr');
   };
@@ -100,7 +82,7 @@ export default function GardenScreen() {
   const openAddPersonSheet = () => {
     Alert.alert('Add a person', 'Choose how to create a new connection.', [
       { text: 'Scan a code', onPress: openScan },
-      { text: 'Show my code', onPress: openQrCard },
+      { text: 'Show QR', onPress: openQrCard },
       { text: 'Add manually', onPress: () => router.push('../relation/add') },
       { text: 'Cancel', style: 'cancel' },
     ]);
@@ -110,13 +92,12 @@ export default function GardenScreen() {
     if (key === 'add-person') return openAddPersonSheet();
     if (key === 'scan-code') return openScan();
     if (key === 'share-card') return void shareMyCard();
-    router.push('../place/add');
   };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.passportCard}>
-        <Text style={styles.passportKicker}>Passport Garden Home</Text>
+        <Text style={styles.passportKicker}>Garden</Text>
         <View style={styles.passportTopRow}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarRing}>
@@ -189,17 +170,17 @@ export default function GardenScreen() {
         <View style={styles.nearbyCard}>
           <Text style={styles.nearbyTitle}>Ready for an in-person connection</Text>
           <Text style={styles.nearbyText}>
-            Let someone scan you, scan their code, or open your card full-screen.
+            Let someone scan your card, scan theirs, or open your QR full-screen.
           </Text>
           <View style={styles.nearbyRow}>
             <Pressable onPress={openQrCard}>
-              <Text style={styles.nearbyLink}>Let someone scan me</Text>
+              <Text style={styles.nearbyLink}>Show QR</Text>
             </Pressable>
             <Pressable onPress={openScan}>
-              <Text style={styles.nearbyLink}>Scan someone else</Text>
+              <Text style={styles.nearbyLink}>Scan a card</Text>
             </Pressable>
             <Pressable onPress={openQrCard}>
-              <Text style={styles.nearbyLink}>Open my card</Text>
+              <Text style={styles.nearbyLink}>Open QR card</Text>
             </Pressable>
           </View>
         </View>
@@ -260,74 +241,12 @@ export default function GardenScreen() {
                       {signal.text}
                     </Text>
                   </View>
-                  <Text style={styles.mappingCTA}>Resume</Text>
+                  <Text style={styles.mappingCTA}>Open link</Text>
                 </Pressable>
               );
             })}
           </View>
         )}
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>Places & tastes</Text>
-          <View style={styles.sectionLine} />
-        </View>
-        <View style={styles.placesCard}>
-          <Text style={styles.placesTitle}>Your places memory is now live</Text>
-          <Text style={styles.placesText}>
-            Keep simple taste signals around cafes, restaurants and social spots.
-          </Text>
-          {recentPlaces.length === 0 ? (
-            <View style={styles.placesEmptyCard}>
-              <Text style={styles.placesEmptyTitle}>No place rated yet</Text>
-              <Text style={styles.placesEmptyText}>
-                Start with one place and one clean impression.
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.placesList}>
-              {recentPlaces.map((place) => {
-                const safeRating = sanitizeRating(place.rating);
-                const tone = getPlaceTone(safeRating);
-                return (
-                  <Pressable
-                    key={place.id}
-                    onPress={() => router.push(`../place/${place.id}`)}
-                    style={[
-                      styles.placeRow,
-                      {
-                        borderColor: tone.border,
-                        backgroundColor: tone.tint,
-                      },
-                    ]}
-                  >
-                    <View style={styles.placeRowBody}>
-                      <Text style={styles.placeRowName}>{place.name}</Text>
-                      <Text style={styles.placeRowMeta}>
-                        {getPlaceCategoryLabel(place.category)} · {getPlaceRatingSignature(safeRating)}
-                      </Text>
-                      <Text style={styles.placeRowReading} numberOfLines={1}>
-                        {getPlaceReading(place)}
-                      </Text>
-                    </View>
-                    <Text style={[styles.placeRowRating, { color: tone.accent }]}>
-                      {safeRating}/5
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-          <View style={styles.placesActions}>
-            <Pressable onPress={() => router.push('../place/add')}>
-              <Text style={styles.placesLink}>Rate a place</Text>
-            </Pressable>
-            <Pressable onPress={() => router.push('../place')}>
-              <Text style={styles.placesLinkSecondary}>Open places</Text>
-            </Pressable>
-          </View>
-        </View>
       </View>
 
       <View style={styles.section}>
@@ -360,7 +279,7 @@ export default function GardenScreen() {
 
         {archivedRelations.length > 0 && (
           <Pressable onPress={() => router.push('../relation/archived')} style={styles.archivedRow}>
-            <Text style={styles.archivedRowText}>Open archived people</Text>
+            <Text style={styles.archivedRowText}>Open archived links</Text>
           </Pressable>
         )}
       </View>
@@ -644,95 +563,6 @@ const styles = StyleSheet.create({
   mappingCTA: {
     fontSize: 12,
     color: colors.accent.warmGold,
-    fontWeight: '700',
-  },
-
-  placesCard: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.accent.dustyRose + '33',
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  placesTitle: {
-    fontSize: 16,
-    color: colors.text.primary,
-    fontWeight: '600',
-  },
-  placesText: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: colors.text.secondary,
-  },
-  placesLink: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.accent.dustyRose,
-  },
-  placesLinkSecondary: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text.secondary,
-  },
-  placesActions: {
-    marginTop: spacing.xs,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  placesEmptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    padding: spacing.sm,
-    gap: 2,
-  },
-  placesEmptyTitle: {
-    fontSize: 13,
-    color: colors.text.primary,
-    fontWeight: '600',
-  },
-  placesEmptyText: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    lineHeight: 18,
-  },
-  placesList: {
-    gap: spacing.xs,
-  },
-  placeRow: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs + 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  placeRowBody: {
-    flex: 1,
-    gap: 2,
-  },
-  placeRowName: {
-    fontSize: 13,
-    color: colors.text.primary,
-    fontWeight: '600',
-  },
-  placeRowMeta: {
-    fontSize: 11,
-    color: colors.text.muted,
-  },
-  placeRowReading: {
-    fontSize: 12,
-    color: '#CAC2B8',
-  },
-  placeRowRating: {
-    fontSize: 12,
     fontWeight: '700',
   },
 

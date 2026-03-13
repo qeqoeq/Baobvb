@@ -112,7 +112,7 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.passportCard}>
-        <Text style={styles.passportKicker}>Profile</Text>
+        <Text style={styles.passportKicker}>Trust passport</Text>
 
         <View style={styles.avatarRing}>
           <View style={styles.avatarInner}>

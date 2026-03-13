@@ -131,7 +131,7 @@ export default function EditRelationScreen() {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Pressable onPress={save} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Save</Text>
+          <Text style={styles.primaryButtonText}>Save relation</Text>
         </Pressable>
         <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>Cancel</Text>

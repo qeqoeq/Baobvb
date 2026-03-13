@@ -143,7 +143,7 @@ export default function CircleScreen() {
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>No one yet</Text>
           <Text style={styles.emptyText}>
-            Your circle will grow as you build relationships in your Garden.
+            Your circle will grow as you add people in your Garden.
           </Text>
         </View>
       ) : (

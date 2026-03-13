@@ -135,7 +135,7 @@ export default function AddRelationScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>Add a person</Text>
         <Text style={styles.subtitle}>
-          Start your mapping with a name. You can enrich the link right after.
+          Add a person with a name. You can read this link right after.
         </Text>
         {fromScan && (
           <View style={styles.scanHintCard}>
@@ -170,7 +170,7 @@ export default function AddRelationScreen() {
           disabled={!canSubmit}
           style={[styles.button, !canSubmit && styles.buttonDisabled]}
         >
-          <Text style={styles.buttonText}>Create link</Text>
+          <Text style={styles.buttonText}>Add person</Text>
         </Pressable>
 
         <Pressable onPress={() => router.back()} style={styles.secondaryButton}>

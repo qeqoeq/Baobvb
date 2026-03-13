@@ -29,7 +29,7 @@ export default function MyCardQrScreen() {
             <QRCode value={payload} size={220} color="#111111" backgroundColor="#F7F1EA" />
           </View>
           <Text style={styles.qrSubtext}>
-            Ask someone to scan this code with Baobab.
+            Ask someone to scan this QR with Baobab.
           </Text>
         </View>
         <Pressable onPress={() => router.push('../me/edit')} style={styles.editButton}>

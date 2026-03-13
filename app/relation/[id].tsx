@@ -76,7 +76,7 @@ export default function RelationDetailScreen() {
             {evaluation ? `${badgeLabel} · ${evaluation.score}` : badgeLabel}
           </Text>
         </View>
-        <Text style={styles.statusText}>Status: {reading?.readingStatus ?? 'Unread'}</Text>
+        <Text style={styles.statusText}>Reading status: {reading?.readingStatus ?? 'Unread'}</Text>
         <View style={styles.originCard}>
           <Text style={styles.originLabel}>{sourceLabel}</Text>
           {sourceSubtext ? (
@@ -84,7 +84,7 @@ export default function RelationDetailScreen() {
           ) : null}
         </View>
         <Pressable onPress={() => router.push(`./edit/${relation.id}`)} style={styles.editLink}>
-          <Text style={styles.editLinkText}>Edit</Text>
+          <Text style={styles.editLinkText}>Edit relation</Text>
         </Pressable>
       </View>
 
@@ -175,7 +175,7 @@ export default function RelationDetailScreen() {
           ) : null}
 
           <View style={[styles.unreadCard, shouldHighlightReadNext && styles.unreadCardEmphasis]}>
-            <Text style={styles.unreadTitle}>This link hasn't been read yet</Text>
+            <Text style={styles.unreadTitle}>This link has not been read yet</Text>
             <Text style={styles.unreadText}>
               A foundational reading captures the shape and strength of your
               relationship through 5 pillars.

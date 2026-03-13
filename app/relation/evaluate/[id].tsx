@@ -120,7 +120,7 @@ export default function EvaluateScreen() {
           </View>
         </View>
         <Text style={styles.subtitle}>
-          Rate each pillar from 1 to 5 to capture your first deep impression of
+          Rate each pillar from 1 to 5 to capture your foundational reading of
           this link.
         </Text>
         <View style={styles.progressWrap}>
