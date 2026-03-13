@@ -58,16 +58,23 @@ export default function GardenScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.passportCard}>
-        <View style={styles.brandSignature}>
-          <View style={styles.brandMark}>
-            <View style={styles.brandMarkCrown} />
-            <View style={styles.brandMarkLeafLeft} />
-            <View style={styles.brandMarkLeafRight} />
-            <View style={styles.brandMarkTrunk} />
+        <View style={styles.heroTopRow}>
+          <View style={styles.brandSignature}>
+            <View style={styles.brandMark}>
+              <View style={styles.brandMarkCrown} />
+              <View style={styles.brandMarkLeafLeft} />
+              <View style={styles.brandMarkLeafRight} />
+              <View style={styles.brandMarkTrunk} />
+            </View>
+            <Text style={styles.brandWordmark}>BAOBAB</Text>
           </View>
-          <Text style={styles.brandWordmark}>BAOBAB</Text>
+          <View style={[styles.trustBadge, styles.trustBadgeTop]}>
+            <View style={styles.trustDot} />
+            <Text style={styles.trustBadgeText}>{trustStatus}</Text>
+          </View>
         </View>
-        <View style={styles.passportTopRow}>
+
+        <View style={styles.profileRow}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarRing}>
               <View style={styles.avatarInner}>
@@ -80,24 +87,22 @@ export default function GardenScreen() {
           <View style={styles.passportTextBlock}>
             <Text style={styles.passportName}>{me.displayName}</Text>
             <Text style={styles.passportHandle}>{me.handle}</Text>
-            <View style={styles.trustBadge}>
-              <View style={styles.trustDot} />
-              <Text style={styles.trustBadgeText}>{trustStatus}</Text>
-            </View>
           </View>
         </View>
-        <View style={styles.heroActionsRow}>
+
+        <Pressable
+          onPress={openScan}
+          style={[styles.heroActionButton, styles.heroActionPrimary]}
+        >
+          <Text style={styles.heroActionPrimaryText}>Scan a person</Text>
+        </Pressable>
+
+        <View style={styles.heroSecondaryActionsRow}>
           <Pressable
             onPress={() => void shareMyCard()}
-            style={[styles.heroActionButton, styles.heroActionPrimary]}
-          >
-            <Text style={styles.heroActionPrimaryText}>Share my card</Text>
-          </Pressable>
-          <Pressable
-            onPress={openScan}
             style={styles.heroActionButton}
           >
-            <Text style={styles.heroActionText}>Scan a person</Text>
+            <Text style={styles.heroActionText}>Share my card</Text>
           </Pressable>
           <Pressable
             onPress={() => router.push('../relation/add')}
@@ -106,6 +111,7 @@ export default function GardenScreen() {
             <Text style={styles.heroActionText}>Add manually</Text>
           </Pressable>
         </View>
+
         <Pressable onPress={() => router.push('../me/edit')} style={styles.editCardButton}>
           <Text style={styles.editCardButtonText}>Edit my card</Text>
         </Pressable>
@@ -149,27 +155,27 @@ export default function GardenScreen() {
                   <View style={styles.mappingBody}>
                     <Text style={styles.mappingName}>{entry.relation.name}</Text>
                     <Text style={styles.mappingMeta}>
-                      {entry.relation.handle
-                        ? `${entry.relation.handle} · `
-                        : ''}
-                      {entry.readingStatus === 'Read'
-                        ? `${entry.badgeLabel} · ${entry.foundationalScore}`
-                        : 'Unread'}
+                      {entry.relation.handle || 'No handle'} 
                     </Text>
-                    <Text
-                      style={[
-                        styles.mappingSignal,
-                        signal.tone === 'nurture'
-                          ? styles.mappingSignalNurture
-                          : signal.tone === 'stable'
-                            ? styles.mappingSignalStable
-                            : styles.mappingSignalUnread,
-                      ]}
-                    >
-                      {signal.text}
+                    <Text style={styles.mappingReadingLine}>
+                      {entry.readingStatus === 'Read'
+                        ? `${entry.badgeLabel} · Score ${entry.foundationalScore}`
+                        : 'Unread · Read this link'}
                     </Text>
                   </View>
-                  <Text style={styles.mappingCTA}>Open link</Text>
+                  <Text
+                    style={[
+                      styles.mappingSignal,
+                      signal.tone === 'nurture'
+                        ? styles.mappingSignalNurture
+                        : signal.tone === 'stable'
+                          ? styles.mappingSignalStable
+                          : styles.mappingSignalUnread,
+                    ]}
+                  >
+                    {signal.text}
+                  </Text>
+                  <Text style={styles.mappingChevron}>›</Text>
                 </Pressable>
               );
             })}
@@ -182,26 +188,26 @@ export default function GardenScreen() {
           <Text style={styles.sectionLabel}>Garden pulse</Text>
           <View style={styles.sectionLine} />
         </View>
-        <View style={styles.pulseGrid}>
-          <View style={styles.pulseCard}>
-            <Text style={styles.pulseValue}>{activeRelations.length}</Text>
-            <Text style={styles.pulseLabel}>Active</Text>
+        <View style={styles.pulseRow}>
+          <View style={styles.pulseChip}>
+            <Text style={styles.pulseChipValue}>{activeRelations.length}</Text>
+            <Text style={styles.pulseChipLabel}>Active</Text>
           </View>
-          <View style={styles.pulseCard}>
-            <Text style={styles.pulseValue}>{archivedRelations.length}</Text>
-            <Text style={styles.pulseLabel}>Archived</Text>
+          <View style={styles.pulseChip}>
+            <Text style={styles.pulseChipValue}>{readCount}</Text>
+            <Text style={styles.pulseChipLabel}>Read</Text>
           </View>
-          <View style={styles.pulseCard}>
-            <Text style={styles.pulseValue}>{readCount}</Text>
-            <Text style={styles.pulseLabel}>Read</Text>
+          <View style={styles.pulseChip}>
+            <Text style={styles.pulseChipValue}>{unreadCount}</Text>
+            <Text style={styles.pulseChipLabel}>Unread</Text>
           </View>
-          <View style={styles.pulseCard}>
-            <Text style={styles.pulseValue}>{unreadCount}</Text>
-            <Text style={styles.pulseLabel}>Unread</Text>
+          <View style={styles.pulseChip}>
+            <Text style={styles.pulseChipValue}>{toNurtureCount}</Text>
+            <Text style={styles.pulseChipLabel}>To nurture</Text>
           </View>
-          <View style={styles.pulseCardWide}>
-            <Text style={styles.pulseValue}>{toNurtureCount}</Text>
-            <Text style={styles.pulseLabel}>To nurture</Text>
+          <View style={styles.pulseChip}>
+            <Text style={styles.pulseChipValue}>{archivedRelations.length}</Text>
+            <Text style={styles.pulseChipLabel}>Archived</Text>
           </View>
         </View>
 
@@ -258,7 +264,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.strong,
     padding: spacing.lg,
-    gap: spacing.md,
+    gap: spacing.sm,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   brandSignature: {
     flexDirection: 'row',
@@ -313,27 +324,27 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     fontWeight: '700',
   },
-  passportTopRow: {
+  profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
   },
   avatarWrap: {
-    padding: 2,
+    padding: 1,
   },
   avatarRing: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    borderWidth: 2,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 1.5,
     borderColor: colors.accent.softAmber + '55',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInner: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.background.tertiary,
@@ -341,17 +352,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border.strong,
   },
   avatarText: {
-    fontSize: 28,
+    fontSize: 24,
     color: colors.text.primary,
     fontWeight: '700',
   },
   passportTextBlock: {
     flex: 1,
-    gap: 4,
+    gap: 3,
   },
   passportName: {
-    fontSize: 26,
-    lineHeight: 30,
+    fontSize: 24,
+    lineHeight: 28,
     color: colors.text.primary,
     fontWeight: '700',
   },
@@ -361,7 +372,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   trustBadge: {
-    marginTop: spacing.xs,
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
@@ -370,6 +380,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 4,
+  },
+  trustBadgeTop: {
+    alignSelf: 'auto',
   },
   trustDot: {
     width: 6,
@@ -388,6 +401,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.xs,
   },
+  heroSecondaryActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
   heroActionButton: {
     flex: 1,
     borderRadius: radius.md,
@@ -398,8 +415,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.tertiary,
   },
   heroActionPrimary: {
-    borderColor: colors.accent.warmGold,
-    backgroundColor: colors.accent.warmGold + '15',
+    borderColor: colors.accent.deepTeal,
+    backgroundColor: colors.accent.deepTeal,
   },
   heroActionText: {
     fontSize: 12,
@@ -407,9 +424,9 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   heroActionPrimaryText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    color: colors.accent.warmGold,
+    color: colors.text.primary,
   },
   editCardButton: {
     alignSelf: 'flex-start',
@@ -449,7 +466,7 @@ const styles = StyleSheet.create({
   },
   mappingBody: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   mappingName: {
     fontSize: 15,
@@ -457,8 +474,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   mappingMeta: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.text.muted,
+  },
+  mappingReadingLine: {
+    fontSize: 12,
+    color: colors.text.secondary,
   },
   mappingSignal: {
     fontSize: 11,
@@ -480,11 +501,45 @@ const styles = StyleSheet.create({
     color: colors.accent.warmGold,
     fontWeight: '700',
   },
+  mappingChevron: {
+    fontSize: 18,
+    color: colors.text.muted,
+    fontWeight: '500',
+    marginLeft: spacing.xs,
+  },
 
   pulseGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  pulseRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  pulseChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.secondary,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
+  },
+  pulseChipValue: {
+    fontSize: 13,
+    color: colors.text.primary,
+    fontWeight: '700',
+  },
+  pulseChipLabel: {
+    fontSize: 11,
+    color: colors.text.muted,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   pulseCard: {
     width: '48.5%',
