@@ -8,27 +8,6 @@ import { getTierAccent } from '../../lib/evaluation';
 import { getFoundationalReadings, getGardenMicroSignal } from '../../lib/foundational-reading';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
-const QUICK_ACTIONS = [
-  {
-    key: 'add-person',
-    title: 'Add a person',
-    subtitle: 'Add a person to your Garden',
-    accent: colors.accent.deepTeal,
-  },
-  {
-    key: 'scan-code',
-    title: 'Scan a code',
-    subtitle: 'Scan a person card nearby',
-    accent: colors.accent.softAmber,
-  },
-  {
-    key: 'share-card',
-    title: 'Share my card',
-    subtitle: 'Share your card nearby',
-    accent: colors.accent.mutedSage,
-  },
-] as const;
-
 export default function GardenScreen() {
   const { me, activeRelations, archivedRelations, evaluations } = useRelationsStore();
 
@@ -61,9 +40,6 @@ export default function GardenScreen() {
     return toNurtureCount > 0 ? 'Trust in motion' : 'Trust growing';
   }, [me.trustPassportStatus, toNurtureCount]);
 
-  const openQrCard = () => {
-    router.push('../me/qr');
-  };
   const openScan = () => {
     router.push('../me/scan');
   };
@@ -79,25 +55,18 @@ export default function GardenScreen() {
     }
   };
 
-  const openAddPersonSheet = () => {
-    Alert.alert('Add a person', 'Choose how to create a new connection.', [
-      { text: 'Scan a code', onPress: openScan },
-      { text: 'Show QR', onPress: openQrCard },
-      { text: 'Add manually', onPress: () => router.push('../relation/add') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
-  const onQuickAction = (key: (typeof QUICK_ACTIONS)[number]['key']) => {
-    if (key === 'add-person') return openAddPersonSheet();
-    if (key === 'scan-code') return openScan();
-    if (key === 'share-card') return void shareMyCard();
-  };
-
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.passportCard}>
-        <Text style={styles.passportKicker}>Garden</Text>
+        <View style={styles.brandSignature}>
+          <View style={styles.brandMark}>
+            <View style={styles.brandMarkCrown} />
+            <View style={styles.brandMarkLeafLeft} />
+            <View style={styles.brandMarkLeafRight} />
+            <View style={styles.brandMarkTrunk} />
+          </View>
+          <Text style={styles.brandWordmark}>BAOBAB</Text>
+        </View>
         <View style={styles.passportTopRow}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarRing}>
@@ -125,65 +94,21 @@ export default function GardenScreen() {
             <Text style={styles.heroActionPrimaryText}>Share my card</Text>
           </Pressable>
           <Pressable
-            onPress={openQrCard}
-            style={styles.heroActionButton}
-          >
-            <Text style={styles.heroActionText}>Show QR</Text>
-          </Pressable>
-          <Pressable
             onPress={openScan}
             style={styles.heroActionButton}
           >
-            <Text style={styles.heroActionText}>Scan</Text>
+            <Text style={styles.heroActionText}>Scan a person</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('../relation/add')}
+            style={styles.heroActionButton}
+          >
+            <Text style={styles.heroActionText}>Add manually</Text>
           </Pressable>
         </View>
         <Pressable onPress={() => router.push('../me/edit')} style={styles.editCardButton}>
           <Text style={styles.editCardButtonText}>Edit my card</Text>
         </Pressable>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>Quick actions</Text>
-          <View style={styles.sectionLine} />
-        </View>
-        <View style={styles.quickGrid}>
-          {QUICK_ACTIONS.map((action) => (
-            <Pressable
-              key={action.key}
-              onPress={() => onQuickAction(action.key)}
-              style={[styles.quickCard, { borderColor: action.accent + '44' }]}
-            >
-              <View style={[styles.quickAccent, { backgroundColor: action.accent }]} />
-              <Text style={styles.quickTitle}>{action.title}</Text>
-              <Text style={styles.quickSubtitle}>{action.subtitle}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>Nearby right now</Text>
-          <View style={styles.sectionLine} />
-        </View>
-        <View style={styles.nearbyCard}>
-          <Text style={styles.nearbyTitle}>Ready for an in-person connection</Text>
-          <Text style={styles.nearbyText}>
-            Let someone scan your card, scan theirs, or open your QR full-screen.
-          </Text>
-          <View style={styles.nearbyRow}>
-            <Pressable onPress={openQrCard}>
-              <Text style={styles.nearbyLink}>Show QR</Text>
-            </Pressable>
-            <Pressable onPress={openScan}>
-              <Text style={styles.nearbyLink}>Scan a card</Text>
-            </Pressable>
-            <Pressable onPress={openQrCard}>
-              <Text style={styles.nearbyLink}>Open QR card</Text>
-            </Pressable>
-          </View>
-        </View>
       </View>
 
       <View style={styles.section}>
@@ -198,7 +123,7 @@ export default function GardenScreen() {
             <Text style={styles.emptyText}>
               Add your first person to start building your trust garden.
             </Text>
-            <Pressable onPress={openAddPersonSheet} style={styles.emptyAction}>
+            <Pressable onPress={() => router.push('../relation/add')} style={styles.emptyAction}>
               <Text style={styles.emptyActionText}>Add a person</Text>
             </Pressable>
           </View>
@@ -335,12 +260,58 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
-  passportKicker: {
-    fontSize: 12,
+  brandSignature: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+  },
+  brandMark: {
+    width: 20,
+    height: 20,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandMarkCrown: {
+    position: 'absolute',
+    top: 1,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent.warmGold,
+  },
+  brandMarkLeafLeft: {
+    position: 'absolute',
+    top: 5,
+    left: 2,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent.deepTeal + 'BB',
+  },
+  brandMarkLeafRight: {
+    position: 'absolute',
+    top: 5,
+    right: 2,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent.mutedSage + 'BB',
+  },
+  brandMarkTrunk: {
+    position: 'absolute',
+    bottom: 1,
+    width: 3,
+    height: 8,
+    borderRadius: 2,
+    backgroundColor: colors.text.muted,
+  },
+  brandWordmark: {
+    fontSize: 11,
     textTransform: 'uppercase',
-    letterSpacing: 1.1,
+    letterSpacing: 1.2,
     color: colors.text.muted,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   passportTopRow: {
     flexDirection: 'row',
@@ -449,65 +420,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontWeight: '600',
     textDecorationLine: 'underline',
-  },
-
-  quickGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  quickCard: {
-    width: '48.5%',
-    backgroundColor: colors.background.secondary,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  quickAccent: {
-    width: 18,
-    height: 3,
-    borderRadius: 2,
-    marginBottom: spacing.xs,
-  },
-  quickTitle: {
-    fontSize: 14,
-    color: colors.text.primary,
-    fontWeight: '600',
-  },
-  quickSubtitle: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.text.secondary,
-  },
-
-  nearbyCard: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  nearbyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text.primary,
-  },
-  nearbyText: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: colors.text.secondary,
-  },
-  nearbyRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  nearbyLink: {
-    fontSize: 12,
-    color: colors.accent.softAmber,
-    fontWeight: '600',
   },
 
   mappingList: {
