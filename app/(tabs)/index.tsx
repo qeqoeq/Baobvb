@@ -187,7 +187,7 @@ export default function GardenScreen() {
           <View style={styles.sectionLine} />
         </View>
         <View style={styles.nearbyCard}>
-          <Text style={styles.nearbyTitle}>Ready for an in-person moment</Text>
+          <Text style={styles.nearbyTitle}>Ready for an in-person connection</Text>
           <Text style={styles.nearbyText}>
             Let someone scan you, scan their code, or open your card full-screen.
           </Text>

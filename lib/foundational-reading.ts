@@ -51,7 +51,7 @@ const TIER_NARRATIVES: Record<Tier, string> = {
 };
 
 const GROWTH_SUGGESTIONS: Record<PillarKey, string> = {
-  trust: 'Create one small moment of reliable follow-through this week.',
+  trust: 'Create one small act of reliable follow-through this week.',
   interactions: 'Create more regular touchpoints around this link.',
   affinity: 'Make space for one more natural, unforced conversation.',
   support: 'Find one concrete way to show up for this person.',
@@ -178,8 +178,8 @@ export function getGrowthSuggestion(
 ): string {
   if (!weakestPillar) {
     return tier === 'Legend'
-      ? 'Keep this link warm with one intentional moment this week.'
-      : 'Keep nurturing this link through one intentional moment this week.';
+      ? 'Keep this link warm with one intentional touchpoint this week.'
+      : 'Keep nurturing this link through one intentional touchpoint this week.';
   }
   return GROWTH_SUGGESTIONS[weakestPillar];
 }
