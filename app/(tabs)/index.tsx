@@ -30,13 +30,13 @@ const QUICK_ACTIONS = [
   {
     key: 'rate-place',
     title: 'Rate a place',
-    subtitle: 'Coming soon for spots',
+    subtitle: 'Add one place memory',
     accent: colors.accent.dustyRose,
   },
 ] as const;
 
 export default function GardenScreen() {
-  const { me, activeRelations, archivedRelations, evaluations } = useRelationsStore();
+  const { me, activeRelations, archivedRelations, evaluations, places } = useRelationsStore();
 
   const entries = useMemo(
     () => getFoundationalReadings(activeRelations, evaluations),
@@ -66,6 +66,11 @@ export default function GardenScreen() {
     if (me.trustPassportStatus === 'steady') return 'Trust well rooted';
     return toNurtureCount > 0 ? 'Trust in motion' : 'Trust growing';
   }, [me.trustPassportStatus, toNurtureCount]);
+
+  const recentPlaces = useMemo(
+    () => [...places].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3),
+    [places],
+  );
 
   const openQrCard = () => {
     router.push('../me/qr');
@@ -98,7 +103,7 @@ export default function GardenScreen() {
     if (key === 'add-person') return openAddPersonSheet();
     if (key === 'scan-code') return openScan();
     if (key === 'share-card') return void shareMyCard();
-    Alert.alert('Rate a place', 'Places & tastes is coming soon.');
+    router.push('../place/add');
   };
 
   return (
@@ -262,13 +267,38 @@ export default function GardenScreen() {
           <View style={styles.sectionLine} />
         </View>
         <View style={styles.placesCard}>
-          <Text style={styles.placesTitle}>Your social places layer is coming next</Text>
+          <Text style={styles.placesTitle}>Your places memory is now live</Text>
           <Text style={styles.placesText}>
-            Soon you will map restaurants, bars and spots with people-based trust context.
+            Keep simple taste signals around cafes, restaurants and social spots.
           </Text>
-          <Pressable onPress={() => Alert.alert('Rate a place', 'Places & tastes is coming soon.')}>
-            <Text style={styles.placesLink}>Join the early flow</Text>
-          </Pressable>
+          {recentPlaces.length === 0 ? (
+            <View style={styles.placesEmptyCard}>
+              <Text style={styles.placesEmptyTitle}>No place rated yet</Text>
+              <Text style={styles.placesEmptyText}>
+                Start with one place and one clean impression.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.placesList}>
+              {recentPlaces.map((place) => (
+                <View key={place.id} style={styles.placeRow}>
+                  <View style={styles.placeRowBody}>
+                    <Text style={styles.placeRowName}>{place.name}</Text>
+                    <Text style={styles.placeRowMeta}>{place.category}</Text>
+                  </View>
+                  <Text style={styles.placeRowRating}>{place.rating}/5</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          <View style={styles.placesActions}>
+            <Pressable onPress={() => router.push('../place/add')}>
+              <Text style={styles.placesLink}>Rate a place</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('../place')}>
+              <Text style={styles.placesLinkSecondary}>Open places</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -611,6 +641,69 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: colors.accent.dustyRose,
+  },
+  placesLinkSecondary: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.text.secondary,
+  },
+  placesActions: {
+    marginTop: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  placesEmptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    padding: spacing.sm,
+    gap: 2,
+  },
+  placesEmptyTitle: {
+    fontSize: 13,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  placesEmptyText: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    lineHeight: 18,
+  },
+  placesList: {
+    gap: spacing.xs,
+  },
+  placeRow: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs + 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  placeRowBody: {
+    flex: 1,
+    gap: 2,
+  },
+  placeRowName: {
+    fontSize: 13,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  placeRowMeta: {
+    fontSize: 11,
+    color: colors.text.muted,
+    textTransform: 'capitalize',
+  },
+  placeRowRating: {
+    fontSize: 12,
+    color: colors.accent.mutedSage,
+    fontWeight: '700',
   },
 
   pulseGrid: {

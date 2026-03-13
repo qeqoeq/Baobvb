@@ -15,6 +15,17 @@ export type Relation = {
   sourceHandle?: string;
 };
 
+export type PlaceCategory = 'restaurant' | 'cafe' | 'bar' | 'spot' | 'other';
+
+export type Place = {
+  id: string;
+  name: string;
+  category: PlaceCategory;
+  rating: 1 | 2 | 3 | 4 | 5;
+  impression?: string;
+  createdAt: string;
+};
+
 export type MeProfile = {
   id: string;
   displayName: string;
@@ -33,6 +44,7 @@ type StoreState = {
   me: MeProfile;
   relations: Relation[];
   evaluations: Evaluation[];
+  places: Place[];
 };
 
 export type RelationUpdate = {
@@ -82,12 +94,16 @@ const SEED_ME: MeProfile = {
   trustPassportStatus: 'growing',
 };
 
+const SEED_PLACES: Place[] = [];
+const PLACE_CATEGORIES: PlaceCategory[] = ['restaurant', 'cafe', 'bar', 'spot', 'other'];
+
 // ── state ──────────────────────────────────────────────────────────────
 
 const state: StoreState = {
   me: SEED_ME,
   relations: SEED_RELATIONS,
   evaluations: SEED_EVALUATIONS,
+  places: SEED_PLACES,
 };
 
 let hydrated = false;
@@ -119,8 +135,26 @@ function getEvaluationsSnapshot() {
   return state.evaluations;
 }
 
+function getPlacesSnapshot() {
+  return state.places;
+}
+
 function getHydratedSnapshot() {
   return hydrated;
+}
+
+function sanitizePlaceCategory(value: unknown): PlaceCategory {
+  if (typeof value === 'string' && PLACE_CATEGORIES.includes(value as PlaceCategory)) {
+    return value as PlaceCategory;
+  }
+  return 'other';
+}
+
+function sanitizePlaceRating(value: unknown): 1 | 2 | 3 | 4 | 5 {
+  if (typeof value !== 'number') return 3;
+  if (value <= 1) return 1;
+  if (value >= 5) return 5;
+  return Math.round(value) as 1 | 2 | 3 | 4 | 5;
 }
 
 // ── persistence ────────────────────────────────────────────────────────
@@ -131,6 +165,7 @@ function persist() {
     me: state.me,
     relations: state.relations,
     evaluations: state.evaluations,
+    places: state.places,
   });
 }
 
@@ -158,11 +193,40 @@ loadPersistedState<StoreState>().then((persisted) => {
       source: relation.source === 'scan' ? 'scan' : 'manual',
     }));
     state.evaluations = persisted.evaluations;
+    state.places = Array.isArray(persisted.places)
+      ? persisted.places.reduce<Place[]>((acc, rawPlace) => {
+          if (!rawPlace || typeof rawPlace !== 'object') return acc;
+          const place = rawPlace as Partial<Place>;
+          const name = typeof place.name === 'string' ? place.name.trim() : '';
+          if (!name) return acc;
+
+          acc.push({
+            id:
+              typeof place.id === 'string' && place.id.length > 0
+                ? place.id
+                : `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            name,
+            category: sanitizePlaceCategory(place.category),
+            rating: sanitizePlaceRating(place.rating),
+            impression:
+              typeof place.impression === 'string' && place.impression.trim().length > 0
+                ? place.impression.trim()
+                : undefined,
+            createdAt:
+              typeof place.createdAt === 'string' && place.createdAt.length > 0
+                ? place.createdAt
+                : new Date().toISOString(),
+          });
+
+          return acc;
+        }, [])
+      : [];
   } else {
     persistState<StoreState>({
       me: state.me,
       relations: state.relations,
       evaluations: state.evaluations,
+      places: state.places,
     });
   }
   hydrated = true;
@@ -183,6 +247,34 @@ function pushEvaluation(evaluation: Evaluation) {
   state.evaluations = [...state.evaluations, evaluation];
   emitChange();
   persist();
+}
+
+export type PlaceCreateInput = {
+  name: string;
+  category: PlaceCategory;
+  rating: 1 | 2 | 3 | 4 | 5;
+  impression?: string;
+};
+
+function pushPlace(input: PlaceCreateInput): Place | null {
+  const cleanName = input.name.trim();
+  if (!cleanName) return null;
+
+  const category = sanitizePlaceCategory(input.category);
+  const rating = sanitizePlaceRating(input.rating);
+  const cleanImpression = input.impression?.trim();
+  const place: Place = {
+    id: `p-${Date.now()}`,
+    name: cleanName,
+    category,
+    rating,
+    impression: cleanImpression ? cleanImpression : undefined,
+    createdAt: new Date().toISOString(),
+  };
+  state.places = [place, ...state.places];
+  emitChange();
+  persist();
+  return place;
 }
 
 function pushRelation(name: string): Relation | null {
@@ -304,6 +396,7 @@ export function useRelationsStore() {
   const me = useSyncExternalStore(subscribe, getMeSnapshot, getMeSnapshot);
   const relations = useSyncExternalStore(subscribe, getRelationsSnapshot, getRelationsSnapshot);
   const evaluations = useSyncExternalStore(subscribe, getEvaluationsSnapshot, getEvaluationsSnapshot);
+  const places = useSyncExternalStore(subscribe, getPlacesSnapshot, getPlacesSnapshot);
   const isHydrated = useSyncExternalStore(subscribe, getHydratedSnapshot, getHydratedSnapshot);
 
   const activeRelations = relations.filter((r) => !r.archived);
@@ -318,11 +411,13 @@ export function useRelationsStore() {
   };
   const updateMe = (update: MeProfileUpdate) => setMe(update);
   const updateRelation = (id: string, update: RelationUpdate) => setRelation(id, update);
+  const addPlace = (input: PlaceCreateInput) => pushPlace(input);
 
   return {
     me,
     relations,
     evaluations,
+    places,
     activeRelations,
     archivedRelations,
     archiveRelation,
@@ -331,6 +426,7 @@ export function useRelationsStore() {
     addRelation,
     updateRelation,
     updateMe,
+    addPlace,
     isHydrated,
   };
 }
