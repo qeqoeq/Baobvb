@@ -6,6 +6,13 @@ import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { getTierAccent } from '../../lib/evaluation';
 import { getFoundationalReadings, getGardenMicroSignal } from '../../lib/foundational-reading';
+import {
+  getPlaceCategoryLabel,
+  getPlaceReading,
+  getPlaceRatingSignature,
+  getPlaceTone,
+  sanitizeRating,
+} from '../../lib/places';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 const QUICK_ACTIONS = [
@@ -280,15 +287,35 @@ export default function GardenScreen() {
             </View>
           ) : (
             <View style={styles.placesList}>
-              {recentPlaces.map((place) => (
-                <View key={place.id} style={styles.placeRow}>
-                  <View style={styles.placeRowBody}>
-                    <Text style={styles.placeRowName}>{place.name}</Text>
-                    <Text style={styles.placeRowMeta}>{place.category}</Text>
+              {recentPlaces.map((place) => {
+                const safeRating = sanitizeRating(place.rating);
+                const tone = getPlaceTone(safeRating);
+                return (
+                  <View
+                    key={place.id}
+                    style={[
+                      styles.placeRow,
+                      {
+                        borderColor: tone.border,
+                        backgroundColor: tone.tint,
+                      },
+                    ]}
+                  >
+                    <View style={styles.placeRowBody}>
+                      <Text style={styles.placeRowName}>{place.name}</Text>
+                      <Text style={styles.placeRowMeta}>
+                        {getPlaceCategoryLabel(place.category)} · {getPlaceRatingSignature(safeRating)}
+                      </Text>
+                      <Text style={styles.placeRowReading} numberOfLines={1}>
+                        {getPlaceReading(place)}
+                      </Text>
+                    </View>
+                    <Text style={[styles.placeRowRating, { color: tone.accent }]}>
+                      {safeRating}/5
+                    </Text>
                   </View>
-                  <Text style={styles.placeRowRating}>{place.rating}/5</Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
           <View style={styles.placesActions}>
@@ -698,11 +725,13 @@ const styles = StyleSheet.create({
   placeRowMeta: {
     fontSize: 11,
     color: colors.text.muted,
-    textTransform: 'capitalize',
+  },
+  placeRowReading: {
+    fontSize: 12,
+    color: '#CAC2B8',
   },
   placeRowRating: {
     fontSize: 12,
-    color: colors.accent.mutedSage,
     fontWeight: '700',
   },
 

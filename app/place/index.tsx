@@ -3,15 +3,14 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
-import { type PlaceCategory, useRelationsStore } from '@/store/useRelationsStore';
-
-const CATEGORY_LABELS: Record<PlaceCategory, string> = {
-  restaurant: 'Restaurant',
-  cafe: 'Cafe',
-  bar: 'Bar',
-  spot: 'Spot',
-  other: 'Other',
-};
+import {
+  getPlaceCategoryLabel,
+  getPlaceReading,
+  getPlaceRatingSignature,
+  getPlaceTone,
+  sanitizeRating,
+} from '@/lib/places';
+import { useRelationsStore } from '@/store/useRelationsStore';
 
 export default function PlacesScreen() {
   const { places } = useRelationsStore();
@@ -37,18 +36,34 @@ export default function PlacesScreen() {
             </Text>
           </View>
         ) : (
-          places.map((place) => (
-            <View key={place.id} style={styles.card}>
-              <View style={styles.row}>
-                <Text style={styles.name}>{place.name}</Text>
-                <Text style={styles.rating}>{place.rating}/5</Text>
+          places.map((place) => {
+            const safeRating = sanitizeRating(place.rating);
+            const tone = getPlaceTone(safeRating);
+            return (
+              <View
+                key={place.id}
+                style={[
+                  styles.card,
+                  {
+                    borderColor: tone.border,
+                    backgroundColor: tone.tint,
+                  },
+                ]}
+              >
+                <View style={styles.row}>
+                  <Text style={styles.name}>{place.name}</Text>
+                  <Text style={[styles.rating, { color: tone.accent }]}>{safeRating}/5</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Text style={styles.meta}>{getPlaceCategoryLabel(place.category)}</Text>
+                  <Text style={[styles.signature, { color: tone.accent }]}>
+                    {getPlaceRatingSignature(safeRating)}
+                  </Text>
+                </View>
+                <Text style={styles.impression}>{getPlaceReading(place)}</Text>
               </View>
-              <Text style={styles.meta}>{CATEGORY_LABELS[place.category]}</Text>
-              {place.impression ? (
-                <Text style={styles.impression}>{place.impression}</Text>
-              ) : null}
-            </View>
-          ))
+            );
+          })
         )}
       </View>
     </View>
@@ -127,8 +142,20 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     fontSize: 13,
   },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  signature: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   impression: {
-    color: '#5B544D',
+    color: '#CFC8BF',
     lineHeight: 20,
   },
 });
