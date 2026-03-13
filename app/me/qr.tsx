@@ -13,6 +13,13 @@ export default function MyCardQrScreen() {
 
   return (
     <View style={styles.screen}>
+      <View style={styles.header}>
+        <Text style={styles.kicker}>Trust passport</Text>
+        <Text style={styles.headerTitle}>Show QR</Text>
+        <Text style={styles.headerText}>
+          Let someone scan your card to add you in their Garden.
+        </Text>
+      </View>
       <View style={styles.card}>
         <View style={styles.avatarRing}>
           <View style={styles.avatarInner}>
@@ -49,8 +56,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
     padding: spacing.lg,
-    justifyContent: 'center',
     gap: spacing.lg,
+  },
+  header: {
+    marginTop: spacing.md,
+    gap: spacing.xs,
+  },
+  kicker: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: colors.text.muted,
+    fontWeight: '700',
+  },
+  headerTitle: {
+    fontSize: 30,
+    color: colors.text.primary,
+    fontWeight: '700',
+  },
+  headerText: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    lineHeight: 20,
   },
   card: {
     backgroundColor: colors.background.secondary,

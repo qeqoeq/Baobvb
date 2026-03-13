@@ -133,6 +133,7 @@ export default function EditRelationScreen() {
         <Pressable onPress={save} style={styles.primaryButton}>
           <Text style={styles.primaryButtonText}>Save relation</Text>
         </Pressable>
+        <Text style={styles.helperText}>Changes appear immediately in Garden, Circle, and this link.</Text>
         <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>Cancel</Text>
         </Pressable>
@@ -217,6 +218,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text.primary,
+  },
+  helperText: {
+    marginTop: -spacing.xs,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.muted,
+    textAlign: 'center',
   },
   secondaryButton: {
     alignItems: 'center',

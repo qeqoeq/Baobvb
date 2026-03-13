@@ -67,6 +67,12 @@ export default function ScanCardScreen() {
 
   return (
     <View style={styles.screen}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Scan</Text>
+        <Text style={styles.headerText}>
+          Scan a Baobab person card to add someone quickly.
+        </Text>
+      </View>
       <View style={styles.cameraWrap}>
         <CameraView
           style={styles.camera}
@@ -87,9 +93,14 @@ export default function ScanCardScreen() {
           </Pressable>
         </View>
       ) : (
-        <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Close</Text>
-        </Pressable>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Hold steady and keep the code inside the frame.
+          </Text>
+          <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Close</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
@@ -101,6 +112,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.primary,
     padding: spacing.lg,
     gap: spacing.md,
+  },
+  header: {
+    gap: spacing.xs,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  headerText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.text.secondary,
   },
   cameraWrap: {
     flex: 1,
@@ -183,5 +207,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.text.secondary,
+  },
+  footer: {
+    gap: spacing.xs,
+  },
+  footerText: {
+    fontSize: 12,
+    color: colors.text.muted,
+    textAlign: 'center',
   },
 });

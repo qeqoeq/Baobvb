@@ -1,5 +1,6 @@
+import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
@@ -162,8 +163,9 @@ export default function CircleScreen() {
               </View>
               <View style={styles.sectionCards}>
                 {group.map((member) => (
-                  <View
+                  <Pressable
                     key={member.id}
+                    onPress={() => router.push(`../relation/${member.id}`)}
                     style={[
                       styles.memberCard,
                       { opacity: meta.cardOpacity, borderLeftColor: meta.accent + '55' },
@@ -209,7 +211,7 @@ export default function CircleScreen() {
                         {meta.label}
                       </Text>
                     </View>
-                  </View>
+                  </Pressable>
                 ))}
               </View>
             </View>

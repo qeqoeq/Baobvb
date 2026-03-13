@@ -119,6 +119,7 @@ export default function EditMyCardScreen() {
         <Pressable onPress={handleSave} style={styles.primaryButton}>
           <Text style={styles.primaryButtonText}>Save my card</Text>
         </Pressable>
+        <Text style={styles.helperText}>Changes appear immediately across Garden, QR, and Profile.</Text>
         <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>Cancel</Text>
         </Pressable>
@@ -203,6 +204,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text.primary,
+  },
+  helperText: {
+    marginTop: -spacing.xs,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.muted,
+    textAlign: 'center',
   },
   secondaryButton: {
     alignItems: 'center',

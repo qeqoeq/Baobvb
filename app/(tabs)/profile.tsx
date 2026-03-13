@@ -139,6 +139,14 @@ export default function ProfileScreen() {
         <Pressable onPress={() => router.push('../me/edit')} style={styles.editCardLink}>
           <Text style={styles.editCardLinkText}>Edit my card</Text>
         </Pressable>
+        <View style={styles.profileActionsRow}>
+          <Pressable onPress={() => router.push('../me/qr')} style={styles.profileActionButton}>
+            <Text style={styles.profileActionText}>Show QR</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('../me/scan')} style={styles.profileActionButton}>
+            <Text style={styles.profileActionText}>Scan</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.statsRow}>
@@ -332,6 +340,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text.secondary,
     textDecorationLine: 'underline',
+  },
+  profileActionsRow: {
+    marginTop: spacing.xs,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  profileActionButton: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.tertiary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 3,
+  },
+  profileActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.secondary,
   },
 
   statsRow: {

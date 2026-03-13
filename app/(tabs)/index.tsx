@@ -198,6 +198,9 @@ export default function GardenScreen() {
             <Text style={styles.emptyText}>
               Add your first person to start building your trust garden.
             </Text>
+            <Pressable onPress={openAddPersonSheet} style={styles.emptyAction}>
+              <Text style={styles.emptyActionText}>Add a person</Text>
+            </Pressable>
           </View>
         ) : (
           <View style={styles.mappingList}>
@@ -623,6 +626,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     color: colors.text.secondary,
+  },
+  emptyAction: {
+    marginTop: spacing.xs,
+    alignSelf: 'flex-start',
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + '55',
+    backgroundColor: colors.accent.warmGold + '14',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
+  },
+  emptyActionText: {
+    fontSize: 12,
+    color: colors.accent.warmGold,
+    fontWeight: '700',
   },
 
   archivedRow: {

@@ -42,7 +42,13 @@ export default function RelationDetailScreen() {
   }, [id, relation]);
 
   if (!relation) {
-    return <View style={styles.screen} />;
+    return (
+      <View style={styles.screen}>
+        <View style={styles.fallbackWrap}>
+          <Text style={styles.fallbackText}>Opening link...</Text>
+        </View>
+      </View>
+    );
   }
 
   const evaluation = reading?.foundationalEvaluation ?? null;
@@ -148,15 +154,11 @@ export default function RelationDetailScreen() {
               <Text style={styles.nextActionLabel}>Next step</Text>
               <Text style={styles.nextActionText}>{growthSuggestion}</Text>
             </View>
-            <Text style={styles.pillarSummary}>
-              Strongest: {strongestLabel} · Weakest: {weakestLabel}
-            </Text>
           </View>
 
           <View style={styles.readingNote}>
             <Text style={styles.readingNoteText}>
-              This is your foundational reading. It captures your first deep
-              impression of this link.
+              This foundational reading captures the current shape of this link.
             </Text>
           </View>
         </View>
@@ -203,6 +205,15 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.lg * 2,
     gap: spacing.lg,
+  },
+  fallbackWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fallbackText: {
+    color: colors.text.muted,
+    fontSize: 13,
   },
 
   header: {
@@ -350,11 +361,6 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-  },
-  pillarSummary: {
-    fontSize: 12,
-    color: colors.text.muted,
-    fontStyle: 'italic',
   },
   narrativeCard: {
     backgroundColor: colors.background.tertiary,

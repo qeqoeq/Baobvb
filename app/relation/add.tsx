@@ -141,7 +141,7 @@ export default function AddRelationScreen() {
           <View style={styles.scanHintCard}>
             <Text style={styles.scanHintTitle}>Scanned card detected</Text>
             <Text style={styles.scanHintText}>
-              {params.prefillHandle ?? 'Unknown handle'}
+              {params.prefillHandle ?? 'No handle on this card'}
               {params.prefillAvatarSeed ? ` · seed ${params.prefillAvatarSeed}` : ''}
             </Text>
           </View>
@@ -172,6 +172,9 @@ export default function AddRelationScreen() {
         >
           <Text style={styles.buttonText}>Add person</Text>
         </Pressable>
+        <Text style={styles.helperText}>
+          After adding, you will open the link profile directly.
+        </Text>
 
         <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>Cancel</Text>
@@ -248,6 +251,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text.primary,
+  },
+  helperText: {
+    marginTop: -spacing.xs,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.muted,
+    textAlign: 'center',
   },
   secondaryButton: {
     alignItems: 'center',

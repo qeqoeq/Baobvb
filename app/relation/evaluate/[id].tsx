@@ -97,7 +97,13 @@ export default function EvaluateScreen() {
   }, [allRated, relation, isSubmitting, ratings, addEvaluation]);
 
   if (!relation || hasEvaluation) {
-    return <View style={styles.screen} />;
+    return (
+      <View style={styles.screen}>
+        <View style={styles.fallbackWrap}>
+          <Text style={styles.fallbackText}>Opening link...</Text>
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -206,6 +212,15 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.lg * 2,
     gap: spacing.lg,
+  },
+  fallbackWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fallbackText: {
+    color: colors.text.muted,
+    fontSize: 13,
   },
 
   header: {
