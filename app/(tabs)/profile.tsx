@@ -1,5 +1,6 @@
+import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
@@ -18,7 +19,7 @@ const LINK_META: Record<string, { accent: string; signature: string }> = {
 };
 
 export default function ProfileScreen() {
-  const { evaluations, activeRelations, archivedRelations } = useRelationsStore();
+  const { me, evaluations, activeRelations, archivedRelations } = useRelationsStore();
 
   const activeReadings = useMemo(
     () => getFoundationalReadings(activeRelations, evaluations),
@@ -57,6 +58,56 @@ export default function ProfileScreen() {
   }, [activeReadings]);
 
   const hasAnyReadings = readCount > 0;
+  const stableCount = useMemo(
+    () => activeReadings.filter((reading) => reading.readingStatus === 'Read' && !reading.toNurture).length,
+    [activeReadings],
+  );
+
+  const dominantTier = useMemo(() => {
+    let bestTier: (typeof LINK_TYPES)[number] | null = null;
+    let bestCount = 0;
+    for (const tier of LINK_TYPES) {
+      const count = tierCounts[tier];
+      if (count > bestCount) {
+        bestTier = tier;
+        bestCount = count;
+      }
+    }
+    return bestTier;
+  }, [tierCounts]);
+
+  const landscapeSummary = useMemo(() => {
+    if (!hasAnyReadings) return 'No foundational readings yet.';
+    if (!dominantTier) return `${readCount} links read so far.`;
+    const dominantCount = tierCounts[dominantTier];
+    return `${dominantCount} ${dominantTier.toLowerCase()} link${dominantCount > 1 ? 's' : ''} lead your current landscape.`;
+  }, [hasAnyReadings, dominantTier, tierCounts, readCount]);
+
+  const trustTitle = useMemo(() => {
+    if (activeRelations.length === 0) return 'Your circle has not started yet';
+    if (!hasAnyReadings) return 'Your circle is taking shape';
+    if (toNurtureCount > 0) return 'Your trust map is alive';
+    return 'Your mapped links feel steady';
+  }, [activeRelations.length, hasAnyReadings, toNurtureCount]);
+
+  const trustSub = useMemo(() => {
+    if (activeRelations.length === 0) {
+      return 'Add your first relation to start your trust passport.';
+    }
+    if (!hasAnyReadings) {
+      return `You have ${activeRelations.length} active link${activeRelations.length > 1 ? 's' : ''}, still unread.`;
+    }
+    if (toNurtureCount > 0) {
+      return `You have ${readCount} read link${readCount > 1 ? 's' : ''} and ${toNurtureCount} to nurture.`;
+    }
+    return `${stableCount} mapped link${stableCount > 1 ? 's feel' : ' feels'} stable right now.`;
+  }, [activeRelations.length, hasAnyReadings, readCount, stableCount, toNurtureCount]);
+
+  const passportStatusLabel = useMemo(() => {
+    if (me.trustPassportStatus === 'new') return 'Emerging';
+    if (me.trustPassportStatus === 'steady') return 'Steady';
+    return 'Growing';
+  }, [me.trustPassportStatus]);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -65,24 +116,29 @@ export default function ProfileScreen() {
 
         <View style={styles.avatarRing}>
           <View style={styles.avatarInner}>
-            <Text style={styles.avatarText}>?</Text>
+            <Text style={styles.avatarText}>
+              {(me.avatarSeed || me.displayName.charAt(0) || '?').toUpperCase()}
+            </Text>
           </View>
         </View>
 
-        <Text style={styles.handle}>@me.baobab</Text>
-        <Text style={styles.displayName}>Set your name</Text>
+        <Text style={styles.handle}>{me.handle}</Text>
+        <Text style={styles.displayName}>{me.displayName}</Text>
 
         <View style={styles.verifyBadge}>
           <View style={styles.verifyDot} />
-          <Text style={styles.verifyText}>Unverified</Text>
+          <Text style={styles.verifyText}>{passportStatusLabel}</Text>
         </View>
 
         <View style={styles.passportDivider} />
 
         <Text style={styles.passportHint}>
-          Your handle is your verifiable identity on the Baobab network.{'\n'}
-          Verification will reinforce trust across your circles.
+          Your card reflects your local trust identity and evolves with every
+          mapped link.
         </Text>
+        <Pressable onPress={() => router.push('../me/edit')} style={styles.editCardLink}>
+          <Text style={styles.editCardLinkText}>Edit my card</Text>
+        </Pressable>
       </View>
 
       <View style={styles.statsRow}>
@@ -138,6 +194,9 @@ export default function ProfileScreen() {
             </View>
           );
         })}
+        <View style={styles.landscapeSummaryCard}>
+          <Text style={styles.landscapeSummaryText}>{landscapeSummary}</Text>
+        </View>
       </View>
 
       <View style={styles.sectionHeader}>
@@ -150,12 +209,8 @@ export default function ProfileScreen() {
           <Text style={styles.trustEmoji}>{'\u{1F6E1}'}</Text>
         </View>
         <View style={styles.trustBody}>
-          <Text style={styles.trustTitle}>Identity not yet verified</Text>
-          <Text style={styles.trustSub}>
-            {hasAnyReadings
-              ? `${readCount} active link${readCount > 1 ? 's are' : ' is'} read, with ${toNurtureCount} to nurture. Verification will be available in a future update to anchor your identity on the network.`
-              : `No active foundational readings yet. Start reading your links to build your trust passport.`}
-          </Text>
+          <Text style={styles.trustTitle}>{trustTitle}</Text>
+          <Text style={styles.trustSub}>{trustSub}</Text>
         </View>
       </View>
 
@@ -268,6 +323,16 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     textAlign: 'center',
   },
+  editCardLink: {
+    marginTop: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  editCardLinkText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.secondary,
+    textDecorationLine: 'underline',
+  },
 
   statsRow: {
     flexDirection: 'row',
@@ -360,6 +425,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     width: 32,
     textAlign: 'right',
+  },
+  landscapeSummaryCard: {
+    marginTop: spacing.xs,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border.soft,
+  },
+  landscapeSummaryText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.secondary,
   },
 
   trustCard: {
