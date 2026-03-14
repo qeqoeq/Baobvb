@@ -16,6 +16,10 @@ import {
   getRelationshipLexiconEntry,
   isRelationshipNameRevealed,
 } from '../../lib/relationship-lexicon';
+import {
+  buildRelationshipRevealInput,
+  getSafeRelationshipRevealSummary,
+} from '../../lib/relationship-reveal';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 const PILLAR_ORDER: PillarKey[] = [
@@ -79,6 +83,12 @@ export default function RelationDetailScreen() {
     : null;
   const visibleTierLabel = nameRevealed && evaluation ? badgeLabel : evaluation ? 'Private reading' : 'Unread';
   const visibleScoreTier = nameRevealed && evaluation ? evaluation.tier : 'Private reading';
+  const safeRevealSummary = getSafeRelationshipRevealSummary(
+    buildRelationshipRevealInput({
+      relation,
+      privateReadingA: evaluation,
+    }),
+  );
 
   const openTierInfo = () => {
     if (!tierLexicon) return;
@@ -197,8 +207,11 @@ export default function RelationDetailScreen() {
             ) : (
               <>
                 <View style={styles.privateStateCard}>
-                  <Text style={styles.privateStateTitle}>Private reading saved</Text>
-                  <Text style={styles.privateStateText}>Waiting for the other side.</Text>
+                  <Text style={styles.privateStateTitle}>{safeRevealSummary?.stateLabel}</Text>
+                  <Text style={styles.privateStateText}>{safeRevealSummary?.shortDescription}</Text>
+                  {safeRevealSummary?.waitingReason ? (
+                    <Text style={styles.privateStateText}>{safeRevealSummary.waitingReason}</Text>
+                  ) : null}
                   <Text style={styles.privateStateDate}>
                     Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
                   </Text>
