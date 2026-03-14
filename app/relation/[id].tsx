@@ -32,7 +32,7 @@ const PILLAR_ORDER: PillarKey[] = [
 
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
-  const { relations, evaluations } = useRelationsStore();
+  const { relations, evaluations, syncRevealReadyState, revealMutualRelationship } = useRelationsStore();
 
   const relation = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
@@ -49,6 +49,13 @@ export default function RelationDetailScreen() {
       router.back();
     }
   }, [id, relation]);
+
+  useEffect(() => {
+    if (!relation) return;
+    if (relation.localState.revealSnapshot.status === 'cooking_reveal') {
+      syncRevealReadyState(relation.id);
+    }
+  }, [relation, syncRevealReadyState]);
 
   if (!relation) {
     return (
@@ -82,13 +89,28 @@ export default function RelationDetailScreen() {
     ? getRelationshipLexiconEntry(reading.linkTier)
     : null;
   const visibleTierLabel = nameRevealed && evaluation ? badgeLabel : evaluation ? 'Private reading' : 'Unread';
-  const visibleScoreTier = nameRevealed && evaluation ? evaluation.tier : 'Private reading';
+  const revealStatus = relation.localState.revealSnapshot.status;
+  const frozenMutualScore = relation.localState.revealSnapshot.mutualScore;
+  const frozenMutualTier = relation.localState.revealSnapshot.tier;
+  const visibleScore = nameRevealed
+    ? (frozenMutualScore ?? evaluation?.score ?? null)
+    : null;
+  const visibleScoreTier = nameRevealed
+    ? (frozenMutualTier ?? evaluation?.tier ?? 'Private reading')
+    : 'Private reading';
   const safeRevealSummary = getSafeRelationshipRevealSummary(
     buildRelationshipRevealInput({
       relation,
       privateReadingA: evaluation,
     }),
   );
+
+  const handleOpenReveal = () => {
+    const opened = revealMutualRelationship(relation.id);
+    if (!opened) {
+      Alert.alert('Reveal not ready', 'Baobab is still preparing this reveal.');
+    }
+  };
 
   const openTierInfo = () => {
     if (!tierLexicon) return;
@@ -153,7 +175,7 @@ export default function RelationDetailScreen() {
               <>
                 <View style={styles.scoreRow}>
                   <Text style={[styles.scoreValue, { color: accent }]}>
-                    {evaluation.score}
+                    {visibleScore ?? '--'}
                   </Text>
                   <View style={styles.scoreMeta}>
                     <Text style={[styles.scoreTier, { color: accent }]}>
@@ -212,19 +234,26 @@ export default function RelationDetailScreen() {
                   {safeRevealSummary?.waitingReason ? (
                     <Text style={styles.privateStateText}>{safeRevealSummary.waitingReason}</Text>
                   ) : null}
+                  {revealStatus === 'reveal_ready' ? (
+                    <Pressable onPress={handleOpenReveal} style={styles.revealOpenCTA}>
+                      <Text style={styles.revealOpenCTALabel}>Reveal now</Text>
+                    </Pressable>
+                  ) : null}
                   <Text style={styles.privateStateDate}>
                     Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
                   </Text>
                 </View>
-                <View style={styles.revealInviteBlock}>
-                  <Text style={styles.revealInviteTitle}>Reveal together</Text>
-                  <Text style={styles.revealInviteSubtext}>
-                    Your side is saved. Invite the other person to reveal this relationship together.
-                  </Text>
-                  <Pressable onPress={() => void handleInviteToReveal()} style={styles.revealInviteCTA}>
-                    <Text style={styles.revealInviteCTALabel}>Invite to reveal</Text>
-                  </Pressable>
-                </View>
+                {revealStatus === 'waiting_other_side' ? (
+                  <View style={styles.revealInviteBlock}>
+                    <Text style={styles.revealInviteTitle}>Reveal together</Text>
+                    <Text style={styles.revealInviteSubtext}>
+                      Your side is saved. Invite the other person to reveal this relationship together.
+                    </Text>
+                    <Pressable onPress={() => void handleInviteToReveal()} style={styles.revealInviteCTA}>
+                      <Text style={styles.revealInviteCTALabel}>Invite to reveal</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </>
             )}
           </View>
@@ -519,6 +548,21 @@ const styles = StyleSheet.create({
   privateStateDate: {
     fontSize: 11,
     color: colors.text.muted,
+  },
+  revealOpenCTA: {
+    marginTop: spacing.xs,
+    alignSelf: 'flex-start',
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accent.deepTeal + '55',
+    backgroundColor: colors.accent.deepTeal + '14',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
+  },
+  revealOpenCTALabel: {
+    fontSize: 12,
+    color: colors.accent.deepTeal,
+    fontWeight: '700',
   },
   revealInviteBlock: {
     backgroundColor: colors.background.tertiary,

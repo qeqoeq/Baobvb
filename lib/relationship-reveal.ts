@@ -9,7 +9,7 @@ import {
   type IdentityResolutionState,
   type RelationshipDisplayState,
 } from './relationship-state';
-import type { Relation } from '../store/useRelationsStore';
+import type { Relation, RelationshipRevealSnapshot } from '../store/useRelationsStore';
 
 export type RelationshipRevealPayload = {
   isRevealable: boolean;
@@ -26,6 +26,7 @@ export type RelationshipRevealPayload = {
 
 export type RelationshipRevealInput = MutualizationPrerequisites & {
   relationshipNameRevealed?: boolean;
+  revealStatus?: RelationshipRevealSnapshot['status'];
   relationExists: boolean;
   sideAHasPrivateReading?: boolean;
   sideBHasPrivateReading?: boolean;
@@ -68,6 +69,7 @@ export function buildRelationshipRevealInput(
   return {
     relationExists,
     relationshipNameRevealed: relation?.relationshipNameRevealed === true,
+    revealStatus: relation?.localState.revealSnapshot.status,
     sideAIdentityStatus,
     privateReadingA: context.privateReadingA ?? null,
     sideAHasPrivateReading,
@@ -91,6 +93,16 @@ function buildSummaryFromDisplayState(
       return {
         stateLabel: 'Ready for mutual reveal',
         shortDescription: 'Both sides are complete and ready to reveal together.',
+      };
+    case 'cooking_reveal':
+      return {
+        stateLabel: 'Baobab is preparing your link',
+        shortDescription: 'Your private readings are saved. Reveal will unlock soon on this device.',
+      };
+    case 'reveal_ready':
+      return {
+        stateLabel: 'Your link is ready',
+        shortDescription: 'You can open your reveal now.',
       };
     case 'waiting_identity_resolution':
       return {
@@ -156,7 +168,9 @@ export function getSafeRelationshipRevealSummary(
               resolvedAt: undefined,
             },
             revealSnapshot: {
+              status: input.revealStatus ?? 'waiting_other_side',
               revealed: input.relationshipNameRevealed === true,
+              relationshipNameRevealed: input.relationshipNameRevealed === true,
             },
           },
         }

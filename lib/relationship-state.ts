@@ -7,6 +7,8 @@ export type RelationshipDisplayState =
   | 'draft'
   | 'private_reading_pending'
   | 'private_reading_saved_waiting_other_side'
+  | 'cooking_reveal'
+  | 'reveal_ready'
   | 'unresolved_invite'
   | 'waiting_identity_resolution'
   | 'ready_for_mutual_reveal'
@@ -120,8 +122,11 @@ export function getRelationshipDisplayState(
   input: RelationshipStateInput,
 ): RelationshipDisplayState {
   const completion = getRelationshipCompletionState(input);
+  const revealStatus = input.relation?.localState?.revealSnapshot.status;
 
   if (completion.revealed) return 'mutually_revealed';
+  if (revealStatus === 'reveal_ready') return 'reveal_ready';
+  if (revealStatus === 'cooking_reveal') return 'cooking_reveal';
   if (!completion.sideA.exists) return 'unresolved_invite';
 
   if (!completion.sideA.hasPrivateReading) {

@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 import {
+  computeMutualRelationshipScore,
   computeScore,
   getTier,
   type Evaluation,
@@ -21,10 +22,17 @@ export type RelationshipSideLocalState = {
 };
 
 export type RelationshipRevealSnapshot = {
+  status: 'waiting_other_side' | 'cooking_reveal' | 'reveal_ready' | 'revealed';
   revealed: boolean;
+  cookingStartedAt?: string;
+  unlockAt?: string;
+  readyAt?: string;
+  firstViewedAt?: string;
   revealedAt?: string;
   mutualScore?: number;
   tier?: Tier;
+  relationshipNameRevealed?: boolean;
+  finalizedVersion?: number;
 };
 
 export type RelationshipLocalState = {
@@ -110,7 +118,7 @@ const SEED_RELATIONS: Relation[] = [
     localState: {
       sideA: { exists: true, identityStatus: 'draft', hasPrivateReading: true, privateReadingId: 'e1' },
       sideB: { exists: false, identityStatus: 'missing', hasPrivateReading: false },
-      revealSnapshot: { revealed: false },
+      revealSnapshot: { status: 'waiting_other_side', revealed: false, relationshipNameRevealed: false },
     },
   },
   {
@@ -124,7 +132,7 @@ const SEED_RELATIONS: Relation[] = [
     localState: {
       sideA: { exists: true, identityStatus: 'draft', hasPrivateReading: false },
       sideB: { exists: false, identityStatus: 'missing', hasPrivateReading: false },
-      revealSnapshot: { revealed: false },
+      revealSnapshot: { status: 'waiting_other_side', revealed: false, relationshipNameRevealed: false },
     },
   },
   {
@@ -138,7 +146,7 @@ const SEED_RELATIONS: Relation[] = [
     localState: {
       sideA: { exists: true, identityStatus: 'draft', hasPrivateReading: true, privateReadingId: 'e2' },
       sideB: { exists: false, identityStatus: 'missing', hasPrivateReading: false },
-      revealSnapshot: { revealed: false },
+      revealSnapshot: { status: 'waiting_other_side', revealed: false, relationshipNameRevealed: false },
     },
   },
 ];
@@ -171,6 +179,7 @@ const SEED_ME: MeProfile = {
 const SEED_PLACES: Place[] = [];
 const PLACE_CATEGORIES: PlaceCategory[] = ['restaurant', 'cafe', 'bar', 'spot', 'other'];
 const TIER_VALUES: Tier[] = ['Ghost', 'Spark', 'Thrill', 'Vibrant', 'Anchor', 'Legend'];
+const REVEAL_UNLOCK_DELAY_MS = 90_000;
 
 // ── state ──────────────────────────────────────────────────────────────
 
@@ -274,9 +283,34 @@ function buildDefaultRelationshipLocalState(
       privateReadingId: undefined,
     },
     revealSnapshot: {
+      status: 'waiting_other_side',
       revealed: relation.relationshipNameRevealed === true,
+      relationshipNameRevealed: relation.relationshipNameRevealed === true,
     },
   };
+}
+
+function isRevealStatus(value: unknown): value is RelationshipRevealSnapshot['status'] {
+  return (
+    value === 'waiting_other_side' ||
+    value === 'cooking_reveal' ||
+    value === 'reveal_ready' ||
+    value === 'revealed'
+  );
+}
+
+function deriveRevealStatus({
+  revealed,
+  sideAHasReading,
+  sideBHasReading,
+}: {
+  revealed: boolean;
+  sideAHasReading: boolean;
+  sideBHasReading: boolean;
+}): RelationshipRevealSnapshot['status'] {
+  if (revealed) return 'revealed';
+  if (sideAHasReading && sideBHasReading) return 'reveal_ready';
+  return 'waiting_other_side';
 }
 
 function normalizeRelationshipLocalState(
@@ -306,6 +340,13 @@ function normalizeRelationshipLocalState(
 
   const rawReveal = raw.revealSnapshot;
   const revealed = relation.relationshipNameRevealed === true || rawReveal?.revealed === true;
+  const revealStatus = isRevealStatus(rawReveal?.status)
+    ? rawReveal.status
+    : deriveRevealStatus({
+        revealed,
+        sideAHasReading: fallback.sideA.hasPrivateReading,
+        sideBHasReading,
+      });
   const tier =
     rawReveal?.tier && TIER_VALUES.includes(rawReveal.tier)
       ? rawReveal.tier
@@ -321,7 +362,24 @@ function normalizeRelationshipLocalState(
       resolvedAt: sideBResolvedAt,
     },
     revealSnapshot: {
+      status: revealStatus,
       revealed,
+      cookingStartedAt:
+        typeof rawReveal?.cookingStartedAt === 'string' && rawReveal.cookingStartedAt.length > 0
+          ? rawReveal.cookingStartedAt
+          : undefined,
+      unlockAt:
+        typeof rawReveal?.unlockAt === 'string' && rawReveal.unlockAt.length > 0
+          ? rawReveal.unlockAt
+          : undefined,
+      readyAt:
+        typeof rawReveal?.readyAt === 'string' && rawReveal.readyAt.length > 0
+          ? rawReveal.readyAt
+          : undefined,
+      firstViewedAt:
+        typeof rawReveal?.firstViewedAt === 'string' && rawReveal.firstViewedAt.length > 0
+          ? rawReveal.firstViewedAt
+          : undefined,
       revealedAt:
         revealed && typeof rawReveal?.revealedAt === 'string' && rawReveal.revealedAt.length > 0
           ? rawReveal.revealedAt
@@ -331,6 +389,11 @@ function normalizeRelationshipLocalState(
           ? rawReveal.mutualScore
           : undefined,
       tier: revealed ? tier : undefined,
+      relationshipNameRevealed: revealed,
+      finalizedVersion:
+        typeof rawReveal?.finalizedVersion === 'number' && Number.isFinite(rawReveal.finalizedVersion)
+          ? rawReveal.finalizedVersion
+          : undefined,
     },
   };
 }
@@ -476,6 +539,123 @@ function setPrivateReadingOnSide(
   };
 }
 
+function finalizeCookingStartInState(relationId: string): boolean {
+  const relation = state.relations.find((item) => item.id === relationId);
+  if (!relation) return false;
+
+  const localState = relation.localState ?? buildDefaultRelationshipLocalState(relation, state.evaluations);
+  const snapshot = localState.revealSnapshot;
+  if (snapshot.status === 'cooking_reveal' || snapshot.status === 'reveal_ready' || snapshot.status === 'revealed') {
+    return false;
+  }
+  if (!localState.sideA.exists || !localState.sideB.exists) return false;
+  if (!localState.sideA.hasPrivateReading || !localState.sideB.hasPrivateReading) return false;
+
+  const readingAId = localState.sideA.privateReadingId;
+  const readingBId = localState.sideB.privateReadingId;
+  if (!readingAId || !readingBId) return false;
+
+  const readingA = state.evaluations.find((item) => item.id === readingAId);
+  const readingB = state.evaluations.find((item) => item.id === readingBId);
+  if (!readingA || !readingB) return false;
+
+  const mutual = computeMutualRelationshipScore(readingA.ratings, readingB.ratings);
+  const cookingStartedAt = new Date().toISOString();
+  const unlockAt = new Date(Date.now() + REVEAL_UNLOCK_DELAY_MS).toISOString();
+
+  state.relations = state.relations.map((item) => {
+    if (item.id !== relationId) return item;
+    const current = item.localState ?? buildDefaultRelationshipLocalState(item, state.evaluations);
+    return {
+      ...item,
+      relationshipNameRevealed: false,
+      localState: {
+        ...current,
+        revealSnapshot: {
+          ...current.revealSnapshot,
+          status: 'cooking_reveal',
+          revealed: false,
+          relationshipNameRevealed: false,
+          cookingStartedAt,
+          unlockAt,
+          readyAt: undefined,
+          firstViewedAt: undefined,
+          revealedAt: undefined,
+          mutualScore: mutual.finalScore,
+          tier: mutual.tier,
+          finalizedVersion: (current.revealSnapshot.finalizedVersion ?? 0) + 1,
+        },
+      },
+    };
+  });
+
+  return true;
+}
+
+function markRevealReadyIfUnlockedInState(relationId: string): boolean {
+  const relation = state.relations.find((item) => item.id === relationId);
+  if (!relation) return false;
+
+  const snapshot = relation.localState.revealSnapshot;
+  if (snapshot.status !== 'cooking_reveal') return false;
+  if (!snapshot.unlockAt) return false;
+
+  const unlockAtMs = Date.parse(snapshot.unlockAt);
+  if (!Number.isFinite(unlockAtMs) || Date.now() < unlockAtMs) return false;
+
+  const now = new Date().toISOString();
+  state.relations = state.relations.map((item) => {
+    if (item.id !== relationId) return item;
+    return {
+      ...item,
+      localState: {
+        ...item.localState,
+        revealSnapshot: {
+          ...item.localState.revealSnapshot,
+          status: 'reveal_ready',
+          readyAt: item.localState.revealSnapshot.readyAt ?? now,
+          revealed: false,
+          relationshipNameRevealed: false,
+        },
+      },
+    };
+  });
+
+  return true;
+}
+
+function openMutualRevealInState(relationId: string): boolean {
+  const movedToReady = markRevealReadyIfUnlockedInState(relationId);
+  const relation = state.relations.find((item) => item.id === relationId);
+  if (!relation) return false;
+
+  const snapshot = relation.localState.revealSnapshot;
+  if (snapshot.status === 'revealed') return movedToReady;
+  if (snapshot.status !== 'reveal_ready') return movedToReady;
+
+  const now = new Date().toISOString();
+  state.relations = state.relations.map((item) => {
+    if (item.id !== relationId) return item;
+    return {
+      ...item,
+      relationshipNameRevealed: true,
+      localState: {
+        ...item.localState,
+        revealSnapshot: {
+          ...item.localState.revealSnapshot,
+          status: 'revealed',
+          revealed: true,
+          relationshipNameRevealed: true,
+          firstViewedAt: item.localState.revealSnapshot.firstViewedAt ?? now,
+          revealedAt: now,
+        },
+      },
+    };
+  });
+
+  return true;
+}
+
 function pushEvaluationForSide(
   evaluation: Evaluation,
   side: RelationshipSideKey,
@@ -491,6 +671,7 @@ function pushEvaluationForSide(
     if (relation.id !== evaluation.relationId) return relation;
     return setPrivateReadingOnSide(relation, side, evaluation.id);
   });
+  finalizeCookingStartInState(evaluation.relationId);
   emitChange();
   persist();
   return true;
@@ -537,6 +718,30 @@ function resolveInviteSideB(relationId: string): boolean {
   });
 
   if (!didResolve) return false;
+  emitChange();
+  persist();
+  return true;
+}
+
+function finalizeCookingStart(relationId: string): boolean {
+  const changed = finalizeCookingStartInState(relationId);
+  if (!changed) return false;
+  emitChange();
+  persist();
+  return true;
+}
+
+function markRevealReadyIfUnlocked(relationId: string): boolean {
+  const changed = markRevealReadyIfUnlockedInState(relationId);
+  if (!changed) return false;
+  emitChange();
+  persist();
+  return true;
+}
+
+function openMutualReveal(relationId: string): boolean {
+  const changed = openMutualRevealInState(relationId);
+  if (!changed) return false;
   emitChange();
   persist();
   return true;
@@ -629,7 +834,9 @@ function pushRelation(name: string): Relation | null {
         hasPrivateReading: false,
       },
       revealSnapshot: {
+        status: 'waiting_other_side',
         revealed: false,
+        relationshipNameRevealed: false,
       },
     },
   };
@@ -678,7 +885,9 @@ function pushRelationWithSource(
         hasPrivateReading: false,
       },
       revealSnapshot: {
+        status: 'waiting_other_side',
         revealed: false,
+        relationshipNameRevealed: false,
       },
     },
   };
@@ -779,6 +988,9 @@ export function useRelationsStore() {
   const addPlace = (input: PlaceCreateInput) => pushPlace(input);
   const updatePlace = (id: string, update: PlaceUpdateInput) => setPlace(id, update);
   const resolveInvitedSideB = (relationId: string) => resolveInviteSideB(relationId);
+  const startCookingReveal = (relationId: string) => finalizeCookingStart(relationId);
+  const syncRevealReadyState = (relationId: string) => markRevealReadyIfUnlocked(relationId);
+  const revealMutualRelationship = (relationId: string) => openMutualReveal(relationId);
 
   return {
     me,
@@ -795,6 +1007,9 @@ export function useRelationsStore() {
     updateRelation,
     updatePlace,
     resolveInvitedSideB,
+    startCookingReveal,
+    syncRevealReadyState,
+    revealMutualRelationship,
     updateMe,
     addPlace,
     isHydrated,
