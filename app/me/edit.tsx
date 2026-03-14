@@ -1,26 +1,23 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import { deriveAvatarSeed, normalizeHandleInput } from '../../lib/identity-format';
 import { useRelationsStore } from '../../store/useRelationsStore';
-
-function normalizeHandleInput(raw: string) {
-  const noSpaces = raw.trim().toLowerCase().replace(/\s+/g, '');
-  const noAt = noSpaces.replace(/^@+/, '');
-  const safe = noAt.replace(/[^a-z0-9._-]/g, '');
-  return safe ? `@${safe}` : '';
-}
 
 function normalizeAvatarSeedInput(raw: string, displayName: string) {
   const seed = raw.trim().toUpperCase().replace(/\s+/g, '').slice(0, 2);
   if (seed) return seed;
-  const fallback = displayName.trim().charAt(0).toUpperCase();
-  return fallback || '?';
+  return deriveAvatarSeed(displayName);
 }
 
 export default function EditMyCardScreen() {
+  const params = useLocalSearchParams<{
+    fromInvite?: string;
+    invitedRelationId?: string;
+  }>();
   const { me, updateMe } = useRelationsStore();
   const [displayName, setDisplayName] = useState(me.displayName);
   const [handle, setHandle] = useState(me.handle);
@@ -48,6 +45,14 @@ export default function EditMyCardScreen() {
     });
     if (!ok) {
       setError('Could not save your card. Please check your fields.');
+      return;
+    }
+
+    if (params.fromInvite === '1' && params.invitedRelationId) {
+      router.replace({
+        pathname: '/invite/[relationId]',
+        params: { relationId: params.invitedRelationId },
+      });
       return;
     }
 

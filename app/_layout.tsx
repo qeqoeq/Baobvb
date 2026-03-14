@@ -26,6 +26,12 @@ export default function RootLayout() {
       />
       {/* Places routes are intentionally hidden from MVP navigation; files are kept parked for later. */}
       <Stack.Screen name="relation/[id]" options={{ title: 'Relation' }} />
+      <Stack.Screen name="invite/[relationId]" options={{ title: 'Reveal together' }} />
+      <Stack.Screen
+        name="invite/identity/[relationId]"
+        options={{ title: 'Create your card', presentation: 'modal' }}
+      />
+      <Stack.Screen name="relation/lexicon" options={{ title: 'Relationship lexicon' }} />
       <Stack.Screen name="relation/evaluate/[id]" options={{ title: 'Foundational reading' }} />
       <Stack.Screen name="relation/archived" options={{ title: 'Relations archivees' }} />
     </Stack>

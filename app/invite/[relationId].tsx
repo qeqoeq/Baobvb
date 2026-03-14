@@ -25,13 +25,10 @@ export default function InviteArrivalScreen() {
     setInviteInfoMessage(null);
 
     if (!hasLocalIdentity) {
-      // TODO: Replace with a dedicated lightweight invited identity step.
+      // Keep invite context while collecting minimal local identity.
       router.push({
-        pathname: '/me/edit',
-        params: {
-          fromInvite: '1',
-          invitedRelationId: relationId || '',
-        },
+        pathname: '/invite/identity/[relationId]',
+        params: { relationId: relationId || '' },
       });
       return;
     }
