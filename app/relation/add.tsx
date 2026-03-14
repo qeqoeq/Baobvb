@@ -13,6 +13,18 @@ function normalizeHandle(raw: string) {
   return safe ? `@${safe}` : '';
 }
 
+function sanitizeRelationName(raw: string) {
+  return raw.trim().replace(/\s+/g, ' ');
+}
+
+function isValidRelationName(name: string) {
+  const allowedCharsPattern = /^[\p{L}\p{M}\s'’-]+$/u;
+  if (!allowedCharsPattern.test(name)) return false;
+
+  const usefulCharCount = (name.match(/[\p{L}\p{M}]/gu) ?? []).length;
+  return usefulCharCount >= 2;
+}
+
 export default function AddRelationScreen() {
   const params = useLocalSearchParams<{
     prefillName?: string;
@@ -25,18 +37,27 @@ export default function AddRelationScreen() {
   const [name, setName] = useState(params.prefillName ?? '');
   const [handle, setHandle] = useState(params.prefillHandle ?? '');
 
-  const canSubmit = name.trim().length > 0;
+  const canSubmit = sanitizeRelationName(name).length > 0;
   const fromScan = params.fromScan === '1';
 
   const handleCreate = () => {
     if (!canSubmit) return;
 
     if (params.scannedMeId && params.scannedMeId === me.id) {
-      Alert.alert('This is your own card', 'Scan another person to add a new link.');
+      Alert.alert('This is your own card', 'Scan another person to add a new relationship.');
       return;
     }
 
-    const cleanName = name.trim();
+    const cleanName = sanitizeRelationName(name);
+    setName(cleanName);
+    if (!isValidRelationName(cleanName)) {
+      Alert.alert(
+        'Invalid name',
+        'Use a real name with letters. Allowed: letters, spaces, apostrophes, and hyphens.',
+      );
+      return;
+    }
+
     const normalizedScannedHandle = normalizeHandle(params.prefillHandle ?? '');
     const normalizedInputHandle = normalizeHandle(handle);
     const normalizedHandle = fromScan
@@ -56,7 +77,7 @@ export default function AddRelationScreen() {
     if (existingByCardMeId) {
       Alert.alert('Person already exists', `${existingByCardMeId.name} is already in your Garden.`, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Open link', onPress: () => router.replace(`../${existingByCardMeId.id}`) },
+        { text: 'Open relationship', onPress: () => router.replace(`/relation/${existingByCardMeId.id}`) },
       ]);
       return;
     }
@@ -70,7 +91,7 @@ export default function AddRelationScreen() {
     if (existingByHandle) {
       Alert.alert('Likely duplicate', `${existingByHandle.name} already uses this scanned handle.`, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Open link', onPress: () => router.replace(`../${existingByHandle.id}`) },
+        { text: 'Open relationship', onPress: () => router.replace(`/relation/${existingByHandle.id}`) },
       ]);
       return;
     }
@@ -79,11 +100,10 @@ export default function AddRelationScreen() {
       (relation) => relation.name.trim().toLowerCase() === cleanName.toLowerCase(),
     );
     if (existingByName) {
-      Alert.alert('Possible duplicate', `${existingByName.name} already exists with the same name.`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Open link', onPress: () => router.replace(`../${existingByName.id}`) },
+      Alert.alert('Private draft already exists', 'A private relationship with this name already exists. Names are not unique.', [
+        { text: 'Open existing relationship', onPress: () => router.replace(`/relation/${existingByName.id}`) },
         {
-          text: 'Create anyway',
+          text: 'Create another private draft',
           onPress: () => {
             const createdFromName = addRelation(cleanName, fromScan
               ? {
@@ -100,12 +120,13 @@ export default function AddRelationScreen() {
                 });
             if (createdFromName) {
               router.replace({
-                pathname: `../${createdFromName.id}`,
-                params: { justCreated: '1' },
+                pathname: '/relation/[id]',
+                params: { id: createdFromName.id, justCreated: '1' },
               });
             }
           },
         },
+        { text: 'Cancel', style: 'cancel' },
       ]);
       return;
     }
@@ -125,17 +146,17 @@ export default function AddRelationScreen() {
         });
     if (!created) return;
     router.replace({
-      pathname: `../${created.id}`,
-      params: { justCreated: '1' },
+    pathname: '/relation/[id]',
+    params: { id: created.id, justCreated: '1' },
     });
   };
 
   return (
     <View style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>Add a person</Text>
+        <Text style={styles.title}>{fromScan ? 'Add a person' : 'Create a private link'}</Text>
         <Text style={styles.subtitle}>
-          Add a person with a name. You can read this link right after.
+          Create a private draft relationship. A name is a local label, not a unique identity.
         </Text>
         {fromScan && (
           <View style={styles.scanHintCard}>
@@ -155,25 +176,29 @@ export default function AddRelationScreen() {
           style={styles.input}
           autoFocus
         />
-        <TextInput
-          value={handle}
-          onChangeText={setHandle}
-          placeholder="Handle (optional)"
-          placeholderTextColor={colors.text.muted}
-          style={styles.input}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+        {fromScan ? (
+          <TextInput
+            value={handle}
+            onChangeText={setHandle}
+            placeholder="Handle (optional)"
+            placeholderTextColor={colors.text.muted}
+            style={styles.input}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        ) : null}
 
         <Pressable
           onPress={handleCreate}
           disabled={!canSubmit}
           style={[styles.button, !canSubmit && styles.buttonDisabled]}
         >
-          <Text style={styles.buttonText}>Add person</Text>
+          <Text style={styles.buttonText}>{fromScan ? 'Add person' : 'Create private draft'}</Text>
         </Pressable>
         <Text style={styles.helperText}>
-          After adding, you will open the link profile directly.
+          {fromScan
+            ? 'After saving, you will open this relationship directly.'
+            : 'After saving, you will open this private relationship directly.'}
         </Text>
 
         <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
