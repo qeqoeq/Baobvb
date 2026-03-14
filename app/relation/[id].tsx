@@ -129,45 +129,45 @@ export default function RelationDetailScreen() {
           </View>
 
           <View style={styles.readingCard}>
-            <View style={styles.scoreRow}>
-              <Text style={[styles.scoreValue, { color: accent }]}>
-                {nameRevealed ? evaluation.score : '—'}
-              </Text>
-              <View style={styles.scoreMeta}>
-                <Text style={[styles.scoreTier, { color: accent }]}>
-                  {visibleScoreTier}
-                </Text>
-                <Text style={styles.scoreDate}>
-                  {new Date(evaluation.createdAt).toLocaleDateString()}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.pillarsSection}>
-              {PILLAR_ORDER.map((key) => {
-                const dots = reading?.pillarDots?.[key] ?? [];
-                return (
-                  <View key={key} style={styles.pillarRow}>
-                    <Text style={styles.pillarLabel}>{getPillarLabel(key)}</Text>
-                    <View style={styles.pillarDots}>
-                      {dots.map((isFilled, idx) => (
-                        <View
-                          key={idx}
-                          style={[
-                            styles.pillarDot,
-                            isFilled
-                              ? { backgroundColor: accent }
-                              : { backgroundColor: colors.border.soft },
-                          ]}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
             {nameRevealed ? (
               <>
+                <View style={styles.scoreRow}>
+                  <Text style={[styles.scoreValue, { color: accent }]}>
+                    {evaluation.score}
+                  </Text>
+                  <View style={styles.scoreMeta}>
+                    <Text style={[styles.scoreTier, { color: accent }]}>
+                      {visibleScoreTier}
+                    </Text>
+                    <Text style={styles.scoreDate}>
+                      {new Date(evaluation.createdAt).toLocaleDateString()}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.pillarsSection}>
+                  {PILLAR_ORDER.map((key) => {
+                    const dots = reading?.pillarDots?.[key] ?? [];
+                    return (
+                      <View key={key} style={styles.pillarRow}>
+                        <Text style={styles.pillarLabel}>{getPillarLabel(key)}</Text>
+                        <View style={styles.pillarDots}>
+                          {dots.map((isFilled, idx) => (
+                            <View
+                              key={idx}
+                              style={[
+                                styles.pillarDot,
+                                isFilled
+                                  ? { backgroundColor: accent }
+                                  : { backgroundColor: colors.border.soft },
+                              ]}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
                 <View style={styles.narrativeCard}>
                   <Text style={styles.narrativeLine}>
                     <Text style={styles.narrativeKey}>Force:</Text> {strongestLabel}
@@ -186,8 +186,11 @@ export default function RelationDetailScreen() {
               </>
             ) : (
               <View style={styles.privateStateCard}>
-                <Text style={styles.privateStateTitle}>Your side is saved</Text>
+                <Text style={styles.privateStateTitle}>Private reading saved</Text>
                 <Text style={styles.privateStateText}>Waiting for the other side.</Text>
+                <Text style={styles.privateStateDate}>
+                  Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
+                </Text>
               </View>
             )}
           </View>
@@ -478,6 +481,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.secondary,
     lineHeight: 18,
+  },
+  privateStateDate: {
+    fontSize: 11,
+    color: colors.text.muted,
   },
   readingNote: {
     paddingHorizontal: spacing.sm,
