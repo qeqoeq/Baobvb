@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
@@ -11,6 +11,7 @@ import {
   getPillarLabel,
   getTierNarrative,
 } from '../../lib/foundational-reading';
+import { getRelationshipInviteMessage } from '../../lib/relationship-invite';
 import {
   getRelationshipLexiconEntry,
   isRelationshipNameRevealed,
@@ -85,6 +86,15 @@ export default function RelationDetailScreen() {
       tierLexicon.canonicalName,
       `Color: ${tierLexicon.colorLabel}\n\n${tierLexicon.definition}`,
     );
+  };
+
+  const handleInviteToReveal = async () => {
+    try {
+      const { message, url } = getRelationshipInviteMessage(relation.id);
+      await Share.share({ message: url ? `${message}\n${url}` : message });
+    } catch {
+      Alert.alert('Invite to reveal', 'Sharing is not available on this device.');
+    }
   };
 
   return (
@@ -185,13 +195,24 @@ export default function RelationDetailScreen() {
                 </View>
               </>
             ) : (
-              <View style={styles.privateStateCard}>
-                <Text style={styles.privateStateTitle}>Private reading saved</Text>
-                <Text style={styles.privateStateText}>Waiting for the other side.</Text>
-                <Text style={styles.privateStateDate}>
-                  Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
-                </Text>
-              </View>
+              <>
+                <View style={styles.privateStateCard}>
+                  <Text style={styles.privateStateTitle}>Private reading saved</Text>
+                  <Text style={styles.privateStateText}>Waiting for the other side.</Text>
+                  <Text style={styles.privateStateDate}>
+                    Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
+                  </Text>
+                </View>
+                <View style={styles.revealInviteBlock}>
+                  <Text style={styles.revealInviteTitle}>Reveal together</Text>
+                  <Text style={styles.revealInviteSubtext}>
+                    Your side is saved. Invite the other person to reveal this relationship together.
+                  </Text>
+                  <Pressable onPress={() => void handleInviteToReveal()} style={styles.revealInviteCTA}>
+                    <Text style={styles.revealInviteCTALabel}>Invite to reveal</Text>
+                  </Pressable>
+                </View>
+              </>
             )}
           </View>
 
@@ -485,6 +506,39 @@ const styles = StyleSheet.create({
   privateStateDate: {
     fontSize: 11,
     color: colors.text.muted,
+  },
+  revealInviteBlock: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  revealInviteTitle: {
+    fontSize: 13,
+    color: colors.text.primary,
+    fontWeight: '700',
+  },
+  revealInviteSubtext: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    lineHeight: 18,
+  },
+  revealInviteCTA: {
+    marginTop: spacing.xs,
+    alignSelf: 'flex-start',
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accent.deepTeal + '55',
+    backgroundColor: colors.accent.deepTeal + '14',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
+  },
+  revealInviteCTALabel: {
+    fontSize: 12,
+    color: colors.accent.deepTeal,
+    fontWeight: '700',
   },
   readingNote: {
     paddingHorizontal: spacing.sm,
