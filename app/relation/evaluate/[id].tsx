@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../../constants/colors';
 import { radius, spacing } from '../../../constants/spacing';
@@ -11,6 +11,7 @@ import {
   type PillarKey,
   type PillarRating,
 } from '../../../lib/evaluation';
+import type { RelationshipSideKey } from '../../../store/useRelationsStore';
 import { useRelationsStore } from '../../../store/useRelationsStore';
 
 const PILLARS: { key: PillarKey; label: string; hint: string }[] = [
@@ -24,28 +25,40 @@ const PILLARS: { key: PillarKey; label: string; hint: string }[] = [
 const RATING_OPTIONS: PillarRating[] = [1, 2, 3, 4, 5];
 
 export default function EvaluateScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { relations, evaluations, addEvaluation } = useRelationsStore();
+  const { id, side } = useLocalSearchParams<{ id: string; side?: string }>();
+  const { relations, attachPrivateReadingToRelationshipSide } = useRelationsStore();
+  const targetSide: RelationshipSideKey = side === 'sideB' ? 'sideB' : 'sideA';
 
   const relation = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
     [relations, id],
   );
 
-  const hasEvaluation = useMemo(
-    () => evaluations.some((e) => e.relationId === id),
-    [evaluations, id],
-  );
+  const sideAlreadyHasReading = useMemo(() => {
+    if (!relation) return false;
+    return targetSide === 'sideB'
+      ? relation.localState.sideB.hasPrivateReading
+      : relation.localState.sideA.hasPrivateReading;
+  }, [relation, targetSide]);
+
+  const canEvaluateSideB = useMemo(() => {
+    if (!relation || targetSide !== 'sideB') return true;
+    return relation.localState.sideB.exists;
+  }, [relation, targetSide]);
 
   useEffect(() => {
     if (!id || !relation) {
       router.back();
       return;
     }
-    if (hasEvaluation) {
+    if (!canEvaluateSideB) {
+      router.back();
+      return;
+    }
+    if (sideAlreadyHasReading) {
       router.back();
     }
-  }, [id, relation, hasEvaluation]);
+  }, [id, relation, canEvaluateSideB, sideAlreadyHasReading]);
 
   const [ratings, setRatings] = useState<Record<PillarKey, PillarRating | null>>({
     trust: null,
@@ -92,11 +105,17 @@ export default function EvaluateScreen() {
       createdAt: new Date().toISOString(),
     };
 
-    addEvaluation(evaluation);
-    router.back();
-  }, [allRated, relation, isSubmitting, ratings, addEvaluation]);
+    const saved = attachPrivateReadingToRelationshipSide(evaluation, targetSide);
+    if (!saved) {
+      Alert.alert('Could not save reading', 'This side is not ready for a private reading yet.');
+      setIsSubmitting(false);
+      return;
+    }
 
-  if (!relation || hasEvaluation) {
+    router.back();
+  }, [allRated, relation, isSubmitting, ratings, attachPrivateReadingToRelationshipSide, targetSide]);
+
+  if (!relation || !canEvaluateSideB || sideAlreadyHasReading) {
     return (
       <View style={styles.screen}>
         <View style={styles.fallbackWrap}>

@@ -23,6 +23,7 @@ export default function InviteArrivalScreen() {
     () => (relation ? evaluations.find((evaluation) => evaluation.relationId === relation.id) ?? null : null),
     [evaluations, relation],
   );
+  const sideBHasPrivateReading = relation?.localState.sideB.hasPrivateReading === true;
   const safeRevealSummary = useMemo(
     () =>
       getSafeRelationshipRevealSummary(
@@ -61,10 +62,10 @@ export default function InviteArrivalScreen() {
     if (relation) {
       resolveInvitedSideB(relation.id);
 
-      if (!privateReadingA) {
+      if (!sideBHasPrivateReading) {
         router.push({
           pathname: '/relation/evaluate/[id]',
-          params: { id: relation.id },
+          params: { id: relation.id, side: 'sideB' },
         });
         return;
       }
