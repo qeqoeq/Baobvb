@@ -8,6 +8,8 @@ export type Relation = {
   name: string;
   archived: boolean;
   createdAt: string;
+  identityStatus: 'draft' | 'verified';
+  relationshipNameRevealed?: boolean;
   handle?: string;
   avatarSeed?: string;
   source: 'manual' | 'scan';
@@ -64,9 +66,33 @@ function buildEvaluation(
 }
 
 const SEED_RELATIONS: Relation[] = [
-  { id: '1', name: 'Olivier', archived: false, createdAt: '2025-11-10T10:00:00Z', source: 'manual' },
-  { id: '2', name: 'Nora', archived: false, createdAt: '2025-12-01T14:30:00Z', source: 'manual' },
-  { id: '3', name: 'Jean', archived: true, createdAt: '2025-10-05T09:00:00Z', source: 'manual' },
+  {
+    id: '1',
+    name: 'Olivier',
+    archived: false,
+    createdAt: '2025-11-10T10:00:00Z',
+    identityStatus: 'draft',
+    relationshipNameRevealed: false,
+    source: 'manual',
+  },
+  {
+    id: '2',
+    name: 'Nora',
+    archived: false,
+    createdAt: '2025-12-01T14:30:00Z',
+    identityStatus: 'draft',
+    relationshipNameRevealed: false,
+    source: 'manual',
+  },
+  {
+    id: '3',
+    name: 'Jean',
+    archived: true,
+    createdAt: '2025-10-05T09:00:00Z',
+    identityStatus: 'draft',
+    relationshipNameRevealed: false,
+    source: 'manual',
+  },
 ];
 
 const SEED_EVALUATIONS: Evaluation[] = [
@@ -191,6 +217,11 @@ loadPersistedState<StoreState>().then((persisted) => {
         relation.name?.trim().charAt(0).toUpperCase() ||
         '?',
       source: relation.source === 'scan' ? 'scan' : 'manual',
+      identityStatus:
+        relation.identityStatus === 'verified' || relation.source === 'scan'
+          ? 'verified'
+          : 'draft',
+      relationshipNameRevealed: relation.relationshipNameRevealed === true,
     }));
     state.evaluations = persisted.evaluations;
     state.places = Array.isArray(persisted.places)
@@ -320,6 +351,8 @@ function pushRelation(name: string): Relation | null {
     name: cleanName,
     archived: false,
     createdAt: new Date().toISOString(),
+    identityStatus: 'draft',
+    relationshipNameRevealed: false,
     avatarSeed: cleanName.charAt(0).toUpperCase() || '?',
     source: 'manual',
   };
@@ -349,6 +382,8 @@ function pushRelationWithSource(
     name: cleanName,
     archived: false,
     createdAt: new Date().toISOString(),
+    identityStatus: meta.source === 'scan' ? 'verified' : 'draft',
+    relationshipNameRevealed: false,
     handle: meta.handle,
     avatarSeed: meta.avatarSeed || cleanName.charAt(0).toUpperCase() || '?',
     source: meta.source,

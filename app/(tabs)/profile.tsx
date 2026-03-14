@@ -62,6 +62,15 @@ export default function ProfileScreen() {
     () => activeReadings.filter((reading) => reading.readingStatus === 'Read' && !reading.toNurture).length,
     [activeReadings],
   );
+  const hasDiscoveredRelationshipNames = useMemo(
+    () =>
+      activeReadings.some(
+        (reading) =>
+          reading.hasFoundationalReading &&
+          reading.relation.relationshipNameRevealed === true,
+      ),
+    [activeReadings],
+  );
 
   const dominantTier = useMemo(() => {
     let bestTier: (typeof LINK_TYPES)[number] | null = null;
@@ -205,6 +214,12 @@ export default function ProfileScreen() {
         <View style={styles.landscapeSummaryCard}>
           <Text style={styles.landscapeSummaryText}>{landscapeSummary}</Text>
         </View>
+        {hasDiscoveredRelationshipNames ? (
+          <Pressable onPress={() => router.push('../relation/lexicon')} style={styles.lexiconRow}>
+            <Text style={styles.lexiconLabel}>Your relationship lexicon</Text>
+            <Text style={styles.lexiconChevron}>›</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={styles.sectionHeader}>
@@ -462,6 +477,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     color: colors.text.secondary,
+  },
+  lexiconRow: {
+    marginTop: spacing.xs,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border.soft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lexiconLabel: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    fontWeight: '600',
+  },
+  lexiconChevron: {
+    fontSize: 17,
+    color: colors.text.muted,
   },
 
   trustCard: {
