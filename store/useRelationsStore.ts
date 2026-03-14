@@ -1,7 +1,37 @@
 import { useSyncExternalStore } from 'react';
 
-import { computeScore, getTier, type Evaluation, type PillarKey, type PillarRating } from '../lib/evaluation';
+import {
+  computeScore,
+  getTier,
+  type Evaluation,
+  type PillarKey,
+  type PillarRating,
+  type Tier,
+} from '../lib/evaluation';
 import { loadPersistedState, persistState } from '../lib/storage';
+
+export type RelationshipSideIdentityStatus = 'missing' | 'draft' | 'verified';
+
+export type RelationshipSideLocalState = {
+  exists: boolean;
+  identityStatus: RelationshipSideIdentityStatus;
+  hasPrivateReading: boolean;
+  privateReadingId?: string;
+  resolvedAt?: string;
+};
+
+export type RelationshipRevealSnapshot = {
+  revealed: boolean;
+  revealedAt?: string;
+  mutualScore?: number;
+  tier?: Tier;
+};
+
+export type RelationshipLocalState = {
+  sideA: RelationshipSideLocalState;
+  sideB: RelationshipSideLocalState;
+  revealSnapshot: RelationshipRevealSnapshot;
+};
 
 export type Relation = {
   id: string;
@@ -15,6 +45,7 @@ export type Relation = {
   source: 'manual' | 'scan';
   sourceCardMeId?: string;
   sourceHandle?: string;
+  localState: RelationshipLocalState;
 };
 
 export type PlaceCategory = 'restaurant' | 'cafe' | 'bar' | 'spot' | 'other';
@@ -74,6 +105,11 @@ const SEED_RELATIONS: Relation[] = [
     identityStatus: 'draft',
     relationshipNameRevealed: false,
     source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'draft', hasPrivateReading: true, privateReadingId: 'e1' },
+      sideB: { exists: false, identityStatus: 'missing', hasPrivateReading: false },
+      revealSnapshot: { revealed: false },
+    },
   },
   {
     id: '2',
@@ -83,6 +119,11 @@ const SEED_RELATIONS: Relation[] = [
     identityStatus: 'draft',
     relationshipNameRevealed: false,
     source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'draft', hasPrivateReading: false },
+      sideB: { exists: false, identityStatus: 'missing', hasPrivateReading: false },
+      revealSnapshot: { revealed: false },
+    },
   },
   {
     id: '3',
@@ -92,6 +133,11 @@ const SEED_RELATIONS: Relation[] = [
     identityStatus: 'draft',
     relationshipNameRevealed: false,
     source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'draft', hasPrivateReading: true, privateReadingId: 'e2' },
+      sideB: { exists: false, identityStatus: 'missing', hasPrivateReading: false },
+      revealSnapshot: { revealed: false },
+    },
   },
 ];
 
@@ -122,6 +168,7 @@ const SEED_ME: MeProfile = {
 
 const SEED_PLACES: Place[] = [];
 const PLACE_CATEGORIES: PlaceCategory[] = ['restaurant', 'cafe', 'bar', 'spot', 'other'];
+const TIER_VALUES: Tier[] = ['Ghost', 'Spark', 'Thrill', 'Vibrant', 'Anchor', 'Legend'];
 
 // ── state ──────────────────────────────────────────────────────────────
 
@@ -183,6 +230,109 @@ function sanitizePlaceRating(value: unknown): 1 | 2 | 3 | 4 | 5 {
   return Math.round(value) as 1 | 2 | 3 | 4 | 5;
 }
 
+function normalizeSideIdentityStatus(
+  value: unknown,
+  fallback: RelationshipSideIdentityStatus,
+): RelationshipSideIdentityStatus {
+  if (value === 'verified' || value === 'draft' || value === 'missing') return value;
+  return fallback;
+}
+
+function getLatestEvaluationForRelation(
+  evaluations: Evaluation[],
+  relationId: string,
+): Evaluation | null {
+  let latest: Evaluation | null = null;
+  for (const evaluation of evaluations) {
+    if (evaluation.relationId !== relationId) continue;
+    if (!latest || evaluation.createdAt > latest.createdAt) {
+      latest = evaluation;
+    }
+  }
+  return latest;
+}
+
+function buildDefaultRelationshipLocalState(
+  relation: Pick<Relation, 'id' | 'identityStatus' | 'relationshipNameRevealed'>,
+  evaluations: Evaluation[],
+): RelationshipLocalState {
+  const latestEvaluation = getLatestEvaluationForRelation(evaluations, relation.id);
+
+  return {
+    sideA: {
+      exists: true,
+      identityStatus: relation.identityStatus,
+      hasPrivateReading: Boolean(latestEvaluation),
+      privateReadingId: latestEvaluation?.id,
+    },
+    sideB: {
+      exists: false,
+      identityStatus: 'missing',
+      hasPrivateReading: false,
+      privateReadingId: undefined,
+    },
+    revealSnapshot: {
+      revealed: relation.relationshipNameRevealed === true,
+    },
+  };
+}
+
+function normalizeRelationshipLocalState(
+  relation: Pick<Relation, 'id' | 'identityStatus' | 'relationshipNameRevealed'> & {
+    localState?: Partial<RelationshipLocalState> | null;
+  },
+  evaluations: Evaluation[],
+): RelationshipLocalState {
+  const fallback = buildDefaultRelationshipLocalState(relation, evaluations);
+  const raw = relation.localState;
+  if (!raw) return fallback;
+
+  const rawSideB = raw.sideB;
+  const sideBExists = rawSideB?.exists === true;
+  const sideBReadingId =
+    typeof rawSideB?.privateReadingId === 'string' && rawSideB.privateReadingId.length > 0
+      ? rawSideB.privateReadingId
+      : undefined;
+  const sideBTierStatus = sideBExists
+    ? normalizeSideIdentityStatus(rawSideB?.identityStatus, 'missing')
+    : 'missing';
+  const sideBHasReading = sideBExists && (rawSideB?.hasPrivateReading === true || Boolean(sideBReadingId));
+  const sideBResolvedAt =
+    sideBExists && typeof rawSideB?.resolvedAt === 'string' && rawSideB.resolvedAt.length > 0
+      ? rawSideB.resolvedAt
+      : undefined;
+
+  const rawReveal = raw.revealSnapshot;
+  const revealed = relation.relationshipNameRevealed === true || rawReveal?.revealed === true;
+  const tier =
+    rawReveal?.tier && TIER_VALUES.includes(rawReveal.tier)
+      ? rawReveal.tier
+      : undefined;
+
+  return {
+    sideA: fallback.sideA,
+    sideB: {
+      exists: sideBExists,
+      identityStatus: sideBTierStatus,
+      hasPrivateReading: sideBHasReading,
+      privateReadingId: sideBHasReading ? sideBReadingId : undefined,
+      resolvedAt: sideBResolvedAt,
+    },
+    revealSnapshot: {
+      revealed,
+      revealedAt:
+        revealed && typeof rawReveal?.revealedAt === 'string' && rawReveal.revealedAt.length > 0
+          ? rawReveal.revealedAt
+          : undefined,
+      mutualScore:
+        revealed && typeof rawReveal?.mutualScore === 'number'
+          ? rawReveal.mutualScore
+          : undefined,
+      tier: revealed ? tier : undefined,
+    },
+  };
+}
+
 // ── persistence ────────────────────────────────────────────────────────
 
 function persist() {
@@ -203,6 +353,7 @@ loadPersistedState<StoreState>().then((persisted) => {
     Array.isArray(persisted.relations) &&
     Array.isArray(persisted.evaluations)
   ) {
+    const persistedEvaluations = persisted.evaluations;
     if (persisted.me) {
       state.me = {
         ...SEED_ME,
@@ -222,8 +373,17 @@ loadPersistedState<StoreState>().then((persisted) => {
           ? 'verified'
           : 'draft',
       relationshipNameRevealed: relation.relationshipNameRevealed === true,
+      localState: normalizeRelationshipLocalState({
+        id: relation.id,
+        identityStatus:
+          relation.identityStatus === 'verified' || relation.source === 'scan'
+            ? 'verified'
+            : 'draft',
+        relationshipNameRevealed: relation.relationshipNameRevealed === true,
+        localState: relation.localState,
+      }, persistedEvaluations),
     }));
-    state.evaluations = persisted.evaluations;
+    state.evaluations = persistedEvaluations;
     state.places = Array.isArray(persisted.places)
       ? persisted.places.reduce<Place[]>((acc, rawPlace) => {
           if (!rawPlace || typeof rawPlace !== 'object') return acc;
@@ -276,8 +436,67 @@ function setArchived(id: string, archived: boolean) {
 
 function pushEvaluation(evaluation: Evaluation) {
   state.evaluations = [...state.evaluations, evaluation];
+  state.relations = state.relations.map((relation) => {
+    if (relation.id !== evaluation.relationId) return relation;
+    const localState = relation.localState ?? buildDefaultRelationshipLocalState(relation, state.evaluations);
+    return {
+      ...relation,
+      localState: {
+        ...localState,
+        sideA: {
+          ...localState.sideA,
+          exists: true,
+          identityStatus: relation.identityStatus,
+          hasPrivateReading: true,
+          privateReadingId: evaluation.id,
+        },
+      },
+    };
+  });
   emitChange();
   persist();
+}
+
+function resolveInviteSideB(relationId: string): boolean {
+  const meHasIdentity = Boolean(state.me.displayName.trim() && state.me.handle.trim());
+  if (!meHasIdentity) return false;
+
+  let didResolve = false;
+  state.relations = state.relations.map((relation) => {
+    if (relation.id !== relationId) return relation;
+
+    const localState = relation.localState ?? buildDefaultRelationshipLocalState(relation, state.evaluations);
+    const alreadyResolved =
+      localState.sideB.exists &&
+      localState.sideB.identityStatus !== 'missing';
+    if (alreadyResolved) return relation;
+
+    const sideBIdentityStatus =
+      localState.sideB.identityStatus === 'verified'
+        ? 'verified'
+        : 'draft';
+
+    didResolve = true;
+    return {
+      ...relation,
+      localState: {
+        ...localState,
+        sideB: {
+          ...localState.sideB,
+          exists: true,
+          identityStatus: sideBIdentityStatus,
+          hasPrivateReading: localState.sideB.hasPrivateReading,
+          privateReadingId: localState.sideB.privateReadingId,
+          resolvedAt: localState.sideB.resolvedAt ?? new Date().toISOString(),
+        },
+      },
+    };
+  });
+
+  if (!didResolve) return false;
+  emitChange();
+  persist();
+  return true;
 }
 
 export type PlaceCreateInput = {
@@ -355,6 +574,21 @@ function pushRelation(name: string): Relation | null {
     relationshipNameRevealed: false,
     avatarSeed: cleanName.charAt(0).toUpperCase() || '?',
     source: 'manual',
+    localState: {
+      sideA: {
+        exists: true,
+        identityStatus: 'draft',
+        hasPrivateReading: false,
+      },
+      sideB: {
+        exists: false,
+        identityStatus: 'missing',
+        hasPrivateReading: false,
+      },
+      revealSnapshot: {
+        revealed: false,
+      },
+    },
   };
   state.relations = [relation, ...state.relations];
   emitChange();
@@ -389,6 +623,21 @@ function pushRelationWithSource(
     source: meta.source,
     sourceCardMeId: meta.sourceCardMeId,
     sourceHandle: meta.sourceHandle,
+    localState: {
+      sideA: {
+        exists: true,
+        identityStatus: meta.source === 'scan' ? 'verified' : 'draft',
+        hasPrivateReading: false,
+      },
+      sideB: {
+        exists: false,
+        identityStatus: 'missing',
+        hasPrivateReading: false,
+      },
+      revealSnapshot: {
+        revealed: false,
+      },
+    },
   };
   state.relations = [relation, ...state.relations];
   emitChange();
@@ -482,6 +731,7 @@ export function useRelationsStore() {
   const updateRelation = (id: string, update: RelationUpdate) => setRelation(id, update);
   const addPlace = (input: PlaceCreateInput) => pushPlace(input);
   const updatePlace = (id: string, update: PlaceUpdateInput) => setPlace(id, update);
+  const resolveInvitedSideB = (relationId: string) => resolveInviteSideB(relationId);
 
   return {
     me,
@@ -496,6 +746,7 @@ export function useRelationsStore() {
     addRelation,
     updateRelation,
     updatePlace,
+    resolveInvitedSideB,
     updateMe,
     addPlace,
     isHydrated,

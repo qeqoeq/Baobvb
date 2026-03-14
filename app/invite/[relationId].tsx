@@ -4,16 +4,41 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import {
+  buildRelationshipRevealInput,
+  getSafeRelationshipRevealSummary,
+} from '../../lib/relationship-reveal';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function InviteArrivalScreen() {
   const { relationId } = useLocalSearchParams<{ relationId: string }>();
-  const { me, relations, evaluations } = useRelationsStore();
+  const { me, relations, evaluations, resolveInvitedSideB } = useRelationsStore();
   const [showUnresolvedContinuation, setShowUnresolvedContinuation] = useState(false);
 
   const relation = useMemo(
     () => relations.find((item) => item.id === relationId) ?? null,
     [relations, relationId],
+  );
+  const privateReadingA = useMemo(
+    () => (relation ? evaluations.find((evaluation) => evaluation.relationId === relation.id) ?? null : null),
+    [evaluations, relation],
+  );
+  const safeRevealSummary = useMemo(
+    () =>
+      getSafeRelationshipRevealSummary(
+        relation
+          ? buildRelationshipRevealInput({
+              relation,
+              privateReadingA,
+            })
+          : buildRelationshipRevealInput({
+              relation: null,
+              privateReadingA: null,
+              // Invite arrival remains unresolved while real side-B binding is unavailable.
+              sideB: { exists: false },
+            }),
+      ),
+    [relation, privateReadingA],
   );
 
   const hasLocalIdentity = Boolean(
@@ -34,8 +59,9 @@ export default function InviteArrivalScreen() {
     }
 
     if (relation) {
-      const hasReading = evaluations.some((evaluation) => evaluation.relationId === relation.id);
-      if (!hasReading) {
+      resolveInvitedSideB(relation.id);
+
+      if (!privateReadingA) {
         router.push({
           pathname: '/relation/evaluate/[id]',
           params: { id: relation.id },
@@ -72,11 +98,11 @@ export default function InviteArrivalScreen() {
           <View style={styles.unresolvedCard}>
             <Text style={styles.unresolvedTitle}>Your card is ready</Text>
             <Text style={styles.unresolvedBody}>
-              Your invitation is saved on this device. Relationship linking is not available yet in this version.
+              {safeRevealSummary?.shortDescription}
             </Text>
-            <Text style={styles.unresolvedSupport}>
-              The next update will connect this invitation directly to your side.
-            </Text>
+            {safeRevealSummary?.waitingReason ? (
+              <Text style={styles.unresolvedSupport}>{safeRevealSummary.waitingReason}</Text>
+            ) : null}
             <Pressable onPress={() => router.back()} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>Done</Text>
             </Pressable>
