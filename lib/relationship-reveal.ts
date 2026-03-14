@@ -68,7 +68,9 @@ export function buildRelationshipRevealInput(
 
   return {
     relationExists,
-    relationshipNameRevealed: relation?.relationshipNameRevealed === true,
+    relationshipNameRevealed:
+      relation?.localState.revealSnapshot.status === 'revealed' ||
+      relation?.relationshipNameRevealed === true,
     revealStatus: relation?.localState.revealSnapshot.status,
     sideAIdentityStatus,
     privateReadingA: context.privateReadingA ?? null,
@@ -188,7 +190,7 @@ export function buildMutualReveal(
   input: RelationshipRevealInput,
 ): RelationshipRevealPayload {
   const isRevealable = canRevealRelationship(input);
-  const revealed = input.relationshipNameRevealed === true;
+  const revealed = input.revealStatus === 'revealed' || input.relationshipNameRevealed === true;
   const safeSummary = getSafeRelationshipRevealSummary(input);
 
   if (!isRevealable || !revealed) {

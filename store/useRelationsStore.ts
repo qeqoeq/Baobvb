@@ -313,6 +313,10 @@ function deriveRevealStatus({
   return 'waiting_other_side';
 }
 
+function isStatusRevealed(status: RelationshipRevealSnapshot['status']): boolean {
+  return status === 'revealed';
+}
+
 function normalizeRelationshipLocalState(
   relation: Pick<Relation, 'id' | 'identityStatus' | 'relationshipNameRevealed'> & {
     localState?: Partial<RelationshipLocalState> | null;
@@ -339,14 +343,17 @@ function normalizeRelationshipLocalState(
       : undefined;
 
   const rawReveal = raw.revealSnapshot;
-  const revealed = relation.relationshipNameRevealed === true || rawReveal?.revealed === true;
-  const revealStatus = isRevealStatus(rawReveal?.status)
+  const statusCandidate = isRevealStatus(rawReveal?.status)
     ? rawReveal.status
     : deriveRevealStatus({
-        revealed,
+        revealed: relation.relationshipNameRevealed === true || rawReveal?.revealed === true,
         sideAHasReading: fallback.sideA.hasPrivateReading,
         sideBHasReading,
       });
+  const forceRevealed =
+    relation.relationshipNameRevealed === true || rawReveal?.revealed === true;
+  const revealStatus = forceRevealed ? 'revealed' : statusCandidate;
+  const revealed = isStatusRevealed(revealStatus);
   const tier =
     rawReveal?.tier && TIER_VALUES.includes(rawReveal.tier)
       ? rawReveal.tier
@@ -381,15 +388,17 @@ function normalizeRelationshipLocalState(
           ? rawReveal.firstViewedAt
           : undefined,
       revealedAt:
-        revealed && typeof rawReveal?.revealedAt === 'string' && rawReveal.revealedAt.length > 0
+        isStatusRevealed(revealStatus) &&
+        typeof rawReveal?.revealedAt === 'string' &&
+        rawReveal.revealedAt.length > 0
           ? rawReveal.revealedAt
           : undefined,
       mutualScore:
-        revealed && typeof rawReveal?.mutualScore === 'number'
+        isStatusRevealed(revealStatus) && typeof rawReveal?.mutualScore === 'number'
           ? rawReveal.mutualScore
           : undefined,
-      tier: revealed ? tier : undefined,
-      relationshipNameRevealed: revealed,
+      tier: isStatusRevealed(revealStatus) ? tier : undefined,
+      relationshipNameRevealed: isStatusRevealed(revealStatus),
       finalizedVersion:
         typeof rawReveal?.finalizedVersion === 'number' && Number.isFinite(rawReveal.finalizedVersion)
           ? rawReveal.finalizedVersion

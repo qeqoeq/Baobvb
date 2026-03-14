@@ -103,7 +103,9 @@ export function getRelationshipCompletionState(
   const bothPrivateReadingsComplete = sideA.hasPrivateReading && sideB.hasPrivateReading;
   const bothIdentitiesResolved = sideA.isIdentityResolved && sideB.isIdentityResolved;
   const canMutualReveal = bothSidesExist && bothPrivateReadingsComplete && bothIdentitiesResolved;
+  const revealStatus = input.relation?.localState?.revealSnapshot.status;
   const revealed =
+    revealStatus === 'revealed' ||
     input.relation?.localState?.revealSnapshot.revealed === true ||
     input.relation?.relationshipNameRevealed === true;
 
