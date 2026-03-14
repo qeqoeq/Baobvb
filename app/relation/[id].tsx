@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
@@ -11,6 +11,10 @@ import {
   getPillarLabel,
   getTierNarrative,
 } from '../../lib/foundational-reading';
+import {
+  getRelationshipLexiconEntry,
+  isRelationshipNameRevealed,
+} from '../../lib/relationship-lexicon';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 const PILLAR_ORDER: PillarKey[] = [
@@ -45,17 +49,20 @@ export default function RelationDetailScreen() {
     return (
       <View style={styles.screen}>
         <View style={styles.fallbackWrap}>
-          <Text style={styles.fallbackText}>Opening link...</Text>
+          <Text style={styles.fallbackText}>Opening relationship...</Text>
         </View>
       </View>
     );
   }
 
+  const nameRevealed = isRelationshipNameRevealed(relation);
   const evaluation = reading?.foundationalEvaluation ?? null;
-  const accent = reading?.linkTier ? getTierAccent(reading.linkTier) : colors.accent.warmGold;
+  const accent = nameRevealed && reading?.linkTier
+    ? getTierAccent(reading.linkTier)
+    : colors.text.muted;
   const badgeLabel = reading?.badgeLabel ?? 'Unread';
-  const sourceLabel = relation.source === 'scan' ? 'Added by scan' : 'Added manually';
-  const sourceSubtext = relation.source === 'scan' && relation.sourceHandle
+  const identityLabel = relation.identityStatus === 'verified' ? 'Verified by scan' : 'Private draft';
+  const identitySubtext = relation.identityStatus === 'verified' && relation.sourceHandle
     ? `Scanned from ${relation.sourceHandle}`
     : null;
   const shouldHighlightReadNext = justCreated === '1' && !evaluation;
@@ -66,6 +73,19 @@ export default function RelationDetailScreen() {
     reading?.weakestPillar ?? null,
     reading?.linkTier ?? null,
   );
+  const tierLexicon = nameRevealed && reading?.linkTier
+    ? getRelationshipLexiconEntry(reading.linkTier)
+    : null;
+  const visibleTierLabel = nameRevealed && evaluation ? badgeLabel : evaluation ? 'Private reading' : 'Unread';
+  const visibleScoreTier = nameRevealed && evaluation ? evaluation.tier : 'Private reading';
+
+  const openTierInfo = () => {
+    if (!tierLexicon) return;
+    Alert.alert(
+      tierLexicon.canonicalName,
+      `Color: ${tierLexicon.colorLabel}\n\n${tierLexicon.definition}`,
+    );
+  };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -77,16 +97,23 @@ export default function RelationDetailScreen() {
         </View>
         <Text style={styles.name}>{relation.name}</Text>
         {relation.handle ? <Text style={styles.handle}>{relation.handle}</Text> : null}
-        <View style={[styles.tierBadge, { backgroundColor: accent + '18' }]}>
-          <Text style={[styles.tierBadgeText, { color: accent }]}>
-            {evaluation ? `${badgeLabel} · ${evaluation.score}` : badgeLabel}
-          </Text>
+        <View style={styles.tierRow}>
+          <View style={[styles.tierBadge, { backgroundColor: accent + '16' }]}>
+            <Text style={[styles.tierBadgeText, { color: accent }]}>
+              {evaluation && nameRevealed ? `${visibleTierLabel} · ${evaluation.score}` : visibleTierLabel}
+            </Text>
+          </View>
+          {tierLexicon ? (
+            <Pressable onPress={openTierInfo} style={styles.infoButton}>
+              <Text style={styles.infoButtonText}>i</Text>
+            </Pressable>
+          ) : null}
         </View>
         <Text style={styles.statusText}>Reading status: {reading?.readingStatus ?? 'Unread'}</Text>
         <View style={styles.originCard}>
-          <Text style={styles.originLabel}>{sourceLabel}</Text>
-          {sourceSubtext ? (
-            <Text style={styles.originSubtext}>{sourceSubtext}</Text>
+          <Text style={styles.originLabel}>{identityLabel}</Text>
+          {identitySubtext ? (
+            <Text style={styles.originSubtext}>{identitySubtext}</Text>
           ) : null}
         </View>
         <Pressable onPress={() => router.push(`./edit/${relation.id}`)} style={styles.editLink}>
@@ -104,11 +131,11 @@ export default function RelationDetailScreen() {
           <View style={styles.readingCard}>
             <View style={styles.scoreRow}>
               <Text style={[styles.scoreValue, { color: accent }]}>
-                {evaluation.score}
+                {nameRevealed ? evaluation.score : '—'}
               </Text>
               <View style={styles.scoreMeta}>
                 <Text style={[styles.scoreTier, { color: accent }]}>
-                  {evaluation.tier}
+                  {visibleScoreTier}
                 </Text>
                 <Text style={styles.scoreDate}>
                   {new Date(evaluation.createdAt).toLocaleDateString()}
@@ -139,26 +166,35 @@ export default function RelationDetailScreen() {
                 );
               })}
             </View>
-            <View style={styles.narrativeCard}>
-              <Text style={styles.narrativeLine}>
-                <Text style={styles.narrativeKey}>Force:</Text> {strongestLabel}
-              </Text>
-              <Text style={styles.narrativeLine}>
-                <Text style={styles.narrativeKey}>Watch:</Text> {weakestLabel}
-              </Text>
-              <Text style={styles.narrativeReading}>
-                <Text style={styles.narrativeKey}>Reading:</Text> {tierNarrative}
-              </Text>
-            </View>
-            <View style={styles.nextActionCard}>
-              <Text style={styles.nextActionLabel}>Next step</Text>
-              <Text style={styles.nextActionText}>{growthSuggestion}</Text>
-            </View>
+            {nameRevealed ? (
+              <>
+                <View style={styles.narrativeCard}>
+                  <Text style={styles.narrativeLine}>
+                    <Text style={styles.narrativeKey}>Force:</Text> {strongestLabel}
+                  </Text>
+                  <Text style={styles.narrativeLine}>
+                    <Text style={styles.narrativeKey}>Watch:</Text> {weakestLabel}
+                  </Text>
+                  <Text style={styles.narrativeReading}>
+                    <Text style={styles.narrativeKey}>Reading:</Text> {tierNarrative}
+                  </Text>
+                </View>
+                <View style={styles.nextActionCard}>
+                  <Text style={styles.nextActionLabel}>Next step</Text>
+                  <Text style={styles.nextActionText}>{growthSuggestion}</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.privateStateCard}>
+                <Text style={styles.privateStateTitle}>Your side is saved</Text>
+                <Text style={styles.privateStateText}>Waiting for the other side.</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.readingNote}>
             <Text style={styles.readingNoteText}>
-              This foundational reading captures the current shape of this link.
+              This foundational reading captures the current shape of this relationship.
             </Text>
           </View>
         </View>
@@ -171,13 +207,13 @@ export default function RelationDetailScreen() {
           {shouldHighlightReadNext ? (
             <View style={styles.nextStepCard}>
               <Text style={styles.nextStepText}>
-                This link was added. You can now read it.
+                This relationship was added. You can now read it.
               </Text>
             </View>
           ) : null}
 
           <View style={[styles.unreadCard, shouldHighlightReadNext && styles.unreadCardEmphasis]}>
-            <Text style={styles.unreadTitle}>This link has not been read yet</Text>
+            <Text style={styles.unreadTitle}>This relationship has not been read yet</Text>
             <Text style={styles.unreadText}>
               A foundational reading captures the shape and strength of your
               relationship through 5 pillars.
@@ -188,7 +224,7 @@ export default function RelationDetailScreen() {
             onPress={() => router.push(`./evaluate/${relation.id}`)}
             style={[styles.ctaButton, shouldHighlightReadNext && styles.ctaButtonEmphasis]}
           >
-            <Text style={styles.ctaButtonText}>Read this link</Text>
+            <Text style={styles.ctaButtonText}>Read this relationship</Text>
           </Pressable>
         </View>
       )}
@@ -248,11 +284,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 5,
   },
+  tierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   tierBadgeText: {
     fontSize: 13,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
+  },
+  infoButton: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoButtonText: {
+    fontSize: 12,
+    color: colors.text.muted,
+    fontWeight: '700',
+    lineHeight: 14,
   },
   statusText: {
     fontSize: 12,
@@ -403,6 +460,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     color: colors.text.primary,
+  },
+  privateStateCard: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  privateStateTitle: {
+    fontSize: 13,
+    color: colors.text.primary,
+    fontWeight: '700',
+  },
+  privateStateText: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    lineHeight: 18,
   },
   readingNote: {
     paddingHorizontal: spacing.sm,
