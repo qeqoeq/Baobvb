@@ -9,7 +9,7 @@ import { useRelationsStore } from '../../store/useRelationsStore';
 export default function InviteArrivalScreen() {
   const { relationId } = useLocalSearchParams<{ relationId: string }>();
   const { me, relations, evaluations } = useRelationsStore();
-  const [inviteInfoMessage, setInviteInfoMessage] = useState<string | null>(null);
+  const [showUnresolvedContinuation, setShowUnresolvedContinuation] = useState(false);
 
   const relation = useMemo(
     () => relations.find((item) => item.id === relationId) ?? null,
@@ -22,7 +22,7 @@ export default function InviteArrivalScreen() {
   );
 
   const handleAddMySide = () => {
-    setInviteInfoMessage(null);
+    setShowUnresolvedContinuation(false);
 
     if (!hasLocalIdentity) {
       // Keep invite context while collecting minimal local identity.
@@ -51,9 +51,7 @@ export default function InviteArrivalScreen() {
     }
 
     // TODO: Bind invite relation IDs to real local relation records when backend invite resolution is ready.
-    setInviteInfoMessage(
-      'This invitation is ready, but relationship linking is not available yet in this version.',
-    );
+    setShowUnresolvedContinuation(true);
   };
 
   return (
@@ -70,16 +68,32 @@ export default function InviteArrivalScreen() {
           <Text style={styles.reassuranceText}>You can answer in under a minute.</Text>
         </View>
 
-        <Pressable onPress={handleAddMySide} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Add my side</Text>
-        </Pressable>
-        {inviteInfoMessage ? (
-          <Text style={styles.infoMessage}>{inviteInfoMessage}</Text>
-        ) : null}
-
-        <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Not now</Text>
-        </Pressable>
+        {showUnresolvedContinuation ? (
+          <View style={styles.unresolvedCard}>
+            <Text style={styles.unresolvedTitle}>Your card is ready</Text>
+            <Text style={styles.unresolvedBody}>
+              Your invitation is saved on this device. Relationship linking is not available yet in this version.
+            </Text>
+            <Text style={styles.unresolvedSupport}>
+              The next update will connect this invitation directly to your side.
+            </Text>
+            <Pressable onPress={() => router.back()} style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Done</Text>
+            </Pressable>
+            <Pressable onPress={() => setShowUnresolvedContinuation(false)} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Not now</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <Pressable onPress={handleAddMySide} style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Add my side</Text>
+            </Pressable>
+            <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Not now</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </View>
   );
@@ -145,11 +159,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text.secondary,
   },
-  infoMessage: {
-    marginTop: -spacing.xs,
+  unresolvedCard: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  unresolvedTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  unresolvedBody: {
     fontSize: 12,
     lineHeight: 18,
+    color: colors.text.secondary,
+  },
+  unresolvedSupport: {
+    fontSize: 11,
+    lineHeight: 16,
     color: colors.text.muted,
-    textAlign: 'center',
   },
 });
