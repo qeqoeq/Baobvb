@@ -80,6 +80,8 @@ type StoreState = {
   places: Place[];
 };
 
+export type RelationshipSideKey = 'sideA' | 'sideB';
+
 export type RelationUpdate = {
   name: string;
   handle?: string;
@@ -434,11 +436,14 @@ function setArchived(id: string, archived: boolean) {
   persist();
 }
 
-function pushEvaluation(evaluation: Evaluation) {
-  state.evaluations = [...state.evaluations, evaluation];
-  state.relations = state.relations.map((relation) => {
-    if (relation.id !== evaluation.relationId) return relation;
-    const localState = relation.localState ?? buildDefaultRelationshipLocalState(relation, state.evaluations);
+function setPrivateReadingOnSide(
+  relation: Relation,
+  side: RelationshipSideKey,
+  evaluationId: string,
+): Relation {
+  const localState = relation.localState ?? buildDefaultRelationshipLocalState(relation, state.evaluations);
+
+  if (side === 'sideA') {
     return {
       ...relation,
       localState: {
@@ -448,13 +453,51 @@ function pushEvaluation(evaluation: Evaluation) {
           exists: true,
           identityStatus: relation.identityStatus,
           hasPrivateReading: true,
-          privateReadingId: evaluation.id,
+          privateReadingId: evaluationId,
         },
       },
     };
+  }
+
+  if (!localState.sideB.exists) {
+    return relation;
+  }
+
+  return {
+    ...relation,
+    localState: {
+      ...localState,
+      sideB: {
+        ...localState.sideB,
+        hasPrivateReading: true,
+        privateReadingId: evaluationId,
+      },
+    },
+  };
+}
+
+function pushEvaluationForSide(
+  evaluation: Evaluation,
+  side: RelationshipSideKey,
+): boolean {
+  const relation = state.relations.find((item) => item.id === evaluation.relationId);
+  if (!relation) return false;
+
+  const localState = relation.localState ?? buildDefaultRelationshipLocalState(relation, state.evaluations);
+  if (side === 'sideB' && !localState.sideB.exists) return false;
+
+  state.evaluations = [...state.evaluations, evaluation];
+  state.relations = state.relations.map((relation) => {
+    if (relation.id !== evaluation.relationId) return relation;
+    return setPrivateReadingOnSide(relation, side, evaluation.id);
   });
   emitChange();
   persist();
+  return true;
+}
+
+function pushEvaluation(evaluation: Evaluation) {
+  return pushEvaluationForSide(evaluation, 'sideA');
 }
 
 function resolveInviteSideB(relationId: string): boolean {
@@ -722,7 +765,11 @@ export function useRelationsStore() {
 
   const archiveRelation = (id: string) => { setArchived(id, true); };
   const restoreRelation = (id: string) => { setArchived(id, false); };
-  const addEvaluation = (evaluation: Evaluation) => { pushEvaluation(evaluation); };
+  const addEvaluation = (evaluation: Evaluation) => pushEvaluation(evaluation);
+  const attachPrivateReadingToRelationshipSide = (
+    evaluation: Evaluation,
+    side: RelationshipSideKey,
+  ) => pushEvaluationForSide(evaluation, side);
   const addRelation = (name: string, meta?: RelationSourceMeta) => {
     if (!meta) return pushRelation(name);
     return pushRelationWithSource(name, meta);
@@ -743,6 +790,7 @@ export function useRelationsStore() {
     archiveRelation,
     restoreRelation,
     addEvaluation,
+    attachPrivateReadingToRelationshipSide,
     addRelation,
     updateRelation,
     updatePlace,

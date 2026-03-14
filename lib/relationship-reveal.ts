@@ -27,6 +27,8 @@ export type RelationshipRevealPayload = {
 export type RelationshipRevealInput = MutualizationPrerequisites & {
   relationshipNameRevealed?: boolean;
   relationExists: boolean;
+  sideAHasPrivateReading?: boolean;
+  sideBHasPrivateReading?: boolean;
 };
 
 export type RelationshipRevealInputContext = {
@@ -58,14 +60,21 @@ export function buildRelationshipRevealInput(
     ? sideBState?.identityStatus ?? fallbackSideB?.identityStatus ?? 'missing'
     : 'missing';
 
+  const sideAHasPrivateReading =
+    sideAState?.hasPrivateReading ?? Boolean(context.privateReadingA);
+  const sideBHasPrivateReading =
+    sideBState?.hasPrivateReading ?? Boolean(context.privateReadingB ?? fallbackSideB?.privateReading);
+
   return {
     relationExists,
     relationshipNameRevealed: relation?.relationshipNameRevealed === true,
     sideAIdentityStatus,
     privateReadingA: context.privateReadingA ?? null,
+    sideAHasPrivateReading,
     sideBExists,
     sideBIdentityStatus,
     privateReadingB: context.privateReadingB ?? fallbackSideB?.privateReading ?? null,
+    sideBHasPrivateReading,
   };
 }
 
@@ -123,6 +132,9 @@ export function canRevealRelationship(input: RelationshipRevealInput): boolean {
 export function getSafeRelationshipRevealSummary(
   input: RelationshipRevealInput,
 ): RelationshipRevealPayload['safeSummary'] {
+  const sideAHasPrivateReading = input.sideAHasPrivateReading ?? Boolean(input.privateReadingA);
+  const sideBHasPrivateReading = input.sideBHasPrivateReading ?? Boolean(input.privateReadingB);
+
   const displayState = getRelationshipDisplayState({
     relation: input.relationExists
       ? {
@@ -132,14 +144,14 @@ export function getSafeRelationshipRevealSummary(
             sideA: {
               exists: true,
               identityStatus: input.sideAIdentityStatus,
-              hasPrivateReading: Boolean(input.privateReadingA),
+              hasPrivateReading: sideAHasPrivateReading,
               privateReadingId: undefined,
               resolvedAt: undefined,
             },
             sideB: {
               exists: input.sideBExists,
               identityStatus: input.sideBExists ? (input.sideBIdentityStatus ?? 'missing') : 'missing',
-              hasPrivateReading: Boolean(input.privateReadingB),
+              hasPrivateReading: sideBHasPrivateReading,
               privateReadingId: undefined,
               resolvedAt: undefined,
             },
