@@ -160,7 +160,7 @@ export default function GardenScreen() {
                     <Text style={styles.mappingReadingLine}>
                       {entry.readingStatus === 'Read'
                         ? `${entry.badgeLabel} · Score ${entry.foundationalScore}`
-                        : 'Unread · Read this link'}
+                        : 'Unread · Start reading'}
                     </Text>
                   </View>
                   <Text
@@ -213,7 +213,7 @@ export default function GardenScreen() {
 
         {archivedRelations.length > 0 && (
           <Pressable onPress={() => router.push('../relation/archived')} style={styles.archivedRow}>
-            <Text style={styles.archivedRowText}>Open archived links</Text>
+            <Text style={styles.archivedRowText}>Open archived relationships</Text>
           </Pressable>
         )}
       </View>

@@ -43,7 +43,7 @@ export default function EvaluateScreen() {
       return;
     }
     if (hasEvaluation) {
-      router.replace(`../${id}`);
+      router.back();
     }
   }, [id, relation, hasEvaluation]);
 
@@ -93,14 +93,14 @@ export default function EvaluateScreen() {
     };
 
     addEvaluation(evaluation);
-    router.replace(`../${relation.id}`);
+    router.back();
   }, [allRated, relation, isSubmitting, ratings, addEvaluation]);
 
   if (!relation || hasEvaluation) {
     return (
       <View style={styles.screen}>
         <View style={styles.fallbackWrap}>
-          <Text style={styles.fallbackText}>Opening link...</Text>
+          <Text style={styles.fallbackText}>Opening relationship...</Text>
         </View>
       </View>
     );
@@ -127,7 +127,7 @@ export default function EvaluateScreen() {
         </View>
         <Text style={styles.subtitle}>
           Rate each pillar from 1 to 5 to capture your foundational reading of
-          this link.
+          this relationship.
         </Text>
         <View style={styles.progressWrap}>
           <View style={styles.progressHead}>

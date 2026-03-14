@@ -72,7 +72,7 @@ export default function EditRelationScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>Edit relation</Text>
         <Text style={styles.subtitle}>
-          Refine identity fields without changing link origin.
+          Refine identity fields without changing relationship origin.
         </Text>
 
         <View style={styles.previewAvatar}>
@@ -133,7 +133,7 @@ export default function EditRelationScreen() {
         <Pressable onPress={save} style={styles.primaryButton}>
           <Text style={styles.primaryButtonText}>Save relation</Text>
         </Pressable>
-        <Text style={styles.helperText}>Changes appear immediately in Garden, Circle, and this link.</Text>
+        <Text style={styles.helperText}>Changes appear immediately in Garden, Circle, and this relationship.</Text>
         <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>Cancel</Text>
         </Pressable>
