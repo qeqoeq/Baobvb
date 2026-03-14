@@ -8,6 +8,8 @@ export type SharedRevealStatus =
 
 export type SharedRelationshipRevealRecord = {
   relationship_id: string;
+  side_a_user_id: string | null;
+  side_b_user_id: string | null;
   status: SharedRevealStatus;
   side_a_reading_id: string | null;
   side_b_reading_id: string | null;
@@ -26,14 +28,5 @@ export type SharedRelationshipRevealRecord = {
 
 export type SharedRevealRecordUpsertInput = {
   relationshipId: string;
-  status?: SharedRevealStatus;
-  cookingStartedAt?: string | null;
-  unlockAt?: string | null;
-  readyAt?: string | null;
-  firstViewedAt?: string | null;
-  revealedAt?: string | null;
-  mutualScore?: number | null;
-  tier?: Tier | null;
-  relationshipNameRevealed?: boolean;
-  finalizedVersion?: number;
+  participantSide: 'sideA' | 'sideB';
 };
