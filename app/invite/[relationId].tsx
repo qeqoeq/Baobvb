@@ -1,0 +1,158 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { colors } from '../../constants/colors';
+import { radius, spacing } from '../../constants/spacing';
+import { useRelationsStore } from '../../store/useRelationsStore';
+
+export default function InviteArrivalScreen() {
+  const { relationId } = useLocalSearchParams<{ relationId: string }>();
+  const { me, relations, evaluations } = useRelationsStore();
+  const [inviteInfoMessage, setInviteInfoMessage] = useState<string | null>(null);
+
+  const relation = useMemo(
+    () => relations.find((item) => item.id === relationId) ?? null,
+    [relations, relationId],
+  );
+
+  const hasLocalIdentity = Boolean(
+    me?.displayName?.trim() &&
+    me?.handle?.trim(),
+  );
+
+  const handleAddMySide = () => {
+    setInviteInfoMessage(null);
+
+    if (!hasLocalIdentity) {
+      // TODO: Replace with a dedicated lightweight invited identity step.
+      router.push({
+        pathname: '/me/edit',
+        params: {
+          fromInvite: '1',
+          invitedRelationId: relationId || '',
+        },
+      });
+      return;
+    }
+
+    if (relation) {
+      const hasReading = evaluations.some((evaluation) => evaluation.relationId === relation.id);
+      if (!hasReading) {
+        router.push({
+          pathname: '/relation/evaluate/[id]',
+          params: { id: relation.id },
+        });
+        return;
+      }
+
+      router.push({
+        pathname: '/relation/[id]',
+        params: { id: relation.id },
+      });
+      return;
+    }
+
+    // TODO: Bind invite relation IDs to real local relation records when backend invite resolution is ready.
+    setInviteInfoMessage(
+      'This invitation is ready, but relationship linking is not available yet in this version.',
+    );
+  };
+
+  return (
+    <View style={styles.screen}>
+      <View style={styles.card}>
+        <Text style={styles.title}>Reveal your relationship together</Text>
+        <Text style={styles.body}>
+          Someone saved one side of this relationship on Baobab. Add your side to reveal it together.
+        </Text>
+
+        <View style={styles.reassuranceBlock}>
+          <Text style={styles.reassuranceText}>Your reading stays private until both sides are complete.</Text>
+          <Text style={styles.reassuranceText}>There is no public score.</Text>
+          <Text style={styles.reassuranceText}>You can answer in under a minute.</Text>
+        </View>
+
+        <Pressable onPress={handleAddMySide} style={styles.primaryButton}>
+          <Text style={styles.primaryButtonText}>Add my side</Text>
+        </Pressable>
+        {inviteInfoMessage ? (
+          <Text style={styles.infoMessage}>{inviteInfoMessage}</Text>
+        ) : null}
+
+        <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>Not now</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+    padding: spacing.lg,
+    justifyContent: 'center',
+  },
+  card: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  title: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  body: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.text.secondary,
+  },
+  reassuranceBlock: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  reassuranceText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.secondary,
+  },
+  primaryButton: {
+    marginTop: spacing.xs,
+    borderRadius: radius.md,
+    backgroundColor: colors.accent.deepTeal,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  primaryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  secondaryButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text.secondary,
+  },
+  infoMessage: {
+    marginTop: -spacing.xs,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.muted,
+    textAlign: 'center',
+  },
+});
