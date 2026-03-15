@@ -9,7 +9,7 @@ import {
   type PillarRating,
   type Tier,
 } from '../lib/evaluation';
-import { loadPersistedState, persistState } from '../lib/storage';
+import { clearPersistedState, loadPersistedState, persistState } from '../lib/storage';
 
 export type RelationshipSideIdentityStatus = 'missing' | 'draft' | 'verified';
 
@@ -969,6 +969,23 @@ function setRelation(id: string, update: RelationUpdate): boolean {
   return true;
 }
 
+function resetDevStateToSeed() {
+  state.me = { ...SEED_ME };
+  state.relations = [...SEED_RELATIONS];
+  state.evaluations = [...SEED_EVALUATIONS];
+  state.places = [...SEED_PLACES];
+  hydrated = true;
+  emitChange();
+  void clearPersistedState().finally(() => {
+    persistState<StoreState>({
+      me: state.me,
+      relations: state.relations,
+      evaluations: state.evaluations,
+      places: state.places,
+    });
+  });
+}
+
 // ── hook ───────────────────────────────────────────────────────────────
 
 export function useRelationsStore() {
@@ -1000,6 +1017,7 @@ export function useRelationsStore() {
   const startCookingReveal = (relationId: string) => finalizeCookingStart(relationId);
   const syncRevealReadyState = (relationId: string) => markRevealReadyIfUnlocked(relationId);
   const revealMutualRelationship = (relationId: string) => openMutualReveal(relationId);
+  const resetDevState = () => resetDevStateToSeed();
 
   return {
     me,
@@ -1019,6 +1037,7 @@ export function useRelationsStore() {
     startCookingReveal,
     syncRevealReadyState,
     revealMutualRelationship,
+    resetDevState,
     updateMe,
     addPlace,
     isHydrated,

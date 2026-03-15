@@ -128,7 +128,10 @@ export default function EvaluateScreen() {
       // Shared backend remains additive; local-first flow stays primary if shared call fails.
     }
 
-    router.back();
+    router.dismissTo({
+      pathname: '/relation/[id]',
+      params: { id: relation.id },
+    });
   }, [allRated, relation, isSubmitting, ratings, attachPrivateReadingToRelationshipSide, targetSide]);
 
   if (!relation || !canEvaluateSideB || sideAlreadyHasReading) {

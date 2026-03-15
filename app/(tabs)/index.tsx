@@ -9,7 +9,7 @@ import { getFoundationalReadings, getGardenMicroSignal } from '../../lib/foundat
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function GardenScreen() {
-  const { me, activeRelations, archivedRelations, evaluations } = useRelationsStore();
+  const { me, activeRelations, archivedRelations, evaluations, resetDevState } = useRelationsStore();
 
   const entries = useMemo(
     () => getFoundationalReadings(activeRelations, evaluations),
@@ -136,10 +136,26 @@ export default function GardenScreen() {
         ) : (
           <View style={styles.mappingList}>
             {continueMapping.map((entry) => {
-              const accent = entry.linkTier
+              const isRevealed = entry.relation.localState.revealSnapshot.status === 'revealed';
+              const accent = isRevealed && entry.linkTier
                 ? getTierAccent(entry.linkTier)
                 : colors.accent.warmGold;
               const signal = getGardenMicroSignal(entry);
+              const mappingLine = entry.readingStatus === 'Read'
+                ? (isRevealed
+                  ? `${entry.badgeLabel} · Score ${entry.foundationalScore}`
+                  : 'Private reading saved')
+                : 'Unread · Start private reading';
+              const signalText = isRevealed
+                ? signal.text
+                : (entry.readingStatus === 'Read' ? 'Waiting' : 'Unread');
+              const signalStyle = isRevealed
+                ? (signal.tone === 'nurture'
+                  ? styles.mappingSignalNurture
+                  : signal.tone === 'stable'
+                    ? styles.mappingSignalStable
+                    : styles.mappingSignalUnread)
+                : styles.mappingSignalUnread;
 
               return (
                 <Pressable
@@ -158,22 +174,16 @@ export default function GardenScreen() {
                       {entry.relation.handle || 'No handle'} 
                     </Text>
                     <Text style={styles.mappingReadingLine}>
-                      {entry.readingStatus === 'Read'
-                        ? `${entry.badgeLabel} · Score ${entry.foundationalScore}`
-                        : 'Unread · Start reading'}
+                      {mappingLine}
                     </Text>
                   </View>
                   <Text
                     style={[
                       styles.mappingSignal,
-                      signal.tone === 'nurture'
-                        ? styles.mappingSignalNurture
-                        : signal.tone === 'stable'
-                          ? styles.mappingSignalStable
-                          : styles.mappingSignalUnread,
+                      signalStyle,
                     ]}
                   >
-                    {signal.text}
+                    {signalText}
                   </Text>
                   <Text style={styles.mappingChevron}>›</Text>
                 </Pressable>
@@ -181,6 +191,9 @@ export default function GardenScreen() {
             })}
           </View>
         )}
+        <Text style={styles.sectionSupportText}>
+          Showing {continueMapping.length} most recent relationship cards out of {activeRelations.length} active.
+        </Text>
       </View>
 
       <View style={styles.section}>
@@ -216,10 +229,18 @@ export default function GardenScreen() {
             <Text style={styles.archivedRowText}>Open archived relationships</Text>
           </Pressable>
         )}
+        <Text style={styles.pulseSupportText}>
+          Pulse counts reflect your full garden, not only the cards shown above.
+        </Text>
       </View>
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>Baobab — local-first, private by design.</Text>
+        {__DEV__ ? (
+          <Pressable onPress={resetDevState} style={styles.devResetButton}>
+            <Text style={styles.devResetButtonText}>Reset local dev state</Text>
+          </Pressable>
+        ) : null}
       </View>
     </ScrollView>
   );
@@ -239,6 +260,11 @@ const styles = StyleSheet.create({
 
   section: {
     gap: spacing.sm,
+  },
+  sectionSupportText: {
+    fontSize: 11,
+    color: colors.text.muted,
+    lineHeight: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -619,14 +645,33 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontWeight: '600',
   },
+  pulseSupportText: {
+    fontSize: 11,
+    color: colors.text.muted,
+    lineHeight: 16,
+  },
 
   footer: {
     alignItems: 'center',
     marginTop: spacing.xs,
+    gap: spacing.xs,
   },
   footerText: {
     fontSize: 12,
     color: colors.text.muted,
     fontStyle: 'italic',
+  },
+  devResetButton: {
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.secondary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  devResetButtonText: {
+    fontSize: 11,
+    color: colors.text.muted,
+    fontWeight: '600',
   },
 });

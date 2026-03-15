@@ -18,3 +18,11 @@ export async function persistState<T>(data: T): Promise<void> {
     // best-effort — silent fail
   }
 }
+
+export async function clearPersistedState(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(KEY);
+  } catch {
+    // best-effort — silent fail
+  }
+}

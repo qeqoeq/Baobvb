@@ -115,7 +115,9 @@ export default function RelationDetailScreen() {
   }
 
   const relationForDisplay = effectiveRelation ?? relation;
-  const nameRevealed = isRelationshipNameRevealed(relationForDisplay);
+  const nameRevealed =
+    relationForDisplay.localState.revealSnapshot.status === 'revealed' &&
+    isRelationshipNameRevealed(relationForDisplay);
   const evaluation = reading?.foundationalEvaluation ?? null;
   const accent = nameRevealed && reading?.linkTier
     ? getTierAccent(reading.linkTier)
@@ -228,7 +230,9 @@ export default function RelationDetailScreen() {
       {evaluation ? (
         <View style={styles.readingSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>Foundational reading</Text>
+            <Text style={styles.sectionLabel}>
+              {nameRevealed ? 'Foundational reading' : 'Private reading'}
+            </Text>
             <View style={styles.sectionLine} />
           </View>
 
@@ -322,7 +326,9 @@ export default function RelationDetailScreen() {
 
           <View style={styles.readingNote}>
             <Text style={styles.readingNoteText}>
-              This foundational reading captures the current shape of this relationship.
+              {nameRevealed
+                ? 'This foundational reading captures the current shape of this relationship.'
+                : 'Your private side is saved and stays hidden until reveal.'}
             </Text>
           </View>
         </View>
