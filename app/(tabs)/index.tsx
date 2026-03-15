@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
@@ -8,12 +8,19 @@ import { getTierAccent } from '../../lib/evaluation';
 import { getFoundationalReadings, getGardenMicroSignal } from '../../lib/foundational-reading';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
+type GardenFilterKey = 'active' | 'read' | 'unread' | 'toNurture' | 'archived';
+
 export default function GardenScreen() {
   const { me, activeRelations, archivedRelations, evaluations, resetDevState } = useRelationsStore();
+  const [selectedFilter, setSelectedFilter] = useState<GardenFilterKey>('active');
 
   const entries = useMemo(
     () => getFoundationalReadings(activeRelations, evaluations),
     [activeRelations, evaluations],
+  );
+  const archivedEntries = useMemo(
+    () => getFoundationalReadings(archivedRelations, evaluations),
+    [archivedRelations, evaluations],
   );
 
   const readCount = useMemo(
@@ -29,10 +36,40 @@ export default function GardenScreen() {
     [entries],
   );
 
-  const continueMapping = useMemo(
-    () => [...entries].sort((a, b) => b.recentDate.localeCompare(a.recentDate)).slice(0, 4),
-    [entries],
-  );
+  const filteredEntries = useMemo(() => {
+    const sortedActive = [...entries].sort((a, b) => b.recentDate.localeCompare(a.recentDate));
+    const sortedArchived = [...archivedEntries].sort((a, b) => b.recentDate.localeCompare(a.recentDate));
+
+    switch (selectedFilter) {
+      case 'read':
+        return sortedActive.filter((entry) => entry.readingStatus === 'Read');
+      case 'unread':
+        return sortedActive.filter((entry) => entry.readingStatus === 'Unread');
+      case 'toNurture':
+        return sortedActive.filter((entry) => entry.toNurture);
+      case 'archived':
+        return sortedArchived;
+      case 'active':
+      default:
+        return sortedActive;
+    }
+  }, [entries, archivedEntries, selectedFilter]);
+
+  const filterLabel = useMemo(() => {
+    switch (selectedFilter) {
+      case 'read':
+        return 'Read';
+      case 'unread':
+        return 'Unread';
+      case 'toNurture':
+        return 'To nurture';
+      case 'archived':
+        return 'Archived';
+      case 'active':
+      default:
+        return 'Active';
+    }
+  }, [selectedFilter]);
 
   const trustStatus = useMemo(() => {
     if (me.trustPassportStatus === 'new') return 'Passport not mapped yet';
@@ -123,11 +160,11 @@ export default function GardenScreen() {
           <View style={styles.sectionLine} />
         </View>
 
-        {continueMapping.length === 0 ? (
+        {filteredEntries.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>No people mapped yet</Text>
+            <Text style={styles.emptyTitle}>No relationships in this filter</Text>
             <Text style={styles.emptyText}>
-              Add your first person to start building your trust garden.
+              Try another Garden filter or add a new relationship.
             </Text>
             <Pressable onPress={() => router.push('../relation/add')} style={styles.emptyAction}>
               <Text style={styles.emptyActionText}>Add a person</Text>
@@ -135,24 +172,33 @@ export default function GardenScreen() {
           </View>
         ) : (
           <View style={styles.mappingList}>
-            {continueMapping.map((entry) => {
+            {filteredEntries.map((entry) => {
               const isRevealed = entry.relation.localState.revealSnapshot.status === 'revealed';
               const accent = isRevealed && entry.linkTier
                 ? getTierAccent(entry.linkTier)
                 : colors.accent.warmGold;
-              const signal = getGardenMicroSignal(entry);
+              const revealStatus = entry.relation.localState.revealSnapshot.status;
+              const signal = isRevealed ? getGardenMicroSignal(entry) : null;
               const mappingLine = entry.readingStatus === 'Read'
                 ? (isRevealed
                   ? `${entry.badgeLabel} · Score ${entry.foundationalScore}`
                   : 'Private reading saved')
                 : 'Unread · Start private reading';
               const signalText = isRevealed
-                ? signal.text
-                : (entry.readingStatus === 'Read' ? 'Waiting' : 'Unread');
+                ? signal?.text ?? 'Stable'
+                : (
+                  revealStatus === 'reveal_ready'
+                    ? 'Ready'
+                    : revealStatus === 'cooking_reveal'
+                      ? 'Cooking'
+                      : entry.readingStatus === 'Read'
+                        ? 'Waiting'
+                        : 'Unread'
+                );
               const signalStyle = isRevealed
-                ? (signal.tone === 'nurture'
+                ? (signal?.tone === 'nurture'
                   ? styles.mappingSignalNurture
-                  : signal.tone === 'stable'
+                  : signal?.tone === 'stable'
                     ? styles.mappingSignalStable
                     : styles.mappingSignalUnread)
                 : styles.mappingSignalUnread;
@@ -192,7 +238,7 @@ export default function GardenScreen() {
           </View>
         )}
         <Text style={styles.sectionSupportText}>
-          Showing {continueMapping.length} most recent relationship cards out of {activeRelations.length} active.
+          Showing {filteredEntries.length} {filterLabel.toLowerCase()} relationship card{filteredEntries.length > 1 ? 's' : ''}.
         </Text>
       </View>
 
@@ -202,26 +248,41 @@ export default function GardenScreen() {
           <View style={styles.sectionLine} />
         </View>
         <View style={styles.pulseRow}>
-          <View style={styles.pulseChip}>
+          <Pressable
+            onPress={() => setSelectedFilter('active')}
+            style={[styles.pulseChip, selectedFilter === 'active' && styles.pulseChipActive]}
+          >
             <Text style={styles.pulseChipValue}>{activeRelations.length}</Text>
             <Text style={styles.pulseChipLabel}>Active</Text>
-          </View>
-          <View style={styles.pulseChip}>
+          </Pressable>
+          <Pressable
+            onPress={() => setSelectedFilter('read')}
+            style={[styles.pulseChip, selectedFilter === 'read' && styles.pulseChipActive]}
+          >
             <Text style={styles.pulseChipValue}>{readCount}</Text>
             <Text style={styles.pulseChipLabel}>Read</Text>
-          </View>
-          <View style={styles.pulseChip}>
+          </Pressable>
+          <Pressable
+            onPress={() => setSelectedFilter('unread')}
+            style={[styles.pulseChip, selectedFilter === 'unread' && styles.pulseChipActive]}
+          >
             <Text style={styles.pulseChipValue}>{unreadCount}</Text>
             <Text style={styles.pulseChipLabel}>Unread</Text>
-          </View>
-          <View style={styles.pulseChip}>
+          </Pressable>
+          <Pressable
+            onPress={() => setSelectedFilter('toNurture')}
+            style={[styles.pulseChip, selectedFilter === 'toNurture' && styles.pulseChipActive]}
+          >
             <Text style={styles.pulseChipValue}>{toNurtureCount}</Text>
             <Text style={styles.pulseChipLabel}>To nurture</Text>
-          </View>
-          <View style={styles.pulseChip}>
+          </Pressable>
+          <Pressable
+            onPress={() => setSelectedFilter('archived')}
+            style={[styles.pulseChip, selectedFilter === 'archived' && styles.pulseChipActive]}
+          >
             <Text style={styles.pulseChipValue}>{archivedRelations.length}</Text>
             <Text style={styles.pulseChipLabel}>Archived</Text>
-          </View>
+          </Pressable>
         </View>
 
         {archivedRelations.length > 0 && (
@@ -230,7 +291,7 @@ export default function GardenScreen() {
           </Pressable>
         )}
         <Text style={styles.pulseSupportText}>
-          Pulse counts reflect your full garden, not only the cards shown above.
+          Tap a chip to filter visible relationship cards.
         </Text>
       </View>
 
@@ -554,6 +615,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: spacing.xs + 2,
+  },
+  pulseChipActive: {
+    borderColor: colors.accent.deepTeal + '99',
+    backgroundColor: colors.accent.deepTeal + '14',
   },
   pulseChipValue: {
     fontSize: 13,
