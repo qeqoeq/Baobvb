@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type {
+  SharedReadingPayload,
   SharedRelationshipRevealRecord,
   SharedRevealRecordUpsertInput,
 } from './reveal-shared-types';
@@ -10,10 +11,6 @@ const TABLE = 'shared_relationship_reveals';
 
 function getSideUserColumn(side: RelationshipSideKey): 'side_a_user_id' | 'side_b_user_id' {
   return side === 'sideA' ? 'side_a_user_id' : 'side_b_user_id';
-}
-
-function getSideReadingColumn(side: RelationshipSideKey): 'side_a_reading_id' | 'side_b_reading_id' {
-  return side === 'sideA' ? 'side_a_reading_id' : 'side_b_reading_id';
 }
 
 function assertCurrentUserOwnsSide(
@@ -81,34 +78,58 @@ export async function attachSharedPrivateReadingReferenceForCurrentUser(
   relationshipId: string,
   side: RelationshipSideKey,
   readingId: string,
+  readingPayload: SharedReadingPayload,
 ): Promise<SharedRelationshipRevealRecord> {
-  const userId = await getAuthenticatedUserId();
-  const sideUserColumn = getSideUserColumn(side);
-  const readingColumn = getSideReadingColumn(side);
-  const existing = await getSharedRevealRecordForCurrentUser(relationshipId);
-
-  if (existing) {
-    assertCurrentUserOwnsSide(existing, side, userId);
-  }
-
-  const { data, error } = await supabase
-    .from(TABLE)
-    .upsert(
-      {
-        relationship_id: relationshipId,
-        [sideUserColumn]: userId,
-        [readingColumn]: readingId,
-      },
-      { onConflict: 'relationship_id' },
-    )
-    .select('*')
-    .single();
+  await getAuthenticatedUserId();
+  const { data, error } = await supabase.rpc('attach_shared_private_reading_reference', {
+    p_relationship_id: relationshipId,
+    p_side: side,
+    p_reading_id: readingId,
+    p_reading_payload: readingPayload,
+  });
 
   if (error) {
     throw error;
   }
 
   return data as SharedRelationshipRevealRecord;
+}
+
+async function runSharedLifecycleAction(
+  rpcName:
+    | 'start_shared_cooking_reveal_if_ready'
+    | 'mark_shared_reveal_ready_if_unlocked'
+    | 'open_shared_reveal',
+  relationshipId: string,
+): Promise<SharedRelationshipRevealRecord | null> {
+  await getAuthenticatedUserId();
+  const { data, error } = await supabase.rpc(rpcName, {
+    p_relationship_id: relationshipId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as SharedRelationshipRevealRecord | null) ?? null;
+}
+
+export async function startSharedCookingRevealIfReady(
+  relationshipId: string,
+): Promise<SharedRelationshipRevealRecord | null> {
+  return runSharedLifecycleAction('start_shared_cooking_reveal_if_ready', relationshipId);
+}
+
+export async function markSharedRevealReadyIfUnlocked(
+  relationshipId: string,
+): Promise<SharedRelationshipRevealRecord | null> {
+  return runSharedLifecycleAction('mark_shared_reveal_ready_if_unlocked', relationshipId);
+}
+
+export async function openSharedReveal(
+  relationshipId: string,
+): Promise<SharedRelationshipRevealRecord | null> {
+  return runSharedLifecycleAction('open_shared_reveal', relationshipId);
 }
 
 // Backward-compatible aliases while Day 2 remains helper-only.

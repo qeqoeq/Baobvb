@@ -1,4 +1,4 @@
-import type { Tier } from './evaluation';
+import type { PillarKey, PillarRating, Tier } from './evaluation';
 
 export type SharedRevealStatus =
   | 'waiting_other_side'
@@ -13,6 +13,8 @@ export type SharedRelationshipRevealRecord = {
   status: SharedRevealStatus;
   side_a_reading_id: string | null;
   side_b_reading_id: string | null;
+  side_a_reading_payload: SharedReadingPayload | null;
+  side_b_reading_payload: SharedReadingPayload | null;
   cooking_started_at: string | null;
   unlock_at: string | null;
   ready_at: string | null;
@@ -30,3 +32,5 @@ export type SharedRevealRecordUpsertInput = {
   relationshipId: string;
   participantSide: 'sideA' | 'sideB';
 };
+
+export type SharedReadingPayload = Record<PillarKey, PillarRating>;

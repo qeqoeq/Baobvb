@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
@@ -20,6 +20,12 @@ import {
   buildRelationshipRevealInput,
   getSafeRelationshipRevealSummary,
 } from '../../lib/relationship-reveal';
+import { applyEffectiveRevealToRelation } from '../../lib/relationship-reveal-precedence';
+import {
+  getSharedRevealRecordForCurrentUser,
+  markSharedRevealReadyIfUnlocked,
+  openSharedReveal,
+} from '../../lib/reveal-shared-repo';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 const PILLAR_ORDER: PillarKey[] = [
@@ -33,6 +39,9 @@ const PILLAR_ORDER: PillarKey[] = [
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
   const { relations, evaluations, syncRevealReadyState, revealMutualRelationship } = useRelationsStore();
+  const [sharedReveal, setSharedReveal] = useState<Awaited<
+    ReturnType<typeof getSharedRevealRecordForCurrentUser>
+  > | null>(null);
 
   const relation = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
@@ -44,6 +53,19 @@ export default function RelationDetailScreen() {
     [relation, evaluations],
   );
 
+  const refreshSharedReveal = useCallback(async () => {
+    if (!relation) {
+      setSharedReveal(null);
+      return;
+    }
+    try {
+      const record = await getSharedRevealRecordForCurrentUser(relation.id);
+      setSharedReveal(record);
+    } catch {
+      setSharedReveal(null);
+    }
+  }, [relation]);
+
   useEffect(() => {
     if (!id || !relation) {
       router.back();
@@ -51,11 +73,36 @@ export default function RelationDetailScreen() {
   }, [id, relation]);
 
   useEffect(() => {
-    if (!relation) return;
-    if (relation.localState.revealSnapshot.status === 'cooking_reveal') {
+    void refreshSharedReveal();
+  }, [refreshSharedReveal]);
+
+  const effectiveRelation = useMemo(
+    () => (relation ? applyEffectiveRevealToRelation(relation, sharedReveal) : null),
+    [relation, sharedReveal],
+  );
+
+  useEffect(() => {
+    if (!relation || !effectiveRelation) return;
+    if (effectiveRelation.localState.revealSnapshot.status === 'cooking_reveal') {
+      if (sharedReveal) {
+        const unlockAt = effectiveRelation.localState.revealSnapshot.unlockAt;
+        const unlockAtMs = unlockAt ? Date.parse(unlockAt) : NaN;
+        if (!Number.isFinite(unlockAtMs) || Date.now() < unlockAtMs) {
+          return;
+        }
+        void (async () => {
+          try {
+            await markSharedRevealReadyIfUnlocked(relation.id);
+            await refreshSharedReveal();
+          } catch {
+            // Local fallback stays available when shared access is unavailable.
+          }
+        })();
+        return;
+      }
       syncRevealReadyState(relation.id);
     }
-  }, [relation, syncRevealReadyState]);
+  }, [relation, effectiveRelation, sharedReveal, syncRevealReadyState, refreshSharedReveal]);
 
   if (!relation) {
     return (
@@ -67,7 +114,8 @@ export default function RelationDetailScreen() {
     );
   }
 
-  const nameRevealed = isRelationshipNameRevealed(relation);
+  const relationForDisplay = effectiveRelation ?? relation;
+  const nameRevealed = isRelationshipNameRevealed(relationForDisplay);
   const evaluation = reading?.foundationalEvaluation ?? null;
   const accent = nameRevealed && reading?.linkTier
     ? getTierAccent(reading.linkTier)
@@ -89,9 +137,9 @@ export default function RelationDetailScreen() {
     ? getRelationshipLexiconEntry(reading.linkTier)
     : null;
   const visibleTierLabel = nameRevealed && evaluation ? badgeLabel : evaluation ? 'Private reading' : 'Unread';
-  const revealStatus = relation.localState.revealSnapshot.status;
-  const frozenMutualScore = relation.localState.revealSnapshot.mutualScore;
-  const frozenMutualTier = relation.localState.revealSnapshot.tier;
+  const revealStatus = relationForDisplay.localState.revealSnapshot.status;
+  const frozenMutualScore = relationForDisplay.localState.revealSnapshot.mutualScore;
+  const frozenMutualTier = relationForDisplay.localState.revealSnapshot.tier;
   const visibleScore = nameRevealed
     ? (frozenMutualScore ?? evaluation?.score ?? null)
     : null;
@@ -100,12 +148,26 @@ export default function RelationDetailScreen() {
     : 'Private reading';
   const safeRevealSummary = getSafeRelationshipRevealSummary(
     buildRelationshipRevealInput({
-      relation,
+      relation: relationForDisplay,
       privateReadingA: evaluation,
     }),
   );
 
-  const handleOpenReveal = () => {
+  const handleOpenReveal = async () => {
+    if (sharedReveal) {
+      try {
+        const updated = await openSharedReveal(relation.id);
+        setSharedReveal(updated);
+        if (!updated || updated.status !== 'revealed') {
+          Alert.alert('Reveal not ready', 'Baobab is still preparing this reveal.');
+        }
+        return;
+      } catch {
+        Alert.alert('Reveal unavailable', 'Shared reveal is not available right now.');
+        return;
+      }
+    }
+
     const opened = revealMutualRelationship(relation.id);
     if (!opened) {
       Alert.alert('Reveal not ready', 'Baobab is still preparing this reveal.');

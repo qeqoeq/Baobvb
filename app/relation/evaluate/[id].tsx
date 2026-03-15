@@ -11,6 +11,10 @@ import {
   type PillarKey,
   type PillarRating,
 } from '../../../lib/evaluation';
+import {
+  attachSharedPrivateReadingReferenceForCurrentUser,
+  startSharedCookingRevealIfReady,
+} from '../../../lib/reveal-shared-repo';
 import type { RelationshipSideKey } from '../../../store/useRelationsStore';
 import { useRelationsStore } from '../../../store/useRelationsStore';
 
@@ -88,7 +92,7 @@ export default function EvaluateScreen() {
     setRatings((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!allRated || !relation || isSubmitting) return;
 
     setIsSubmitting(true);
@@ -110,6 +114,18 @@ export default function EvaluateScreen() {
       Alert.alert('Could not save reading', 'This side is not ready for a private reading yet.');
       setIsSubmitting(false);
       return;
+    }
+
+    try {
+      await attachSharedPrivateReadingReferenceForCurrentUser(
+        relation.id,
+        targetSide,
+        evaluation.id,
+        finalRatings,
+      );
+      await startSharedCookingRevealIfReady(relation.id);
+    } catch {
+      // Shared backend remains additive; local-first flow stays primary if shared call fails.
     }
 
     router.back();
@@ -203,7 +219,7 @@ export default function EvaluateScreen() {
       </View>
 
       <Pressable
-        onPress={handleSubmit}
+        onPress={() => void handleSubmit()}
         disabled={!allRated || isSubmitting}
         style={[
           styles.submitButton,
