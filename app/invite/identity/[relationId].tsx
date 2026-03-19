@@ -8,7 +8,7 @@ import { deriveAvatarSeed, normalizeHandleInput } from '../../../lib/identity-fo
 import { useRelationsStore } from '../../../store/useRelationsStore';
 
 export default function InviteIdentityScreen() {
-  const { relationId } = useLocalSearchParams<{ relationId: string }>();
+  const { relationId, token } = useLocalSearchParams<{ relationId: string; token?: string }>();
   const { updateMe } = useRelationsStore();
   const [displayName, setDisplayName] = useState('');
   const [handleInput, setHandleInput] = useState('');
@@ -17,7 +17,7 @@ export default function InviteIdentityScreen() {
   const returnToInvite = () => {
     router.replace({
       pathname: '/invite/[relationId]',
-      params: { relationId: relationId || '' },
+      params: { relationId: relationId || '', token: token || '' },
     });
   };
 

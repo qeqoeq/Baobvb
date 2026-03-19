@@ -22,6 +22,7 @@ import {
 } from '../../lib/relationship-reveal';
 import { applyEffectiveRevealToRelation } from '../../lib/relationship-reveal-precedence';
 import {
+  createRelationshipInviteForCurrentUser,
   getSharedRevealRecordForCurrentUser,
   markSharedRevealReadyIfUnlocked,
   openSharedReveal,
@@ -186,10 +187,19 @@ export default function RelationDetailScreen() {
 
   const handleInviteToReveal = async () => {
     try {
-      const { message, url } = getRelationshipInviteMessage(relation.id);
+      const invite = await createRelationshipInviteForCurrentUser(relation.id, 'sideA');
+      const { message, url } = getRelationshipInviteMessage({
+        relationId: relation.id,
+        inviteToken: invite.invite_token,
+      });
       await Share.share({ message: url ? `${message}\n${url}` : message });
-    } catch {
-      Alert.alert('Invite to reveal', 'Sharing is not available on this device.');
+    } catch (error) {
+      const description = error instanceof Error ? error.message : '';
+      if (description.includes('Authentication required')) {
+        Alert.alert('Sign in required', 'Sign in with Apple to invite someone to reveal.');
+        return;
+      }
+      Alert.alert('Invite to reveal', 'Sharing is not available right now.');
     }
   };
 

@@ -5,16 +5,24 @@ export type RelationshipInvitePayload = {
   url?: string;
 };
 
-function buildRelationshipInviteUrl(relationId: string): string | undefined {
+export function buildRelationshipInviteUrl(
+  relationId: string,
+  inviteToken: string,
+): string | undefined {
   const cleanRelationId = relationId.trim();
-  if (!cleanRelationId) return undefined;
+  const cleanInviteToken = inviteToken.trim();
+  if (!cleanRelationId || !cleanInviteToken) return undefined;
 
   const encodedRelationId = encodeURIComponent(cleanRelationId);
-  return Linking.createURL(`invite/${encodedRelationId}`);
+  const encodedInviteToken = encodeURIComponent(cleanInviteToken);
+  return Linking.createURL(`invite/${encodedRelationId}?token=${encodedInviteToken}`);
 }
 
-export function getRelationshipInviteMessage(relationId: string): RelationshipInvitePayload {
-  const url = buildRelationshipInviteUrl(relationId);
+export function getRelationshipInviteMessage(params: {
+  relationId: string;
+  inviteToken: string;
+}): RelationshipInvitePayload {
+  const url = buildRelationshipInviteUrl(params.relationId, params.inviteToken);
   return {
     message:
       'I saved my side of our relationship on Baobab. Join me to reveal it together.',

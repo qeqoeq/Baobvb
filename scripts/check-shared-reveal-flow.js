@@ -42,7 +42,7 @@ function sleep(ms) {
 }
 
 function buildRelationId(runId, caseKey) {
-  return `day4-test-${runId}-${caseKey}-${Math.random().toString(36).slice(2, 8)}`;
+  return `day6-test-${runId}-${caseKey}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 async function signIn(client, label) {
@@ -62,6 +62,32 @@ async function attachReading(client, relationshipId, side, readingId, payload) {
   });
   if (error) throw new Error(`attach_shared_private_reading_reference failed: ${error.message}`);
   return normalizeRpcRow(data);
+}
+
+async function createInvite(client, relationshipId, inviterSide, ttlMinutes = 60) {
+  const { data, error } = await client.rpc('create_relationship_invite', {
+    p_relationship_id: relationshipId,
+    p_inviter_side: inviterSide,
+    p_ttl_minutes: ttlMinutes,
+  });
+  if (error) throw new Error(`create_relationship_invite failed: ${error.message}`);
+  const row = normalizeRpcRow(data);
+  if (!row?.invite_token) {
+    throw new Error('create_relationship_invite returned no invite token');
+  }
+  return row;
+}
+
+async function claimInvite(client, inviteToken) {
+  const { data, error } = await client.rpc('claim_relationship_invite', {
+    p_invite_token: inviteToken,
+  });
+  if (error) throw new Error(`claim_relationship_invite failed: ${error.message}`);
+  const row = normalizeRpcRow(data);
+  if (!row?.relationship_id) {
+    throw new Error('claim_relationship_invite returned no relationship payload');
+  }
+  return row;
 }
 
 async function startCooking(client, relationshipId) {
@@ -101,8 +127,8 @@ async function run() {
   const userB = await signIn(clientB, 'B');
   const userC = await signIn(clientC, 'C');
 
-  console.log('Shared reveal Day 4 validation');
-  console.log(`Run namespace: day4-test-${runId}-*`);
+  console.log('Shared reveal final-path lifecycle validation');
+  console.log(`Run namespace: day6-test-${runId}-*`);
   console.log(`Participants: A=${userA.slice(0, 8)} B=${userB.slice(0, 8)} C=${userC.slice(0, 8)}\n`);
 
   try {
@@ -110,6 +136,8 @@ async function run() {
     const relationS1 = buildRelationId(runId, 's1-single');
     createdRelationshipIds.push(relationS1);
     const payloadS1A = { trust: 4, support: 4, interactions: 3, affinity: 3, sharedNetwork: 2 };
+    const inviteS1 = await createInvite(clientA, relationS1, 'sideA');
+    assert(inviteS1.relationship_id === relationS1, 'Scenario 1: invite should target relation');
     const rowS1A = await attachReading(clientA, relationS1, 'sideA', `${relationS1}-ra`, payloadS1A);
     assert(rowS1A.relationship_id === relationS1, 'Scenario 1: unexpected relationship row');
     assert(rowS1A.status === 'waiting_other_side', 'Scenario 1: status must stay waiting_other_side');
@@ -119,7 +147,7 @@ async function run() {
 
     const rowS1Start = await startCooking(clientA, relationS1);
     assert(rowS1Start.status === 'waiting_other_side', 'Scenario 1: start should be no-op without side B');
-    results.push('PASS scenario1 single participant remains waiting_other_side without leakage');
+    results.push('PASS scenario1 inviter attach stays waiting_other_side without leakage');
 
     // Scenario 2 + 3 + 4
     const relationS234 = buildRelationId(runId, 's234-lifecycle');
@@ -127,7 +155,10 @@ async function run() {
     const payloadS2A = { trust: 5, support: 5, interactions: 4, affinity: 4, sharedNetwork: 3 };
     const payloadS2B = { trust: 5, support: 4, interactions: 4, affinity: 4, sharedNetwork: 3 };
 
+    const inviteS234 = await createInvite(clientA, relationS234, 'sideA');
     await attachReading(clientA, relationS234, 'sideA', `${relationS234}-ra`, payloadS2A);
+    const claimS234 = await claimInvite(clientB, inviteS234.invite_token);
+    assert(claimS234.claimed_side === 'sideB', 'Scenario 2: claim must bind sideB');
     await attachReading(clientB, relationS234, 'sideB', `${relationS234}-rb`, payloadS2B);
 
     const expectedMutual = computeMutualRelationshipScore(payloadS2A, payloadS2B);
@@ -149,7 +180,7 @@ async function run() {
         cookingSecond.unlock_at === cookingFirst.unlock_at,
       'Scenario 2: repeated start must not change frozen result/unlock_at',
     );
-    results.push('PASS scenario2 both participants trigger one frozen cooking result');
+    results.push('PASS scenario2 invite claim + both readings trigger one frozen cooking result');
 
     const readyBeforeUnlock = await markReady(clientA, relationS234);
     assert(readyBeforeUnlock.status === 'cooking_reveal', 'Scenario 3: before unlock should remain cooking_reveal');
@@ -187,6 +218,14 @@ async function run() {
     results.push('PASS scenario4 reveal open transition and idempotence');
 
     // Scenario 6
+    const { error: nonOwnerAttachError } = await clientC.rpc('attach_shared_private_reading_reference', {
+      p_relationship_id: relationS234,
+      p_side: 'sideB',
+      p_reading_id: `${relationS234}-rc`,
+      p_reading_payload: payloadS2B,
+    });
+    assert(Boolean(nonOwnerAttachError), 'Scenario 6: non-owner attach must be rejected');
+
     const { data: nonParticipantRead, error: nonParticipantReadError } = await clientC
       .from(TABLE)
       .select('*')
@@ -211,7 +250,7 @@ async function run() {
       Boolean(nonParticipantMutateError) || nonParticipantMutateData == null,
       'Scenario 6: non-participant mutation must be blocked',
     );
-    results.push('PASS scenario6 participant-only access and protected field enforcement');
+    results.push('PASS scenario6 non-owner attach + participant-only access and protected fields');
 
     console.log('\nValidation summary');
     for (const line of results) console.log(`- ${line}`);

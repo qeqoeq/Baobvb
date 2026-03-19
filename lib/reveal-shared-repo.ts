@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 import type {
+  SharedInviteClaimResult,
+  SharedRelationshipInvite,
   SharedReadingPayload,
   SharedRelationshipRevealRecord,
   SharedRevealRecordUpsertInput,
@@ -8,21 +10,6 @@ import { getAuthenticatedUserId } from './supabase-auth';
 import type { RelationshipSideKey } from '../store/useRelationsStore';
 
 const TABLE = 'shared_relationship_reveals';
-
-function getSideUserColumn(side: RelationshipSideKey): 'side_a_user_id' | 'side_b_user_id' {
-  return side === 'sideA' ? 'side_a_user_id' : 'side_b_user_id';
-}
-
-function assertCurrentUserOwnsSide(
-  record: SharedRelationshipRevealRecord,
-  side: RelationshipSideKey,
-  userId: string,
-): void {
-  const sideUserId = side === 'sideA' ? record.side_a_user_id : record.side_b_user_id;
-  if (sideUserId !== userId) {
-    throw new Error('Current user is not bound to the requested relationship side.');
-  }
-}
 
 export async function getSharedRevealRecordForCurrentUser(
   relationshipId: string,
@@ -46,32 +33,10 @@ export async function getSharedRevealRecordForCurrentUser(
 export async function upsertSharedRevealRecordForCurrentUser(
   input: SharedRevealRecordUpsertInput,
 ): Promise<SharedRelationshipRevealRecord> {
-  const userId = await getAuthenticatedUserId();
-  const sideUserColumn = getSideUserColumn(input.participantSide);
-  const existing = await getSharedRevealRecordForCurrentUser(input.relationshipId);
-
-  if (existing) {
-    assertCurrentUserOwnsSide(existing, input.participantSide, userId);
-  }
-
-  // Day 2.1 hardening: client upsert only claims participant ownership.
-  // Shared reveal lifecycle/result fields remain server-controlled for now.
-  const payload = {
-    relationship_id: input.relationshipId,
-    [sideUserColumn]: userId,
-  };
-
-  const { data, error } = await supabase
-    .from(TABLE)
-    .upsert(payload, { onConflict: 'relationship_id' })
-    .select('*')
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return data as SharedRelationshipRevealRecord;
+  await getAuthenticatedUserId();
+  throw new Error(
+    `Client-side participant claiming is deprecated for ${input.relationshipId}/${input.participantSide}. Use invite create/claim RPCs.`,
+  );
 }
 
 export async function attachSharedPrivateReadingReferenceForCurrentUser(
@@ -93,6 +58,46 @@ export async function attachSharedPrivateReadingReferenceForCurrentUser(
   }
 
   return data as SharedRelationshipRevealRecord;
+}
+
+export async function createRelationshipInviteForCurrentUser(
+  relationshipId: string,
+  inviterSide: RelationshipSideKey,
+  ttlMinutes = 60 * 24 * 7,
+): Promise<SharedRelationshipInvite> {
+  await getAuthenticatedUserId();
+  const { data, error } = await supabase.rpc('create_relationship_invite', {
+    p_relationship_id: relationshipId,
+    p_inviter_side: inviterSide,
+    p_ttl_minutes: ttlMinutes,
+  });
+
+  if (error) {
+    throw error;
+  }
+  if (!Array.isArray(data) || !data[0]) {
+    throw new Error('Invite creation returned no invite payload.');
+  }
+
+  return data[0] as SharedRelationshipInvite;
+}
+
+export async function claimRelationshipInviteForCurrentUser(
+  inviteToken: string,
+): Promise<SharedInviteClaimResult> {
+  await getAuthenticatedUserId();
+  const { data, error } = await supabase.rpc('claim_relationship_invite', {
+    p_invite_token: inviteToken,
+  });
+
+  if (error) {
+    throw error;
+  }
+  if (!Array.isArray(data) || !data[0]) {
+    throw new Error('Invite claim returned no claim payload.');
+  }
+
+  return data[0] as SharedInviteClaimResult;
 }
 
 async function runSharedLifecycleAction(

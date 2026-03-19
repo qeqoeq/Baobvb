@@ -13,8 +13,10 @@ import {
 } from '../../../lib/evaluation';
 import {
   attachSharedPrivateReadingReferenceForCurrentUser,
+  getSharedRevealRecordForCurrentUser,
   startSharedCookingRevealIfReady,
 } from '../../../lib/reveal-shared-repo';
+import { getAuthenticatedUserId } from '../../../lib/supabase-auth';
 import type { RelationshipSideKey } from '../../../store/useRelationsStore';
 import { useRelationsStore } from '../../../store/useRelationsStore';
 
@@ -117,13 +119,23 @@ export default function EvaluateScreen() {
     }
 
     try {
-      await attachSharedPrivateReadingReferenceForCurrentUser(
-        relation.id,
-        targetSide,
-        evaluation.id,
-        finalRatings,
-      );
-      await startSharedCookingRevealIfReady(relation.id);
+      // Final-path rule: shared attach only runs after invite-driven binding exists.
+      const currentUserId = await getAuthenticatedUserId();
+      const sharedRecord = await getSharedRevealRecordForCurrentUser(relation.id);
+      const ownsTargetSide =
+        targetSide === 'sideA'
+          ? sharedRecord?.side_a_user_id === currentUserId
+          : sharedRecord?.side_b_user_id === currentUserId;
+
+      if (sharedRecord && ownsTargetSide) {
+        await attachSharedPrivateReadingReferenceForCurrentUser(
+          relation.id,
+          targetSide,
+          evaluation.id,
+          finalRatings,
+        );
+        await startSharedCookingRevealIfReady(relation.id);
+      }
     } catch {
       // Shared backend remains additive; local-first flow stays primary if shared call fails.
     }

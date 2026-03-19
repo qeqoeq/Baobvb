@@ -34,3 +34,17 @@ export type SharedRevealRecordUpsertInput = {
 };
 
 export type SharedReadingPayload = Record<PillarKey, PillarRating>;
+
+export type SharedRelationshipInvite = {
+  relationship_id: string;
+  invite_token: string;
+  expires_at: string;
+  inviter_side: 'sideA' | 'sideB';
+  target_side: 'sideA' | 'sideB';
+};
+
+export type SharedInviteClaimResult = {
+  relationship_id: string;
+  claimed_side: 'sideA' | 'sideB';
+  shared_record: SharedRelationshipRevealRecord;
+};
