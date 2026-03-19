@@ -1,6 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack, router, useGlobalSearchParams, usePathname } from 'expo-router';
 
+import {
+  addRevealReadyNotificationResponseListener,
+  configureNotificationPresentation,
+  getLaunchRelationIdFromLastNotification,
+  registerDevicePushTokenForCurrentUser,
+} from '../lib/push-notifications';
 import { getCurrentAuthenticatedUser } from '../lib/supabase-auth';
 import { supabase } from '../lib/supabase';
 
@@ -9,6 +15,11 @@ export default function RootLayout() {
   const globalParams = useGlobalSearchParams<{ relationId?: string; token?: string }>();
   const [authResolved, setAuthResolved] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const pushRegistrationRef = useRef(false);
+
+  useEffect(() => {
+    configureNotificationPresentation();
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -54,6 +65,33 @@ export default function RootLayout() {
       return;
     }
   }, [authResolved, isAuthenticated, pathname, globalParams.relationId, globalParams.token]);
+
+  useEffect(() => {
+    if (!isAuthenticated || pushRegistrationRef.current) return;
+    pushRegistrationRef.current = true;
+    void registerDevicePushTokenForCurrentUser().catch(() => {
+      // Final-path behavior: backend registration is best-effort on app bootstrap.
+      // The same authenticated user will re-attempt on next app launch.
+      pushRegistrationRef.current = false;
+    });
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const removeListener = addRevealReadyNotificationResponseListener((relationId) => {
+      router.push({ pathname: '/relation/[id]', params: { id: relationId } });
+    });
+
+    void (async () => {
+      const relationId = await getLaunchRelationIdFromLastNotification();
+      if (!relationId) return;
+      router.push({ pathname: '/relation/[id]', params: { id: relationId } });
+    })();
+
+    return () => {
+      removeListener();
+    };
+  }, [isAuthenticated]);
 
   return (
     <Stack>

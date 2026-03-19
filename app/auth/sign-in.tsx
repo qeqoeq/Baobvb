@@ -31,6 +31,15 @@ export default function AuthSignInScreen() {
       return;
     }
 
+    const relationMatch = redirect.match(/^\/relation\/([^/]+)$/);
+    if (relationMatch?.[1]) {
+      router.replace({
+        pathname: '/relation/[id]',
+        params: { id: decodeURIComponent(relationMatch[1]) },
+      });
+      return;
+    }
+
     router.replace('/(tabs)');
   };
 

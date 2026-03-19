@@ -11,7 +11,8 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "check:mutual-parity": "node scripts/check-mutual-parity.js",
-    "check:shared-reveal-flow": "node scripts/check-shared-reveal-flow.js"
+    "check:shared-reveal-flow": "node scripts/check-shared-reveal-flow.js",
+    "check:invite-claim-flow": "node scripts/check-invite-claim-flow.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
