@@ -131,16 +131,19 @@ export function getRelationshipDisplayState(
   if (revealStatus === 'cooking_reveal') return 'cooking_reveal';
   if (!completion.sideA.exists) return 'unresolved_invite';
 
+  // Strict semantics:
+  // - Unread: my private reading is not completed.
   if (!completion.sideA.hasPrivateReading) {
     return completion.sideA.identityStatus === 'draft'
       ? 'draft'
       : 'private_reading_pending';
   }
 
+  // - Waiting: my private reading is saved, other side not completed yet.
   if (!completion.sideB.exists) return 'private_reading_saved_waiting_other_side';
-  if (!completion.sideB.isIdentityResolved) return 'waiting_identity_resolution';
   if (!completion.sideB.hasPrivateReading) return 'private_reading_saved_waiting_other_side';
-  if (completion.canMutualReveal) return 'ready_for_mutual_reveal';
 
-  return 'private_reading_saved_waiting_other_side';
+  // If both sides have completed readings and status has not yet advanced,
+  // treat it as cooking preparation instead of a fuzzy intermediate state.
+  return 'cooking_reveal';
 }

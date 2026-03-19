@@ -193,6 +193,10 @@ export default function RelationDetailScreen() {
     }
   };
 
+  const handleBackToGarden = () => {
+    router.replace('/(tabs)');
+  };
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
@@ -296,30 +300,32 @@ export default function RelationDetailScreen() {
               <>
                 <View style={styles.privateStateCard}>
                   <Text style={styles.privateStateTitle}>{safeRevealSummary?.stateLabel}</Text>
-                  <Text style={styles.privateStateText}>{safeRevealSummary?.shortDescription}</Text>
-                  {safeRevealSummary?.waitingReason ? (
-                    <Text style={styles.privateStateText}>{safeRevealSummary.waitingReason}</Text>
+                  <Text style={styles.privateStateText}>
+                    {revealStatus === 'waiting_other_side'
+                      ? 'Waiting for the other side.'
+                      : revealStatus === 'cooking_reveal'
+                        ? 'Baobab is preparing your reveal.'
+                        : revealStatus === 'reveal_ready'
+                          ? 'Your reveal is available now.'
+                          : safeRevealSummary?.shortDescription}
+                  </Text>
+                  {revealStatus === 'waiting_other_side' ? (
+                    <Pressable onPress={() => void handleInviteToReveal()} style={styles.revealInviteCTA}>
+                      <Text style={styles.revealInviteCTALabel}>Invite to reveal</Text>
+                    </Pressable>
                   ) : null}
                   {revealStatus === 'reveal_ready' ? (
-                    <Pressable onPress={handleOpenReveal} style={styles.revealOpenCTA}>
+                    <Pressable onPress={() => void handleOpenReveal()} style={styles.revealOpenCTA}>
                       <Text style={styles.revealOpenCTALabel}>Reveal now</Text>
                     </Pressable>
                   ) : null}
+                  <Pressable onPress={handleBackToGarden} style={styles.secondaryInlineCTA}>
+                    <Text style={styles.secondaryInlineCTALabel}>Back to Garden</Text>
+                  </Pressable>
                   <Text style={styles.privateStateDate}>
                     Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
                   </Text>
                 </View>
-                {revealStatus === 'waiting_other_side' ? (
-                  <View style={styles.revealInviteBlock}>
-                    <Text style={styles.revealInviteTitle}>Reveal together</Text>
-                    <Text style={styles.revealInviteSubtext}>
-                      Your side is saved. Invite the other person to reveal this relationship together.
-                    </Text>
-                    <Pressable onPress={() => void handleInviteToReveal()} style={styles.revealInviteCTA}>
-                      <Text style={styles.revealInviteCTALabel}>Invite to reveal</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
               </>
             )}
           </View>
@@ -664,6 +670,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.accent.deepTeal,
     fontWeight: '700',
+  },
+  secondaryInlineCTA: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+  },
+  secondaryInlineCTALabel: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   readingNote: {
     paddingHorizontal: spacing.sm,

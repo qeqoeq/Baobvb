@@ -174,11 +174,18 @@ export default function GardenScreen() {
           <View style={styles.mappingList}>
             {filteredEntries.map((entry) => {
               const isRevealed = entry.relation.localState.revealSnapshot.status === 'revealed';
-              const accent = isRevealed && entry.linkTier
-                ? getTierAccent(entry.linkTier)
-                : colors.accent.warmGold;
               const revealStatus = entry.relation.localState.revealSnapshot.status;
               const signal = isRevealed ? getGardenMicroSignal(entry) : null;
+              const unread = entry.readingStatus === 'Unread';
+              const accent = isRevealed
+                ? (entry.linkTier ? getTierAccent(entry.linkTier) : colors.accent.mutedSage)
+                : revealStatus === 'reveal_ready'
+                  ? colors.accent.deepTeal
+                  : revealStatus === 'cooking_reveal'
+                    ? colors.accent.mutedSage
+                    : unread
+                      ? colors.accent.warmGold
+                      : colors.text.muted;
               const mappingLine = entry.readingStatus === 'Read'
                 ? (isRevealed
                   ? `${entry.badgeLabel} · Score ${entry.foundationalScore}`
@@ -201,7 +208,13 @@ export default function GardenScreen() {
                   : signal?.tone === 'stable'
                     ? styles.mappingSignalStable
                     : styles.mappingSignalUnread)
-                : styles.mappingSignalUnread;
+                : revealStatus === 'reveal_ready'
+                  ? styles.mappingSignalReady
+                  : revealStatus === 'cooking_reveal'
+                    ? styles.mappingSignalCooking
+                    : unread
+                      ? styles.mappingSignalUnreadPriority
+                      : styles.mappingSignalWaiting;
 
               return (
                 <Pressable
@@ -576,6 +589,18 @@ const styles = StyleSheet.create({
   },
   mappingSignalUnread: {
     color: colors.text.muted,
+  },
+  mappingSignalUnreadPriority: {
+    color: colors.accent.warmGold,
+  },
+  mappingSignalWaiting: {
+    color: colors.text.muted,
+  },
+  mappingSignalCooking: {
+    color: colors.accent.mutedSage,
+  },
+  mappingSignalReady: {
+    color: colors.accent.deepTeal,
   },
   mappingSignalNurture: {
     color: colors.accent.softCoral,

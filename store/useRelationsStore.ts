@@ -948,12 +948,15 @@ function setRelation(id: string, update: RelationUpdate): boolean {
   const cleanName = update.name.trim();
   if (!cleanName) return false;
 
-  const normalizedHandle = normalizeOptionalHandle(update.handle ?? '');
-  const normalizedAvatarSeed = normalizeAvatarSeed(update.avatarSeed ?? '', cleanName);
-
   let didUpdate = false;
   state.relations = state.relations.map((relation) => {
     if (relation.id !== id) return relation;
+    const normalizedHandle = update.handle === undefined
+      ? relation.handle
+      : normalizeOptionalHandle(update.handle);
+    const normalizedAvatarSeed = update.avatarSeed === undefined
+      ? relation.avatarSeed ?? normalizeAvatarSeed('', cleanName)
+      : normalizeAvatarSeed(update.avatarSeed, cleanName);
     didUpdate = true;
     return {
       ...relation,

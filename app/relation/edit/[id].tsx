@@ -6,20 +6,6 @@ import { colors } from '../../../constants/colors';
 import { radius, spacing } from '../../../constants/spacing';
 import { useRelationsStore } from '../../../store/useRelationsStore';
 
-function normalizeHandleInput(raw: string) {
-  const noSpaces = raw.trim().toLowerCase().replace(/\s+/g, '');
-  const noAt = noSpaces.replace(/^@+/, '');
-  const safe = noAt.replace(/[^a-z0-9._-]/g, '');
-  return safe ? `@${safe}` : '';
-}
-
-function normalizeAvatarSeedInput(raw: string, name: string) {
-  const seed = raw.trim().toUpperCase().replace(/\s+/g, '').slice(0, 2);
-  if (seed) return seed;
-  const fallback = name.trim().charAt(0).toUpperCase();
-  return fallback || '?';
-}
-
 export default function EditRelationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { relations, updateRelation } = useRelationsStore();
@@ -30,8 +16,6 @@ export default function EditRelationScreen() {
   );
 
   const [name, setName] = useState(relation?.name ?? '');
-  const [handle, setHandle] = useState(relation?.handle ?? '');
-  const [avatarSeed, setAvatarSeed] = useState(relation?.avatarSeed ?? '');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,8 +30,6 @@ export default function EditRelationScreen() {
 
   const save = () => {
     const cleanName = name.trim();
-    const cleanHandle = normalizeHandleInput(handle);
-    const cleanAvatarSeed = normalizeAvatarSeedInput(avatarSeed, cleanName);
 
     if (!cleanName) {
       setError('Name cannot be empty.');
@@ -56,8 +38,6 @@ export default function EditRelationScreen() {
 
     const ok = updateRelation(relation.id, {
       name: cleanName,
-      handle: cleanHandle || undefined,
-      avatarSeed: cleanAvatarSeed,
     });
     if (!ok) {
       setError('Could not save relation.');
@@ -72,14 +52,8 @@ export default function EditRelationScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>Edit relation</Text>
         <Text style={styles.subtitle}>
-          Refine identity fields without changing relationship origin.
+          Update the name used in your Garden.
         </Text>
-
-        <View style={styles.previewAvatar}>
-          <Text style={styles.previewAvatarText}>
-            {normalizeAvatarSeedInput(avatarSeed, name)}
-          </Text>
-        </View>
 
         <View style={styles.fieldBlock}>
           <Text style={styles.fieldLabel}>Name</Text>
@@ -96,44 +70,12 @@ export default function EditRelationScreen() {
           />
         </View>
 
-        <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Handle (optional)</Text>
-          <TextInput
-            value={handle}
-            onChangeText={(value) => {
-              setHandle(value);
-              if (error) setError(null);
-            }}
-            placeholder="@person.handle"
-            placeholderTextColor={colors.text.muted}
-            style={styles.input}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-
-        <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Avatar seed</Text>
-          <TextInput
-            value={avatarSeed}
-            onChangeText={(value) => {
-              setAvatarSeed(value);
-              if (error) setError(null);
-            }}
-            placeholder="2 letters max"
-            placeholderTextColor={colors.text.muted}
-            style={styles.input}
-            autoCapitalize="characters"
-            maxLength={2}
-          />
-        </View>
-
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Pressable onPress={save} style={styles.primaryButton}>
           <Text style={styles.primaryButtonText}>Save relation</Text>
         </Pressable>
-        <Text style={styles.helperText}>Changes appear immediately in Garden, Circle, and this relationship.</Text>
+        <Text style={styles.helperText}>Changes appear immediately in Garden and this relationship.</Text>
         <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>Cancel</Text>
         </Pressable>
@@ -166,22 +108,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     color: colors.text.secondary,
-  },
-  previewAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 1,
-    borderColor: colors.accent.softAmber + '66',
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-  },
-  previewAvatarText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text.primary,
   },
   fieldBlock: {
     gap: spacing.xs,

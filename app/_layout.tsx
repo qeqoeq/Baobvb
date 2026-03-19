@@ -25,7 +25,10 @@ export default function RootLayout() {
         options={{ title: 'Edit relation', presentation: 'modal' }}
       />
       {/* Places routes are intentionally hidden from MVP navigation; files are kept parked for later. */}
-      <Stack.Screen name="relation/[id]" options={{ title: 'Relation' }} />
+      <Stack.Screen
+        name="relation/[id]"
+        options={{ title: 'Relationship', headerBackTitle: 'Garden' }}
+      />
       <Stack.Screen name="invite/[relationId]" options={{ title: 'Reveal together' }} />
       <Stack.Screen
         name="invite/identity/[relationId]"
