@@ -286,6 +286,43 @@ begin
 end;
 $$;
 
+create or replace function public.dispatch_pending_notifications_batch(
+  p_limit integer default 100
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  user_row record;
+  safe_limit integer := greatest(1, least(coalesce(p_limit, 100), 500));
+  total_sent integer := 0;
+begin
+  for user_row in
+    with candidate_users as (
+      select
+        no.user_id,
+        min(no.created_at) as first_pending_at
+      from public.notification_outbox as no
+      where no.status in ('pending', 'failed')
+      group by no.user_id
+    )
+    select cu.user_id
+    from candidate_users as cu
+    order by cu.first_pending_at asc
+    limit safe_limit
+  loop
+    -- one runner at a time per user to prevent duplicate concurrent sends
+    if pg_try_advisory_xact_lock(hashtext(user_row.user_id::text)) then
+      total_sent := total_sent + public.dispatch_pending_notifications_for_user(user_row.user_id);
+    end if;
+  end loop;
+
+  return total_sent;
+end;
+$$;
+
 create or replace function public.handle_shared_reveal_ready_notifications()
 returns trigger
 language plpgsql
@@ -361,5 +398,16 @@ $$;
 grant execute on function public.register_device_push_token(text, text)
   to authenticated;
 
+revoke execute on function public.dispatch_pending_notifications_for_user(uuid)
+  from authenticated;
+revoke execute on function public.dispatch_pending_notifications_for_relationship(text)
+  from authenticated;
+revoke execute on function public.dispatch_pending_notifications_batch(integer)
+  from authenticated;
+
 grant execute on function public.dispatch_pending_notifications_for_user(uuid)
-  to authenticated;
+  to service_role;
+grant execute on function public.dispatch_pending_notifications_for_relationship(text)
+  to service_role;
+grant execute on function public.dispatch_pending_notifications_batch(integer)
+  to service_role;
