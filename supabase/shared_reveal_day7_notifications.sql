@@ -1,3 +1,7 @@
+-- Day 7: notification foundation (historical baseline).
+-- Applied once: enqueue on reveal_ready via trigger, register_device_push_token, dispatch RPCs (service_role).
+-- Delivery hardening (retries, next_attempt_at, jsonb batch stats) lives ONLY in shared_reveal_day8_notification_delivery_hardening.sql
+
 create extension if not exists pg_net;
 
 create table if not exists public.device_push_tokens (
