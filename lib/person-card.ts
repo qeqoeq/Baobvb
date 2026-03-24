@@ -9,6 +9,16 @@ export type PersonCardPayload = {
   displayName: string;
   handle: string;
   avatarSeed: string;
+  /**
+   * The card owner's public identifier.
+   *
+   * v1 (current): holds MeProfile.id — a legacy local alias, not a stable
+   * system identity. Treat as opaque for deduplication only. Do not query
+   * the backend with this value as a user lookup key.
+   *
+   * v2 (future): will hold MeProfile.publicProfileId once provisioned.
+   * A version bump to BAOBAB_PERSON_CARD_VERSION will gate the transition.
+   */
   meId: string;
 };
 
@@ -19,6 +29,7 @@ export function buildPersonCardPayload(me: MeProfile): PersonCardPayload {
     displayName: me.displayName,
     handle: me.handle,
     avatarSeed: me.avatarSeed,
+    // v1: me.id (legacy local alias). Will become me.publicProfileId in v2.
     meId: me.id,
   };
 }

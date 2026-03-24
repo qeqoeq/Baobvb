@@ -42,6 +42,12 @@ export type RelationshipLocalState = {
 };
 
 export type Relation = {
+  /**
+   * Local draft ID. Device-local, non-canonical.
+   * Used for navigation params, AsyncStorage keying, and store lookups.
+   * Must never be sent to the backend as a relation join key.
+   * See: lib/identity.ts — LocalDraftId
+   */
   id: string;
   name: string;
   archived: boolean;
@@ -51,9 +57,21 @@ export type Relation = {
   handle?: string;
   avatarSeed?: string;
   source: 'manual' | 'scan';
+  /**
+   * The scanned user's public profile identifier.
+   * Holds publicProfileId (v2 QR) or a legacy me.id local alias (v1 QR).
+   * Treat v1 values as opaque strings — not queryable against the backend.
+   */
   sourceCardMeId?: string;
   sourceHandle?: string;
   localState: RelationshipLocalState;
+  /**
+   * Canonical relation UUID. Null for purely local relations.
+   * Set when this relation is promoted to shared (at invite creation time).
+   * This is the only valid cross-user join key for this relation.
+   * See: lib/identity.ts — CanonicalRelationId
+   */
+  canonicalRelationId?: string | null;
 };
 
 export type PlaceCategory = 'restaurant' | 'cafe' | 'bar' | 'spot' | 'other';
@@ -68,11 +86,27 @@ export type Place = {
 };
 
 export type MeProfile = {
+  /**
+   * Legacy local alias. Not an auth UUID, not a publicProfileId.
+   * Kept for backward compatibility. Do not use as a system identity key.
+   */
   id: string;
   displayName: string;
   handle: string;
   avatarSeed: string;
   trustPassportStatus: 'new' | 'growing' | 'steady';
+  /**
+   * The Supabase auth UUID (auth.uid()). Private, backend-internal.
+   * Never expose in QR cards or public flows.
+   * Null until the user has authenticated at least once in this session.
+   */
+  internalAuthUserId?: string | null;
+  /**
+   * Stable shareable public profile identifier.
+   * Intended for QR cards, scan deduplication, and future social lookup.
+   * Null until explicitly provisioned — do not substitute internalAuthUserId.
+   */
+  publicProfileId?: string | null;
 };
 
 export type MeProfileUpdate = {
@@ -174,6 +208,8 @@ const SEED_ME: MeProfile = {
   handle: '@yasmine.baobab',
   avatarSeed: 'Y',
   trustPassportStatus: 'growing',
+  internalAuthUserId: null,
+  publicProfileId: null,
 };
 
 const SEED_PLACES: Place[] = [];
