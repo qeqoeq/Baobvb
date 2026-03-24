@@ -16,9 +16,10 @@ export default function AuthSignInScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const inviteRelationId = typeof relationId === 'string' ? relationId.trim() : '';
+
   const resolvePostAuthRoute = () => {
     const redirect = typeof redirectPath === 'string' ? redirectPath : '';
-    const inviteRelationId = typeof relationId === 'string' ? relationId.trim() : '';
     const inviteToken = typeof token === 'string' ? token.trim() : '';
 
     devLogLinking('sign-in: post-auth route', {
@@ -93,7 +94,9 @@ export default function AuthSignInScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>Sign in to Baobab</Text>
         <Text style={styles.body}>
-          Use Sign in with Apple to access shared relationship invitations and reveals.
+          {inviteRelationId
+            ? 'Sign in to accept this invitation and add your side of the relationship.'
+            : 'Sign in to access your readings and reveals.'}
         </Text>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <Pressable onPress={() => void handleSignIn()} style={styles.primaryButton}>

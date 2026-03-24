@@ -112,7 +112,7 @@ export default function InviteIdentityScreen() {
           <Text style={styles.primaryButtonText}>Continue</Text>
         </Pressable>
 
-        <Pressable onPress={returnToInvite} style={styles.secondaryButton}>
+        <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>Not now</Text>
         </Pressable>
       </View>

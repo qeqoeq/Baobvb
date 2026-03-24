@@ -6,46 +6,23 @@ import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { devLogLinking } from '../../lib/dev-linking-log';
 import { claimRelationshipInviteForCurrentUser } from '../../lib/reveal-shared-repo';
-import {
-  buildRelationshipRevealInput,
-  getSafeRelationshipRevealSummary,
-} from '../../lib/relationship-reveal';
 import type { RelationshipSideKey } from '../../store/useRelationsStore';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function InviteArrivalScreen() {
   const { relationId, token } = useLocalSearchParams<{ relationId: string; token?: string }>();
   const relationIdTrim = typeof relationId === 'string' ? relationId.trim() : '';
-  const { me, relations, evaluations, resolveInvitedSideB } = useRelationsStore();
+  const { me, relations, resolveInvitedSideB } = useRelationsStore();
   const [showUnresolvedContinuation, setShowUnresolvedContinuation] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const relation = useMemo(
     () => relations.find((item) => item.id === relationIdTrim) ?? null,
     [relations, relationIdTrim],
   );
-  const privateReadingA = useMemo(
-    () => (relation ? evaluations.find((evaluation) => evaluation.relationId === relation.id) ?? null : null),
-    [evaluations, relation],
-  );
+
   const sideBHasPrivateReading = relation?.localState.sideB.hasPrivateReading === true;
-  const safeRevealSummary = useMemo(
-    () =>
-      getSafeRelationshipRevealSummary(
-        relation
-          ? buildRelationshipRevealInput({
-              relation,
-              privateReadingA,
-            })
-          : buildRelationshipRevealInput({
-              relation: null,
-              privateReadingA: null,
-              // Invite arrival remains unresolved while real side-B binding is unavailable.
-              sideB: { exists: false },
-            }),
-      ),
-    [relation, privateReadingA],
-  );
 
   const hasLocalIdentity = Boolean(
     me?.displayName?.trim() &&
@@ -53,64 +30,72 @@ export default function InviteArrivalScreen() {
   );
 
   const handleAddMySide = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setShowUnresolvedContinuation(false);
     setClaimError(null);
 
-    if (!hasLocalIdentity) {
-      // Keep invite context while collecting minimal local identity.
-      router.push({
-        pathname: '/invite/identity/[relationId]',
-        params: { relationId: relationIdTrim, token: token || '' },
-      });
-      return;
-    }
-
-    let claimedSide: RelationshipSideKey = 'sideB';
-    if (token?.trim()) {
-      try {
-        const claim = await claimRelationshipInviteForCurrentUser(token);
-        claimedSide = claim.claimed_side;
-      } catch (error) {
-        const description =
-          error instanceof Error
-            ? error.message
-            : 'This invitation could not be claimed in this version.';
-        setClaimError(description);
-        setShowUnresolvedContinuation(true);
-        return;
-      }
-    }
-
-    if (relation) {
-      if (claimedSide === 'sideB') {
-        resolveInvitedSideB(relation.id);
-      }
-
-      if (claimedSide === 'sideB' && !sideBHasPrivateReading) {
+    try {
+      if (!hasLocalIdentity) {
         router.push({
-          pathname: '/relation/evaluate/[id]',
-          params: { id: relation.id, side: claimedSide },
+          pathname: '/invite/identity/[relationId]',
+          params: { relationId: relationIdTrim, token: token || '' },
         });
         return;
       }
 
-      if (claimedSide === 'sideA') {
+      let claimedSide: RelationshipSideKey = 'sideB';
+      if (token?.trim()) {
+        try {
+          const claim = await claimRelationshipInviteForCurrentUser(token);
+          claimedSide = claim.claimed_side;
+        } catch (error) {
+          if (__DEV__) {
+            devLogLinking('invite: claim failed', {
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+          setClaimError(
+            error instanceof Error ? error.message : 'This invitation could not be claimed.',
+          );
+          return;
+        }
+      }
+
+      if (relation) {
+        if (claimedSide === 'sideB') {
+          resolveInvitedSideB(relation.id);
+        }
+
+        if (claimedSide === 'sideB' && !sideBHasPrivateReading) {
+          router.push({
+            pathname: '/relation/evaluate/[id]',
+            params: { id: relation.id, side: claimedSide },
+          });
+          return;
+        }
+
+        if (claimedSide === 'sideA') {
+          router.push({
+            pathname: '/relation/evaluate/[id]',
+            params: { id: relation.id, side: claimedSide },
+          });
+          return;
+        }
+
         router.push({
-          pathname: '/relation/evaluate/[id]',
-          params: { id: relation.id, side: claimedSide },
+          pathname: '/relation/[id]',
+          params: { id: relation.id },
         });
         return;
       }
 
-      router.push({
-        pathname: '/relation/[id]',
-        params: { id: relation.id },
-      });
-      return;
+      // Claim succeeded but no local relation row yet (cold invite open).
+      // The relationship will appear once synced from the backend.
+      setShowUnresolvedContinuation(true);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // No local relation row yet (e.g. cold invite open). User can dismiss; relation appears once created/synced.
-    setShowUnresolvedContinuation(true);
   };
 
   if (!relationIdTrim) {
@@ -151,26 +136,41 @@ export default function InviteArrivalScreen() {
           <Text style={styles.reassuranceText}>You can answer in under a minute.</Text>
         </View>
 
-        {showUnresolvedContinuation ? (
-          <View style={styles.unresolvedCard}>
-            <Text style={styles.unresolvedTitle}>Your card is ready</Text>
-            <Text style={styles.unresolvedBody}>
-              {claimError || safeRevealSummary?.shortDescription}
+        {claimError ? (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateTitle}>Couldn't claim this invitation</Text>
+            <Text style={styles.stateBody}>
+              This invitation may have expired or already been used. Ask your partner to share a new one.
             </Text>
-            {safeRevealSummary?.waitingReason ? (
-              <Text style={styles.unresolvedSupport}>{safeRevealSummary.waitingReason}</Text>
-            ) : null}
             <Pressable onPress={() => router.back()} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>Done</Text>
             </Pressable>
-            <Pressable onPress={() => setShowUnresolvedContinuation(false)} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Not now</Text>
+            <Pressable
+              onPress={() => setClaimError(null)}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonText}>Try again</Text>
+            </Pressable>
+          </View>
+        ) : showUnresolvedContinuation ? (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateTitle}>Your side is saved</Text>
+            <Text style={styles.stateBody}>
+              The relationship will appear in your Garden once it has been linked.
+            </Text>
+            <Pressable onPress={() => router.back()} style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Done</Text>
             </Pressable>
           </View>
         ) : (
           <>
-            <Pressable onPress={() => void handleAddMySide()} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Add my side</Text>
+            <Pressable
+              onPress={() => void handleAddMySide()}
+              style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
+            >
+              <Text style={styles.primaryButtonText}>
+                {isSubmitting ? 'Claiming…' : 'Add my side'}
+              </Text>
             </Pressable>
             <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
               <Text style={styles.secondaryButtonText}>Not now</Text>
@@ -228,6 +228,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.md,
   },
+  primaryButtonDisabled: {
+    opacity: 0.6,
+  },
   primaryButtonText: {
     fontSize: 15,
     fontWeight: '700',
@@ -242,7 +245,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text.secondary,
   },
-  unresolvedCard: {
+  stateCard: {
     backgroundColor: colors.background.tertiary,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -250,20 +253,15 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
   },
-  unresolvedTitle: {
+  stateTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: colors.text.primary,
   },
-  unresolvedBody: {
+  stateBody: {
     fontSize: 12,
     lineHeight: 18,
     color: colors.text.secondary,
-  },
-  unresolvedSupport: {
-    fontSize: 11,
-    lineHeight: 16,
-    color: colors.text.muted,
   },
   devHint: {
     fontSize: 11,
