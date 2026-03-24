@@ -30,6 +30,16 @@ export default function InviteArrivalScreen() {
     me?.handle?.trim(),
   );
 
+  // Stable exit: back if there's a stack to return to, otherwise Garden.
+  // Covers cold opens (deep link, post-auth redirect) where back() would be a no-op.
+  const exitInviteFlow = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
   // If the relation appears in the store while the unresolved card is visible,
   // navigate automatically — no retry needed, no false success.
   useEffect(() => {
@@ -130,7 +140,7 @@ export default function InviteArrivalScreen() {
               Dev: baobab://invite/RELATION_ID?token=… (replace RELATION_ID)
             </Text>
           ) : null}
-          <Pressable onPress={() => router.back()} style={styles.primaryButton}>
+          <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
             <Text style={styles.primaryButtonText}>Go back</Text>
           </Pressable>
         </View>
@@ -158,7 +168,7 @@ export default function InviteArrivalScreen() {
             <Text style={styles.stateBody}>
               The link is missing information needed to continue. Ask for a fresh invite link.
             </Text>
-            <Pressable onPress={() => router.back()} style={styles.primaryButton}>
+            <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>Done</Text>
             </Pressable>
           </View>
@@ -168,7 +178,7 @@ export default function InviteArrivalScreen() {
             <Text style={styles.stateBody}>
               This invitation may have expired or already been used. Ask your partner to share a new one.
             </Text>
-            <Pressable onPress={() => router.back()} style={styles.primaryButton}>
+            <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>Done</Text>
             </Pressable>
             <Pressable
@@ -184,7 +194,7 @@ export default function InviteArrivalScreen() {
             <Text style={styles.stateBody}>
               Your participation has been recorded. This relationship is not available in your Garden yet.
             </Text>
-            <Pressable onPress={() => router.back()} style={styles.primaryButton}>
+            <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>Done</Text>
             </Pressable>
           </View>
@@ -198,7 +208,7 @@ export default function InviteArrivalScreen() {
                 {isSubmitting ? 'Claiming…' : 'Add my side'}
               </Text>
             </Pressable>
-            <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
+            <Pressable onPress={exitInviteFlow} style={styles.secondaryButton}>
               <Text style={styles.secondaryButtonText}>Not now</Text>
             </Pressable>
           </>
