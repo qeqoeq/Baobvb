@@ -64,13 +64,40 @@ Deno.serve(async (request: Request) => {
     return jsonResponse(500, { error: error.message });
   }
 
-  const dispatched = typeof data === 'number' ? data : Number(data ?? 0);
+  const raw = data as unknown;
+  let dispatched = 0;
+  let usersProcessed = 0;
+  let usersLockSkipped = 0;
+  let effectiveLimit = limit;
+
+  if (raw && typeof raw === 'object' && raw !== null && 'sent' in raw) {
+    const o = raw as Record<string, unknown>;
+    dispatched = Number(o.sent ?? 0);
+    usersProcessed = Number(o.usersProcessed ?? 0);
+    usersLockSkipped = Number(o.usersLockSkipped ?? 0);
+    if (typeof o.limit === 'number' && Number.isFinite(o.limit)) {
+      effectiveLimit = o.limit;
+    }
+  } else if (typeof raw === 'number') {
+    dispatched = raw;
+  } else {
+    dispatched = Number(raw ?? 0);
+  }
+
   const elapsedMs = Date.now() - start;
-  console.log('notification-dispatch-runner completed', { limit, dispatched, elapsedMs });
+  console.log('notification-dispatch-runner completed', {
+    limit: effectiveLimit,
+    dispatched,
+    usersProcessed,
+    usersLockSkipped,
+    elapsedMs,
+  });
   return jsonResponse(200, {
     ok: true,
     dispatched,
-    limit,
+    usersProcessed,
+    usersLockSkipped,
+    limit: effectiveLimit,
     elapsedMs,
   });
 });
