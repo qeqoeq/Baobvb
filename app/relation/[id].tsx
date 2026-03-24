@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
+import { devLogLinking, maskIdForLog } from '../../lib/dev-linking-log';
 import { radius, spacing } from '../../constants/spacing';
 import { getTierAccent, type PillarKey } from '../../lib/evaluation';
 import {
@@ -68,7 +69,17 @@ export default function RelationDetailScreen() {
   }, [relation]);
 
   useEffect(() => {
-    if (!id || !relation) {
+    if (!id) {
+      if (__DEV__) {
+        devLogLinking('relation detail: missing id, navigating back', {});
+      }
+      router.back();
+      return;
+    }
+    if (!relation) {
+      if (__DEV__) {
+        devLogLinking('relation detail: no local relation for id', { id: maskIdForLog(id) });
+      }
       router.back();
     }
   }, [id, relation]);

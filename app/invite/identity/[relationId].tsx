@@ -5,10 +5,12 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors } from '../../../constants/colors';
 import { radius, spacing } from '../../../constants/spacing';
 import { deriveAvatarSeed, normalizeHandleInput } from '../../../lib/identity-format';
+import { devLogLinking } from '../../../lib/dev-linking-log';
 import { useRelationsStore } from '../../../store/useRelationsStore';
 
 export default function InviteIdentityScreen() {
   const { relationId, token } = useLocalSearchParams<{ relationId: string; token?: string }>();
+  const relationIdTrim = typeof relationId === 'string' ? relationId.trim() : '';
   const { updateMe } = useRelationsStore();
   const [displayName, setDisplayName] = useState('');
   const [handleInput, setHandleInput] = useState('');
@@ -17,7 +19,7 @@ export default function InviteIdentityScreen() {
   const returnToInvite = () => {
     router.replace({
       pathname: '/invite/[relationId]',
-      params: { relationId: relationId || '', token: token || '' },
+      params: { relationId: relationIdTrim, token: token || '' },
     });
   };
 
@@ -48,6 +50,23 @@ export default function InviteIdentityScreen() {
 
     returnToInvite();
   };
+
+  if (!relationIdTrim) {
+    if (__DEV__) {
+      devLogLinking('invite identity: missing relationId', {});
+    }
+    return (
+      <View style={styles.screen}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Invalid link</Text>
+          <Text style={styles.body}>This screen needs a relationship id in the URL.</Text>
+          <Pressable onPress={() => router.back()} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Go back</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>

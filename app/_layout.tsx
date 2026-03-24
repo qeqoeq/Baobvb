@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Stack, router, useGlobalSearchParams, usePathname } from 'expo-router';
 
+import { devLogLinking, maskIdForLog } from '../lib/dev-linking-log';
 import {
   addRevealReadyNotificationResponseListener,
   configureNotificationPresentation,
@@ -51,16 +52,24 @@ export default function RootLayout() {
         typeof globalParams.relationId === 'string' ? globalParams.relationId.trim() : '';
       const token = typeof globalParams.token === 'string' ? globalParams.token.trim() : '';
       if (pathname.startsWith('/invite/') && relationId) {
+        const isIdentityInvite = pathname.startsWith('/invite/identity/');
+        devLogLinking('auth-gate → sign-in (invite)', {
+          pathname,
+          inviteKind: isIdentityInvite ? 'identity' : 'arrival',
+          relationId: maskIdForLog(relationId),
+          hasToken: Boolean(token),
+        });
         router.replace({
           pathname: '/auth/sign-in',
           params: {
-            redirectPath: '/invite/[relationId]',
+            redirectPath: isIdentityInvite ? '/invite/identity/[relationId]' : '/invite/[relationId]',
             relationId,
             ...(token ? { token } : {}),
           },
         });
         return;
       }
+      devLogLinking('auth-gate → sign-in (generic)', { pathname });
       router.replace({ pathname: '/auth/sign-in', params: { redirectPath: pathname } });
       return;
     }

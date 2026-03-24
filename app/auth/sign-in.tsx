@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import { devLogLinking, maskIdForLog } from '../../lib/dev-linking-log';
 import { getCurrentAuthenticatedUser, signInWithApple } from '../../lib/supabase-auth';
 
 export default function AuthSignInScreen() {
@@ -19,6 +20,23 @@ export default function AuthSignInScreen() {
     const redirect = typeof redirectPath === 'string' ? redirectPath : '';
     const inviteRelationId = typeof relationId === 'string' ? relationId.trim() : '';
     const inviteToken = typeof token === 'string' ? token.trim() : '';
+
+    devLogLinking('sign-in: post-auth route', {
+      redirect,
+      relationId: maskIdForLog(inviteRelationId),
+      hasToken: Boolean(inviteToken),
+    });
+
+    if (redirect === '/invite/identity/[relationId]' && inviteRelationId) {
+      router.replace({
+        pathname: '/invite/identity/[relationId]',
+        params: {
+          relationId: inviteRelationId,
+          ...(inviteToken ? { token: inviteToken } : {}),
+        },
+      });
+      return;
+    }
 
     if (redirect === '/invite/[relationId]' && inviteRelationId) {
       router.replace({

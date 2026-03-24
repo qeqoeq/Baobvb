@@ -1,6 +1,6 @@
-# Welcome to your Expo app 👋
+# Baobab
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+iOS-first [Expo](https://expo.dev) / React Native app. Routes live in **`app/`** ([Expo Router](https://docs.expo.dev/router/introduction/)).
 
 ## Get started
 
@@ -10,20 +10,34 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Start the app
+2. Start Metro
+
+   - **Development build** (Sign in with Apple, native modules): `npm run start:dev-client`, then open the dev client on Simulator or device.
+   - Generic: `npx expo start`
+
+3. Run on iOS Simulator (local native build)
 
    ```bash
-   npx expo start
+   npm run ios
    ```
 
-In the output, you'll find options to open the app in a
+See [docs/simulator-and-invite-qa.md](./docs/simulator-and-invite-qa.md) for simulator vs device truth, deep links (`baobab://`), and invite QA.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## QA & validation
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+| Doc | Purpose |
+|-----|---------|
+| [docs/simulator-and-invite-qa.md](./docs/simulator-and-invite-qa.md) | Simulator / dev client, deep links, invite + auth |
+| [docs/shared-reveal-day4-checklist.md](./docs/shared-reveal-day4-checklist.md) | Shared reveal lifecycle |
+| [docs/day7-notification-runner-validation.md](./docs/day7-notification-runner-validation.md) | Push runner (real device for end-to-end push) |
+
+```bash
+npm run -s typecheck
+set -a && source .env && set +a && npm run -s check:invite-claim-flow
+set -a && source .env && set +a && npm run -s check:shared-reveal-flow
+```
+
+([Development builds](https://docs.expo.dev/develop/development-builds/introduction/), [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/), [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/). **Expo Go** is limited vs a dev client here.)
 
 ## Get a fresh project
 

@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import { devLogLinking } from '../../lib/dev-linking-log';
 import { claimRelationshipInviteForCurrentUser } from '../../lib/reveal-shared-repo';
 import {
   buildRelationshipRevealInput,
@@ -14,13 +15,14 @@ import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function InviteArrivalScreen() {
   const { relationId, token } = useLocalSearchParams<{ relationId: string; token?: string }>();
+  const relationIdTrim = typeof relationId === 'string' ? relationId.trim() : '';
   const { me, relations, evaluations, resolveInvitedSideB } = useRelationsStore();
   const [showUnresolvedContinuation, setShowUnresolvedContinuation] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
   const relation = useMemo(
-    () => relations.find((item) => item.id === relationId) ?? null,
-    [relations, relationId],
+    () => relations.find((item) => item.id === relationIdTrim) ?? null,
+    [relations, relationIdTrim],
   );
   const privateReadingA = useMemo(
     () => (relation ? evaluations.find((evaluation) => evaluation.relationId === relation.id) ?? null : null),
@@ -58,7 +60,7 @@ export default function InviteArrivalScreen() {
       // Keep invite context while collecting minimal local identity.
       router.push({
         pathname: '/invite/identity/[relationId]',
-        params: { relationId: relationId || '', token: token || '' },
+        params: { relationId: relationIdTrim, token: token || '' },
       });
       return;
     }
@@ -107,9 +109,33 @@ export default function InviteArrivalScreen() {
       return;
     }
 
-    // TODO: Bind invite relation IDs to real local relation records when backend invite resolution is ready.
+    // No local relation row yet (e.g. cold invite open). User can dismiss; relation appears once created/synced.
     setShowUnresolvedContinuation(true);
   };
+
+  if (!relationIdTrim) {
+    if (__DEV__) {
+      devLogLinking('invite: missing relationId in URL', {});
+    }
+    return (
+      <View style={styles.screen}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Invalid invite link</Text>
+          <Text style={styles.body}>
+            This link does not include a relationship id. Ask your partner to share the invite again.
+          </Text>
+          {__DEV__ ? (
+            <Text style={styles.devHint}>
+              Dev: baobab://invite/RELATION_ID?token=… (replace RELATION_ID)
+            </Text>
+          ) : null}
+          <Pressable onPress={() => router.back()} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Go back</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -238,5 +264,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     color: colors.text.muted,
+  },
+  devHint: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.text.muted,
+    fontFamily: 'System',
   },
 });

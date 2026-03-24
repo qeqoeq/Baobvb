@@ -43,3 +43,6 @@ app-example
 /android
 
 .env
+
+# Supabase CLI local cache (not project SQL)
+supabase/.temp/
