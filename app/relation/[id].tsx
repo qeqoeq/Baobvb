@@ -313,7 +313,7 @@ export default function RelationDetailScreen() {
                 </View>
                 <View style={styles.narrativeCard}>
                   <Text style={styles.narrativeLine}>
-                    <Text style={styles.narrativeKey}>Force:</Text> {strongestLabel}
+                    <Text style={styles.narrativeKey}>Strength:</Text> {strongestLabel}
                   </Text>
                   <Text style={styles.narrativeLine}>
                     <Text style={styles.narrativeKey}>Watch:</Text> {weakestLabel}
@@ -327,37 +327,54 @@ export default function RelationDetailScreen() {
                   <Text style={styles.nextActionText}>{growthSuggestion}</Text>
                 </View>
               </>
+            ) : revealStatus === 'reveal_ready' ? (
+              <View style={styles.revealReadyCard}>
+                <Text style={styles.privateStateDate}>
+                  Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
+                </Text>
+                <Text style={styles.revealReadyTitle}>The reveal is ready</Text>
+                <Text style={styles.revealReadyBody}>
+                  Both readings are in. You can open the reveal now.
+                </Text>
+                <Pressable onPress={() => void handleOpenReveal()} style={styles.revealPrimaryButton}>
+                  <Text style={styles.revealPrimaryButtonText}>Reveal now</Text>
+                </Pressable>
+                <Pressable onPress={handleBackToGarden} style={styles.secondaryInlineCTA}>
+                  <Text style={styles.secondaryInlineCTALabel}>Back to Garden</Text>
+                </Pressable>
+              </View>
             ) : (
-              <>
-                <View style={styles.privateStateCard}>
-                  <Text style={styles.privateStateTitle}>{safeRevealSummary?.stateLabel}</Text>
-                  <Text style={styles.privateStateText}>
-                    {revealStatus === 'waiting_other_side'
-                      ? 'Waiting for the other side.'
-                      : revealStatus === 'cooking_reveal'
-                        ? 'Baobab is preparing your reveal.'
-                        : revealStatus === 'reveal_ready'
-                          ? 'Your reveal is available now.'
-                          : safeRevealSummary?.shortDescription}
-                  </Text>
-                  {revealStatus === 'waiting_other_side' ? (
+              <View style={styles.privateStateCard}>
+                <Text style={styles.privateStateDate}>
+                  Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
+                </Text>
+                {revealStatus === 'waiting_other_side' ? (
+                  <>
+                    <Text style={styles.privateStateTitle}>Your reading is saved</Text>
+                    <Text style={styles.privateStateText}>
+                      The reveal will be available once the other person adds their side.
+                    </Text>
                     <Pressable onPress={() => void handleInviteToReveal()} style={styles.revealInviteCTA}>
                       <Text style={styles.revealInviteCTALabel}>Invite to reveal</Text>
                     </Pressable>
-                  ) : null}
-                  {revealStatus === 'reveal_ready' ? (
-                    <Pressable onPress={() => void handleOpenReveal()} style={styles.revealOpenCTA}>
-                      <Text style={styles.revealOpenCTALabel}>Reveal now</Text>
-                    </Pressable>
-                  ) : null}
-                  <Pressable onPress={handleBackToGarden} style={styles.secondaryInlineCTA}>
-                    <Text style={styles.secondaryInlineCTALabel}>Back to Garden</Text>
-                  </Pressable>
-                  <Text style={styles.privateStateDate}>
-                    Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
-                  </Text>
-                </View>
-              </>
+                  </>
+                ) : revealStatus === 'cooking_reveal' ? (
+                  <>
+                    <Text style={styles.privateStateTitle}>Both sides are in</Text>
+                    <Text style={styles.privateStateText}>
+                      Both readings are in. The reveal is being prepared.
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.privateStateTitle}>{safeRevealSummary?.stateLabel}</Text>
+                    <Text style={styles.privateStateText}>{safeRevealSummary?.shortDescription}</Text>
+                  </>
+                )}
+                <Pressable onPress={handleBackToGarden} style={styles.secondaryInlineCTA}>
+                  <Text style={styles.secondaryInlineCTALabel}>Back to Garden</Text>
+                </Pressable>
+              </View>
             )}
           </View>
 
@@ -365,7 +382,9 @@ export default function RelationDetailScreen() {
             <Text style={styles.readingNoteText}>
               {nameRevealed
                 ? 'This foundational reading captures the current shape of this relationship.'
-                : 'Your private side is saved and stays hidden until reveal.'}
+                : revealStatus === 'reveal_ready'
+                  ? 'Opening the reveal is a one-time action.'
+                  : 'Your private side is saved and stays hidden until reveal.'}
             </Text>
           </View>
         </View>
@@ -670,38 +689,36 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.text.muted,
   },
-  revealOpenCTA: {
-    marginTop: spacing.xs,
-    alignSelf: 'flex-start',
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.accent.deepTeal + '55',
-    backgroundColor: colors.accent.deepTeal + '14',
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 2,
-  },
-  revealOpenCTALabel: {
-    fontSize: 12,
-    color: colors.accent.deepTeal,
-    fontWeight: '700',
-  },
-  revealInviteBlock: {
+  revealReadyCard: {
     backgroundColor: colors.background.tertiary,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border.soft,
+    borderColor: colors.accent.deepTeal + '55',
     padding: spacing.md,
     gap: spacing.xs,
   },
-  revealInviteTitle: {
-    fontSize: 13,
+  revealReadyTitle: {
+    fontSize: 15,
     color: colors.text.primary,
     fontWeight: '700',
+    marginTop: spacing.xs,
   },
-  revealInviteSubtext: {
-    fontSize: 12,
+  revealReadyBody: {
+    fontSize: 13,
     color: colors.text.secondary,
-    lineHeight: 18,
+    lineHeight: 19,
+  },
+  revealPrimaryButton: {
+    marginTop: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.accent.deepTeal,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  revealPrimaryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text.primary,
   },
   revealInviteCTA: {
     marginTop: spacing.xs,
