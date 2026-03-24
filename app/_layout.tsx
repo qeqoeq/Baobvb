@@ -10,6 +10,7 @@ import {
 } from '../lib/push-notifications';
 import { getCurrentAuthenticatedUser } from '../lib/supabase-auth';
 import { supabase } from '../lib/supabase';
+import { useRelationsStore } from '../store/useRelationsStore';
 
 export default function RootLayout() {
   const pathname = usePathname();
@@ -17,6 +18,7 @@ export default function RootLayout() {
   const [authResolved, setAuthResolved] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const pushRegistrationRef = useRef(false);
+  const { setAuthIdentity } = useRelationsStore();
 
   useEffect(() => {
     configureNotificationPresentation();
@@ -27,6 +29,7 @@ export default function RootLayout() {
       try {
         const user = await getCurrentAuthenticatedUser();
         setIsAuthenticated(Boolean(user));
+        setAuthIdentity(user?.id ?? null);
       } finally {
         setAuthResolved(true);
       }
@@ -37,6 +40,7 @@ export default function RootLayout() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(Boolean(session?.user));
       setAuthResolved(true);
+      setAuthIdentity(session?.user?.id ?? null);
     });
 
     return () => {

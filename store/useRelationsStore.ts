@@ -447,8 +447,13 @@ function normalizeRelationshipLocalState(
 
 function persist() {
   if (!hydrated) return;
+  // internalAuthUserId and publicProfileId are runtime fields — not persisted.
+  // internalAuthUserId is always re-derived from the live Supabase session on bootstrap.
+  // publicProfileId will be provisioned from the backend, not from AsyncStorage.
+  // Using undefined so JSON.stringify omits these keys entirely.
+  const { internalAuthUserId: _a, publicProfileId: _b, ...persistableMe } = state.me;
   persistState<StoreState>({
-    me: state.me,
+    me: persistableMe as MeProfile,
     relations: state.relations,
     evaluations: state.evaluations,
     places: state.places,
@@ -469,6 +474,11 @@ loadPersistedState<StoreState>().then((persisted) => {
         ...SEED_ME,
         ...persisted.me,
         id: persisted.me.id ?? SEED_ME.id,
+        // Runtime fields are never read from AsyncStorage — always re-derived at runtime.
+        // Preserve any value already set from onAuthStateChange firing before this
+        // hydration completes (race condition: auth can resolve before AsyncStorage).
+        internalAuthUserId: state.me.internalAuthUserId ?? null,
+        publicProfileId: state.me.publicProfileId ?? null,
       };
     }
     state.relations = persisted.relations.map((relation) => ({
@@ -535,6 +545,24 @@ loadPersistedState<StoreState>().then((persisted) => {
 });
 
 // ── mutations ──────────────────────────────────────────────────────────
+
+/**
+ * Provisions or clears the internal auth identity in the local profile.
+ *
+ * Call this at two points:
+ *   1. App bootstrap — when the existing session is resolved via getCurrentAuthenticatedUser()
+ *   2. Every auth state change — via supabase.auth.onAuthStateChange()
+ *
+ * Pass null to clear (sign-out, unauthenticated state).
+ *
+ * This function does NOT call persist() — internalAuthUserId is a runtime field
+ * that is always re-derived from the live session, never read from AsyncStorage.
+ */
+function hydrateAuthIdentity(userId: string | null): void {
+  if (state.me.internalAuthUserId === userId) return;
+  state.me = { ...state.me, internalAuthUserId: userId };
+  emitChange();
+}
 
 function setArchived(id: string, archived: boolean) {
   state.relations = state.relations.map((relation) =>
@@ -1057,6 +1085,7 @@ export function useRelationsStore() {
   const syncRevealReadyState = (relationId: string) => markRevealReadyIfUnlocked(relationId);
   const revealMutualRelationship = (relationId: string) => openMutualReveal(relationId);
   const resetDevState = () => resetDevStateToSeed();
+  const setAuthIdentity = (userId: string | null) => hydrateAuthIdentity(userId);
 
   return {
     me,
@@ -1080,5 +1109,6 @@ export function useRelationsStore() {
     updateMe,
     addPlace,
     isHydrated,
+    setAuthIdentity,
   };
 }
