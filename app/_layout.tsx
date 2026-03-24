@@ -141,7 +141,7 @@ export default function RootLayout() {
       />
       <Stack.Screen name="relation/lexicon" options={{ title: 'Relationship lexicon' }} />
       <Stack.Screen name="relation/evaluate/[id]" options={{ title: 'Foundational reading' }} />
-      <Stack.Screen name="relation/archived" options={{ title: 'Relations archivees' }} />
+      <Stack.Screen name="relation/archived" options={{ title: 'Archived relationships' }} />
     </Stack>
   );
 }

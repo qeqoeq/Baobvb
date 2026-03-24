@@ -1,93 +1,97 @@
-import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { colors } from '../../constants/colors';
+import { radius, spacing } from '../../constants/spacing';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function ArchivedRelationsScreen() {
   const { archivedRelations, restoreRelation } = useRelationsStore();
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Relations archivees</Text>
-
-      <View style={styles.list}>
-        {archivedRelations.map((relation) => (
-          <View key={relation.id} style={styles.row}>
-            <Text style={styles.name}>{relation.name}</Text>
-            <Pressable onPress={() => restoreRelation(relation.id)} style={styles.rowButton}>
-              <Text style={styles.rowButtonText}>Restaurer</Text>
-            </Pressable>
-          </View>
-        ))}
-        {archivedRelations.length === 0 ? (
-          <Text style={styles.empty}>Aucune relation archivee</Text>
-        ) : null}
-      </View>
-
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>Retour Jardin</Text>
-      </Pressable>
-    </View>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      {archivedRelations.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>No archived relationships</Text>
+          <Text style={styles.emptyBody}>
+            Relationships you archive will appear here.
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.list}>
+          {archivedRelations.map((relation) => (
+            <View key={relation.id} style={styles.row}>
+              <Text style={styles.name}>{relation.name}</Text>
+              <Pressable
+                onPress={() => restoreRelation(relation.id)}
+                style={styles.restoreButton}
+              >
+                <Text style={styles.restoreButtonText}>Restore</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#0F1115',
-    padding: 20,
-    paddingTop: 48,
+    backgroundColor: colors.background.primary,
   },
-  title: {
-    color: '#F2EDE8',
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 16,
+  content: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   list: {
-    flex: 1,
-    gap: 10,
+    gap: spacing.sm,
   },
   row: {
-    backgroundColor: '#1A1D23',
-    borderRadius: 10,
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#2B3038',
-    padding: 12,
+    borderColor: colors.border.soft,
+    padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   name: {
-    color: '#F2EDE8',
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text.primary,
+    flex: 1,
   },
-  rowButton: {
-    backgroundColor: '#242830',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  restoreButton: {
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border.strong,
+    backgroundColor: colors.background.tertiary,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
   },
-  rowButtonText: {
-    color: '#F2EDE8',
+  restoreButtonText: {
     fontSize: 12,
     fontWeight: '600',
+    color: colors.text.secondary,
   },
-  empty: {
-    color: '#9A958E',
-    textAlign: 'center',
-    marginTop: 12,
+  emptyCard: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    padding: spacing.lg,
+    gap: spacing.xs,
   },
-  backButton: {
-    marginTop: 12,
-    backgroundColor: '#2A7C7C',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text.primary,
   },
-  backButtonText: {
-    color: '#F2EDE8',
-    fontSize: 14,
-    fontWeight: '700',
+  emptyBody: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.text.secondary,
   },
 });

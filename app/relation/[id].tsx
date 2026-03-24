@@ -68,19 +68,26 @@ export default function RelationDetailScreen() {
     }
   }, [relation]);
 
+  const navigateAway = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
   useEffect(() => {
     if (!id) {
       if (__DEV__) {
         devLogLinking('relation detail: missing id, navigating back', {});
       }
-      router.back();
+      navigateAway();
       return;
     }
     if (!relation) {
       if (__DEV__) {
         devLogLinking('relation detail: no local relation for id', { id: maskIdForLog(id) });
       }
-      router.back();
     }
   }, [id, relation]);
 
@@ -119,8 +126,12 @@ export default function RelationDetailScreen() {
   if (!relation) {
     return (
       <View style={styles.screen}>
-        <View style={styles.fallbackWrap}>
-          <Text style={styles.fallbackText}>Opening relationship...</Text>
+        <View style={styles.unavailableWrap}>
+          <Text style={styles.unavailableTitle}>Relationship unavailable</Text>
+          <Text style={styles.unavailableBody}>This relationship could not be opened.</Text>
+          <Pressable onPress={navigateAway} style={styles.unavailableCTA}>
+            <Text style={styles.unavailableCTAText}>Back to Garden</Text>
+          </Pressable>
         </View>
       </View>
     );
@@ -240,8 +251,7 @@ export default function RelationDetailScreen() {
             </Pressable>
           ) : null}
         </View>
-        <Text style={styles.statusText}>Reading status: {reading?.readingStatus ?? 'Unread'}</Text>
-        <View style={styles.originCard}>
+<View style={styles.originCard}>
           <Text style={styles.originLabel}>{identityLabel}</Text>
           {identitySubtext ? (
             <Text style={styles.originSubtext}>{identitySubtext}</Text>
@@ -403,14 +413,35 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg * 2,
     gap: spacing.lg,
   },
-  fallbackWrap: {
+  unavailableWrap: {
     flex: 1,
-    alignItems: 'center',
+    padding: spacing.lg,
     justifyContent: 'center',
+    gap: spacing.md,
   },
-  fallbackText: {
-    color: colors.text.muted,
-    fontSize: 13,
+  unavailableTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  unavailableBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.text.secondary,
+  },
+  unavailableCTA: {
+    alignSelf: 'flex-start',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.strong,
+    backgroundColor: colors.background.secondary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+  },
+  unavailableCTAText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text.primary,
   },
 
   header: {
@@ -471,11 +502,6 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     fontWeight: '700',
     lineHeight: 14,
-  },
-  statusText: {
-    fontSize: 12,
-    color: colors.text.muted,
-    fontWeight: '500',
   },
   originCard: {
     marginTop: spacing.xs,

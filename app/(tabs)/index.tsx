@@ -72,7 +72,7 @@ export default function GardenScreen() {
   }, [selectedFilter]);
 
   const trustStatus = useMemo(() => {
-    if (me.trustPassportStatus === 'new') return 'Passport not mapped yet';
+    if (me.trustPassportStatus === 'new') return 'Not yet mapped';
     if (me.trustPassportStatus === 'steady') return 'Trust well rooted';
     return toNurtureCount > 0 ? 'Trust in motion' : 'Trust growing';
   }, [me.trustPassportStatus, toNurtureCount]);
@@ -156,19 +156,33 @@ export default function GardenScreen() {
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>Continue mapping</Text>
+          <Text style={styles.sectionLabel}>
+            {entries.length === 0
+              ? 'Your relationships'
+              : selectedFilter === 'archived'
+                ? 'Archived relationships'
+                : 'Continue mapping'}
+          </Text>
           <View style={styles.sectionLine} />
         </View>
 
         {filteredEntries.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>No relationships in this filter</Text>
-            <Text style={styles.emptyText}>
-              Try another Garden filter or add a new relationship.
-            </Text>
-            <Pressable onPress={() => router.push('../relation/add')} style={styles.emptyAction}>
-              <Text style={styles.emptyActionText}>Add a person</Text>
-            </Pressable>
+            {entries.length === 0 ? (
+              <>
+                <Text style={styles.emptyTitle}>Your garden is empty</Text>
+                <Text style={styles.emptyText}>
+                  Add your first relationship to begin mapping your links.
+                </Text>
+                <Pressable onPress={() => router.push('../relation/add')} style={styles.emptyAction}>
+                  <Text style={styles.emptyActionText}>Add a person</Text>
+                </Pressable>
+              </>
+            ) : selectedFilter === 'archived' ? (
+              <Text style={styles.emptyText}>No archived relationships.</Text>
+            ) : (
+              <Text style={styles.emptyText}>Nothing here. Try a different filter.</Text>
+            )}
           </View>
         ) : (
           <View style={styles.mappingList}>
@@ -197,7 +211,7 @@ export default function GardenScreen() {
                   revealStatus === 'reveal_ready'
                     ? 'Ready'
                     : revealStatus === 'cooking_reveal'
-                      ? 'Cooking'
+                      ? 'Preparing'
                       : entry.readingStatus === 'Read'
                         ? 'Waiting'
                         : 'Unread'
@@ -229,9 +243,9 @@ export default function GardenScreen() {
                   </View>
                   <View style={styles.mappingBody}>
                     <Text style={styles.mappingName}>{entry.relation.name}</Text>
-                    <Text style={styles.mappingMeta}>
-                      {entry.relation.handle || 'No handle'} 
-                    </Text>
+                    {entry.relation.handle ? (
+                      <Text style={styles.mappingMeta}>{entry.relation.handle}</Text>
+                    ) : null}
                     <Text style={styles.mappingReadingLine}>
                       {mappingLine}
                     </Text>
@@ -250,9 +264,11 @@ export default function GardenScreen() {
             })}
           </View>
         )}
-        <Text style={styles.sectionSupportText}>
-          Showing {filteredEntries.length} {filterLabel.toLowerCase()} relationship card{filteredEntries.length > 1 ? 's' : ''}.
-        </Text>
+        {filteredEntries.length > 0 ? (
+          <Text style={styles.sectionSupportText}>
+            Showing {filteredEntries.length} {filterLabel.toLowerCase()} relationship card{filteredEntries.length > 1 ? 's' : ''}.
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.section}>
