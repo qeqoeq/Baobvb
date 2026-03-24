@@ -564,6 +564,24 @@ function hydrateAuthIdentity(userId: string | null): void {
   emitChange();
 }
 
+/**
+ * Provisions or clears the public profile identity in the local profile.
+ *
+ * Call this once the backend provisioning flow for publicProfileId is implemented.
+ * Until then, publicProfileId remains null and QR cards are emitted as v1.
+ *
+ * INVARIANT: never pass internalAuthUserId here. publicProfileId must be a
+ * distinct identifier provisioned by the backend — not derived from auth.uid().
+ *
+ * This function does NOT call persist() — publicProfileId is a runtime field
+ * provisioned from the backend on demand, not stored in AsyncStorage.
+ */
+function hydratePublicProfileId(id: string | null): void {
+  if (state.me.publicProfileId === id) return;
+  state.me = { ...state.me, publicProfileId: id };
+  emitChange();
+}
+
 function setArchived(id: string, archived: boolean) {
   state.relations = state.relations.map((relation) =>
     relation.id === id ? { ...relation, archived } : relation,
@@ -1086,6 +1104,7 @@ export function useRelationsStore() {
   const revealMutualRelationship = (relationId: string) => openMutualReveal(relationId);
   const resetDevState = () => resetDevStateToSeed();
   const setAuthIdentity = (userId: string | null) => hydrateAuthIdentity(userId);
+  const setPublicProfileId = (id: string | null) => hydratePublicProfileId(id);
 
   return {
     me,
@@ -1110,5 +1129,6 @@ export function useRelationsStore() {
     addPlace,
     isHydrated,
     setAuthIdentity,
+    setPublicProfileId,
   };
 }
