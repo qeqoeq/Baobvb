@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
@@ -15,6 +15,7 @@ export default function InviteArrivalScreen() {
   const { me, relations, resolveInvitedSideB } = useRelationsStore();
   const [showUnresolvedContinuation, setShowUnresolvedContinuation] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
+  const [brokenLink, setBrokenLink] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const relation = useMemo(
@@ -29,11 +30,19 @@ export default function InviteArrivalScreen() {
     me?.handle?.trim(),
   );
 
+  // If the relation appears in the store while the unresolved card is visible,
+  // navigate automatically — no retry needed, no false success.
+  useEffect(() => {
+    if (!showUnresolvedContinuation || !relation) return;
+    router.push({ pathname: '/relation/[id]', params: { id: relation.id } });
+  }, [showUnresolvedContinuation, relation]);
+
   const handleAddMySide = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     setShowUnresolvedContinuation(false);
     setClaimError(null);
+    setBrokenLink(false);
 
     try {
       if (!hasLocalIdentity) {
@@ -41,6 +50,13 @@ export default function InviteArrivalScreen() {
           pathname: '/invite/identity/[relationId]',
           params: { relationId: relationIdTrim, token: token || '' },
         });
+        return;
+      }
+
+      // No token and no local relation: the link is structurally broken.
+      // Nothing can be claimed or resolved.
+      if (!token?.trim() && !relation) {
+        setBrokenLink(true);
         return;
       }
 
@@ -136,7 +152,17 @@ export default function InviteArrivalScreen() {
           <Text style={styles.reassuranceText}>You can answer in under a minute.</Text>
         </View>
 
-        {claimError ? (
+        {brokenLink ? (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateTitle}>This invite link is incomplete</Text>
+            <Text style={styles.stateBody}>
+              The link is missing information needed to continue. Ask for a fresh invite link.
+            </Text>
+            <Pressable onPress={() => router.back()} style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Done</Text>
+            </Pressable>
+          </View>
+        ) : claimError ? (
           <View style={styles.stateCard}>
             <Text style={styles.stateTitle}>Couldn't claim this invitation</Text>
             <Text style={styles.stateBody}>
@@ -154,9 +180,9 @@ export default function InviteArrivalScreen() {
           </View>
         ) : showUnresolvedContinuation ? (
           <View style={styles.stateCard}>
-            <Text style={styles.stateTitle}>Your side is saved</Text>
+            <Text style={styles.stateTitle}>You've joined this invite</Text>
             <Text style={styles.stateBody}>
-              The relationship will appear in your Garden once it has been linked.
+              Your participation has been recorded. This relationship is not available in your Garden yet.
             </Text>
             <Pressable onPress={() => router.back()} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>Done</Text>
