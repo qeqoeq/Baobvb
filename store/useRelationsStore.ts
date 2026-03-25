@@ -57,12 +57,15 @@ export type Relation = {
   handle?: string;
   avatarSeed?: string;
   /**
-   * 'manual' — created by hand
-   * 'scan'   — seeded from a scanned QR card
-   * 'claim'  — materialized after claiming a shared invite.
-   *            Both sides known to exist. canonicalRelationId always set.
+   * 'manual'    — created by hand
+   * 'scan'      — seeded from a scanned QR card
+   * 'claim'     — materialized after claiming a shared invite.
+   *               Both sides known to exist. canonicalRelationId always set.
+   * 'bootstrap' — recovered from backend at app start (shared continuity bootstrap).
+   *               Both sides known to exist. canonicalRelationId always set.
+   *               Name is a placeholder until the user renames it.
    */
-  source: 'manual' | 'scan' | 'claim';
+  source: 'manual' | 'scan' | 'claim' | 'bootstrap';
   /**
    * The scanned card's meId field.
    * v1 QR: opaque legacy local alias — not backend-queryable.
@@ -500,16 +503,26 @@ loadPersistedState<StoreState>().then((persisted) => {
         relation.avatarSeed ||
         relation.name?.trim().charAt(0).toUpperCase() ||
         '?',
-      source: relation.source === 'scan' ? 'scan' : 'manual',
+      source:
+        relation.source === 'scan' ? 'scan' :
+        relation.source === 'claim' ? 'claim' :
+        relation.source === 'bootstrap' ? 'bootstrap' :
+        'manual',
       identityStatus:
-        relation.identityStatus === 'verified' || relation.source === 'scan'
+        relation.identityStatus === 'verified' ||
+        relation.source === 'scan' ||
+        relation.source === 'claim' ||
+        relation.source === 'bootstrap'
           ? 'verified'
           : 'draft',
       relationshipNameRevealed: relation.relationshipNameRevealed === true,
       localState: normalizeRelationshipLocalState({
         id: relation.id,
         identityStatus:
-          relation.identityStatus === 'verified' || relation.source === 'scan'
+          relation.identityStatus === 'verified' ||
+          relation.source === 'scan' ||
+          relation.source === 'claim' ||
+          relation.source === 'bootstrap'
             ? 'verified'
             : 'draft',
         relationshipNameRevealed: relation.relationshipNameRevealed === true,
@@ -1105,6 +1118,99 @@ function attachCanonicalRelationId(localId: string, canonicalId: string): boolea
   return true;
 }
 
+/**
+ * Minimal input shape expected from the my_shared_relationships RPC.
+ * Defined here so the store owns the contract; the fetch layer (lib/bootstrap-shared-relations.ts)
+ * imports this type rather than the reverse.
+ */
+export type SharedRelationBootstrapInput = {
+  relationship_id: string;
+  /** One of the SharedRevealStatus values, as returned by the backend. */
+  status: string;
+  /** Which side the current user occupies: 'sideA' or 'sideB'. Server-computed. */
+  my_side: string;
+  /** Explicit proof that sideA participant is bound (side_a_user_id is not null). */
+  side_a_present: boolean;
+  /** Explicit proof that sideB participant is bound (side_b_user_id is not null). */
+  side_b_present: boolean;
+  side_a_reading_id: string | null;
+  side_b_reading_id: string | null;
+};
+
+/**
+ * Idempotent upsert: for each backend row, create a minimal local relation if one
+ * with the same canonicalRelationId does not already exist.
+ *
+ * Dedup key: canonicalRelationId only — never name / handle / heuristic.
+ * Relations already present in the store (any source) are untouched.
+ * Non-canonical rows (missing relationship_id) are silently skipped.
+ */
+function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[]): void {
+  if (!rows.length) return;
+
+  let didChange = false;
+  for (const row of rows) {
+    const canonicalId = typeof row.relationship_id === 'string' ? row.relationship_id.trim() : '';
+    if (!canonicalId) continue;
+
+    // Idempotent: skip if already materialized by any source.
+    const alreadyPresent = state.relations.some(
+      (r) => r.canonicalRelationId === canonicalId,
+    );
+    if (alreadyPresent) continue;
+
+    const normalizedStatus: RelationshipRevealSnapshot['status'] = isRevealStatus(row.status)
+      ? row.status
+      : 'waiting_other_side';
+    const revealed = normalizedStatus === 'revealed';
+    // Presence is driven by explicit boolean from backend, not inferred from reading state.
+    const sideAPresent = row.side_a_present === true;
+    const sideBPresent = row.side_b_present === true;
+    const sideAHasReading = sideAPresent && row.side_a_reading_id !== null;
+    const sideBHasReading = sideBPresent && row.side_b_reading_id !== null;
+
+    const relation: Relation = {
+      // Suffix ensures uniqueness when multiple rows are bootstrapped in the same tick.
+      id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      // Placeholder: name is not available from the shared record.
+      // The user can rename via the relation edit screen.
+      name: '(shared)',
+      archived: false,
+      createdAt: new Date().toISOString(),
+      identityStatus: 'verified',
+      relationshipNameRevealed: revealed,
+      avatarSeed: '?',
+      source: 'bootstrap',
+      canonicalRelationId: canonicalId,
+      localState: {
+        sideA: {
+          exists: sideAPresent,
+          identityStatus: sideAPresent ? 'verified' : 'missing',
+          hasPrivateReading: sideAHasReading,
+        },
+        sideB: {
+          exists: sideBPresent,
+          identityStatus: sideBPresent ? 'verified' : 'missing',
+          hasPrivateReading: sideBHasReading,
+        },
+        revealSnapshot: {
+          status: normalizedStatus,
+          revealed,
+          relationshipNameRevealed: revealed,
+        },
+      },
+    };
+
+    state.relations = [relation, ...state.relations];
+    didChange = true;
+  }
+
+  if (didChange) {
+    emitChange();
+    persist();
+  }
+}
+
 function resetDevStateToSeed() {
   state.me = { ...SEED_ME };
   state.relations = [...SEED_RELATIONS];
@@ -1158,6 +1264,8 @@ export function useRelationsStore() {
   const setPublicProfileId = (id: string | null) => hydratePublicProfileId(id);
   const setCanonicalRelationId = (localId: string, canonicalId: string) =>
     attachCanonicalRelationId(localId, canonicalId);
+  const bootstrapSharedRelations = (rows: SharedRelationBootstrapInput[]) =>
+    upsertBootstrappedSharedRelations(rows);
 
   return {
     me,
@@ -1184,5 +1292,6 @@ export function useRelationsStore() {
     setAuthIdentity,
     setPublicProfileId,
     setCanonicalRelationId,
+    bootstrapSharedRelations,
   };
 }

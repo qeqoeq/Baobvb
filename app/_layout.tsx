@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Stack, router, useGlobalSearchParams, usePathname } from 'expo-router';
 
 import { devLogLinking, maskIdForLog } from '../lib/dev-linking-log';
+import { fetchMySharedRelationships } from '../lib/bootstrap-shared-relations';
 import {
   addRevealReadyNotificationResponseListener,
   configureNotificationPresentation,
@@ -19,8 +20,9 @@ export default function RootLayout() {
   const [authResolved, setAuthResolved] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const pushRegistrationRef = useRef(false);
-  const { me, setAuthIdentity, setPublicProfileId } = useRelationsStore();
+  const { me, setAuthIdentity, setPublicProfileId, bootstrapSharedRelations } = useRelationsStore();
   const provisionedForUserIdRef = useRef<string | null>(null);
+  const bootstrappedForUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     configureNotificationPresentation();
@@ -102,6 +104,24 @@ export default function RootLayout() {
         if (__DEV__) {
           console.warn('[identity] publicProfileId provisioning failed — QR stays v1');
         }
+      });
+  }, [me.internalAuthUserId]);
+
+  useEffect(() => {
+    const userId = me.internalAuthUserId ?? null;
+    if (!userId) {
+      bootstrappedForUserIdRef.current = null;
+      return;
+    }
+    if (bootstrappedForUserIdRef.current === userId) return;
+    bootstrappedForUserIdRef.current = userId;
+    void fetchMySharedRelationships()
+      .then((rows) => bootstrapSharedRelations(rows))
+      .catch(() => {
+        // Best-effort: bootstrap failure is silent.
+        // The store retains whatever was previously persisted.
+        // Will retry on next app launch when the user is still authenticated.
+        bootstrappedForUserIdRef.current = null;
       });
   }, [me.internalAuthUserId]);
 
