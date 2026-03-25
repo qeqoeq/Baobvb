@@ -22,7 +22,7 @@ import type { SharedRelationBootstrapInput } from '../store/useRelationsStore';
 const registry = new Map<string, SharedRelationBootstrapInput>();
 
 /**
- * Stores the shared_record from a successful claim result before navigating to the add flow.
+ * Stores the sanitized claim payload before navigating to the add flow.
  *
  * Converts SharedInviteClaimResult → SharedRelationBootstrapInput so that
  * buildSharedRevealLocalState (already used in bootstrap) can project localState
@@ -35,20 +35,20 @@ export function putClaimRecord(
   canonicalRelationId: string,
   claimResult: SharedInviteClaimResult,
 ): void {
-  const rec = claimResult.shared_record;
   registry.set(canonicalRelationId, {
     relationship_id: canonicalRelationId,
-    status: rec.status,
+    status: claimResult.status,
     my_side: claimResult.claimed_side,
-    side_a_present: rec.side_a_user_id !== null,
-    side_b_present: rec.side_b_user_id !== null,
-    side_a_reading_id: rec.side_a_reading_id,
-    side_b_reading_id: rec.side_b_reading_id,
-    cooking_started_at: rec.cooking_started_at,
-    unlock_at: rec.unlock_at,
-    ready_at: rec.ready_at,
-    revealed_at: rec.revealed_at,
-    relationship_name_revealed: rec.relationship_name_revealed,
+    side_a_present: claimResult.side_a_present,
+    side_b_present: claimResult.side_b_present,
+    side_a_reading_id: claimResult.side_a_reading_id,
+    side_b_reading_id: claimResult.side_b_reading_id,
+    cooking_started_at: claimResult.cooking_started_at,
+    unlock_at: claimResult.unlock_at,
+    ready_at: claimResult.ready_at,
+    revealed_at: claimResult.revealed_at,
+    relationship_name_revealed: claimResult.relationship_name_revealed,
+    counterpart_public_profile_id: claimResult.counterpart_public_profile_id,
   });
 }
 

@@ -10,6 +10,7 @@ import {
   type Tier,
 } from '../lib/evaluation';
 import { clearPersistedState, loadPersistedState, persistState } from '../lib/storage';
+import { findCanonicalDuplicate } from '../lib/soft-reconciliation';
 
 export type RelationshipSideIdentityStatus = 'missing' | 'draft' | 'verified';
 
@@ -88,6 +89,19 @@ export type Relation = {
    * See: lib/identity.ts — CanonicalRelationId
    */
   canonicalRelationId?: string | null;
+  /**
+   * The publicProfileId of the other participant in this shared relation.
+   * Only set for source: 'claim' and source: 'bootstrap' — never for 'manual' or 'scan'.
+   * Null when the counterpart has not provisioned a public profile yet.
+   *
+   * This is a person signal, not a relation key:
+   *   - one person can participate in multiple shared relations
+   *   - canonicalRelationId remains the only valid shared↔local join key
+   *
+   * Current use: persisted for future UI-assisted reconciliation suggestion.
+   * Not used for any automatic merge today.
+   */
+  counterpartPublicProfileId?: string | null;
 };
 
 export type PlaceCategory = 'restaurant' | 'cafe' | 'bar' | 'spot' | 'other';
@@ -1021,6 +1035,11 @@ function pushRelationWithSource(
     // For claim source: canonicalRelationId is known at creation time.
     // For other sources: null (set later via setCanonicalRelationId at invite creation).
     canonicalRelationId: meta.canonicalRelationId ?? null,
+    // For claim source only: the counterpart's public profile signal, if available.
+    // Null for manual/scan sources (not applicable) and when counterpart hasn't provisioned.
+    counterpartPublicProfileId: isClaim
+      ? (meta.claimSharedRecord?.counterpart_public_profile_id ?? null)
+      : undefined,
     localState: isClaim
       ? meta.claimSharedRecord
         ? buildSharedRevealLocalState(meta.claimSharedRecord)
@@ -1164,6 +1183,14 @@ export type SharedRelationBootstrapInput = {
   revealed_at: string | null;
   /** Whether the relationship name was revealed. Only meaningful when status is 'revealed'. */
   relationship_name_revealed: boolean;
+  /**
+   * The publicProfileId of the other participant.
+   * Computed server-side — no auth.uid() is ever exposed.
+   * Null when the counterpart has not provisioned a public profile, or their slot is empty.
+   *
+   * Signal only — not a relation key. Does not authorize automatic merge.
+   */
+  counterpart_public_profile_id: string | null;
 };
 
 /**
@@ -1236,10 +1263,8 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     if (!canonicalId) continue;
 
     // Idempotent: skip if already materialized by any source.
-    const alreadyPresent = state.relations.some(
-      (r) => r.canonicalRelationId === canonicalId,
-    );
-    if (alreadyPresent) continue;
+    // Only the canonical ID is a strong enough signal — see lib/soft-reconciliation.ts.
+    if (findCanonicalDuplicate(canonicalId, state.relations) !== null) continue;
 
     const localState = buildSharedRevealLocalState(row);
     const revealed = localState.revealSnapshot.revealed;
@@ -1257,6 +1282,7 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
       avatarSeed: '?',
       source: 'bootstrap',
       canonicalRelationId: canonicalId,
+      counterpartPublicProfileId: row.counterpart_public_profile_id ?? null,
       localState,
     };
 
