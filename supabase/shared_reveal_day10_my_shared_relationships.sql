@@ -10,23 +10,33 @@
 --   - Returns only the minimum fields needed for local materialization at bootstrap.
 --
 -- Fields:
---   relationship_id    — canonical UUID join key
---   status             — shared lifecycle state (waiting_other_side | cooking_reveal | reveal_ready | revealed)
---   my_side            — which side the caller occupies ('sideA' or 'sideB')
---   side_a_present     — true if side_a_user_id is set (participant bound)
---   side_b_present     — true if side_b_user_id is set (participant bound)
---   side_a_reading_id  — non-null means sideA has submitted a reading
---   side_b_reading_id  — non-null means sideB has submitted a reading
+--   relationship_id           — canonical UUID join key
+--   status                    — shared lifecycle state (waiting_other_side | cooking_reveal | reveal_ready | revealed)
+--   my_side                   — which side the caller occupies ('sideA' or 'sideB')
+--   side_a_present            — true if side_a_user_id is set (participant bound)
+--   side_b_present            — true if side_b_user_id is set (participant bound)
+--   side_a_reading_id         — non-null means sideA has submitted a reading
+--   side_b_reading_id         — non-null means sideB has submitted a reading
+--   cooking_started_at        — when cooking_reveal phase began (null if not yet cooking)
+--   unlock_at                 — when cooking timer expires and reveal becomes available
+--   ready_at                  — when reveal_ready state was entered
+--   revealed_at               — when reveal was opened
+--   relationship_name_revealed — whether the relationship name was revealed
 
 create or replace function public.my_shared_relationships()
 returns table(
-  relationship_id   text,
-  status            text,
-  my_side           text,
-  side_a_present    boolean,
-  side_b_present    boolean,
-  side_a_reading_id text,
-  side_b_reading_id text
+  relationship_id            text,
+  status                     text,
+  my_side                    text,
+  side_a_present             boolean,
+  side_b_present             boolean,
+  side_a_reading_id          text,
+  side_b_reading_id          text,
+  cooking_started_at         timestamptz,
+  unlock_at                  timestamptz,
+  ready_at                   timestamptz,
+  revealed_at                timestamptz,
+  relationship_name_revealed boolean
 )
 language plpgsql
 security definer
@@ -47,7 +57,12 @@ begin
     (sr.side_a_user_id is not null) as side_a_present,
     (sr.side_b_user_id is not null) as side_b_present,
     sr.side_a_reading_id,
-    sr.side_b_reading_id
+    sr.side_b_reading_id,
+    sr.cooking_started_at,
+    sr.unlock_at,
+    sr.ready_at,
+    sr.revealed_at,
+    sr.relationship_name_revealed
   from public.shared_relationship_reveals sr
   where
     (sr.side_a_user_id = caller_id or sr.side_b_user_id = caller_id)

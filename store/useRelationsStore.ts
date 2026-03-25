@@ -411,8 +411,19 @@ function normalizeRelationshipLocalState(
       ? rawReveal.tier
       : undefined;
 
+  // sideA: derive from local evaluations (fallback), but upgrade hasPrivateReading if the
+  // persisted raw state carries backend truth (bootstrap/claim sources).
+  // This prevents silent downgrade of sideA.hasPrivateReading on re-hydration for
+  // relations where the reading truth comes from the backend, not a local evaluation.
+  // INVARIANT: only upgrades (false → true), never downgrades (true → false).
+  const rawSideA = raw.sideA;
+  const sideAHasReadingFromBackend = rawSideA?.hasPrivateReading === true;
+
   return {
-    sideA: fallback.sideA,
+    sideA: {
+      ...fallback.sideA,
+      hasPrivateReading: fallback.sideA.hasPrivateReading || sideAHasReadingFromBackend,
+    },
     sideB: {
       exists: sideBExists,
       identityStatus: sideBTierStatus,
@@ -1135,7 +1146,70 @@ export type SharedRelationBootstrapInput = {
   side_b_present: boolean;
   side_a_reading_id: string | null;
   side_b_reading_id: string | null;
+  /** ISO timestamp — when cooking_reveal phase began. Null if not yet in cooking state. */
+  cooking_started_at: string | null;
+  /** ISO timestamp — when the cooking timer expires and reveal becomes available. */
+  unlock_at: string | null;
+  /** ISO timestamp — when reveal_ready state was entered. */
+  ready_at: string | null;
+  /** ISO timestamp — when the reveal was opened. */
+  revealed_at: string | null;
+  /** Whether the relationship name was revealed. Only meaningful when status is 'revealed'. */
+  relationship_name_revealed: boolean;
 };
+
+/**
+ * Pure helper: projects shared backend truth into a local RelationshipLocalState.
+ *
+ * Used by both bootstrap materialization and (eventually) claim materialization.
+ * Centralizes the mapping: presence + reading ids + status + timestamps → local state.
+ *
+ * Invariants:
+ *   - hasPrivateReading requires both presence AND a non-null reading_id.
+ *   - revealSnapshot timestamps are only set if truthy strings.
+ *   - Timestamps beyond the current status are not projected (e.g., revealed_at
+ *     is only set when status is 'revealed').
+ */
+function buildSharedRevealLocalState(data: SharedRelationBootstrapInput): RelationshipLocalState {
+  const normalizedStatus: RelationshipRevealSnapshot['status'] = isRevealStatus(data.status)
+    ? data.status
+    : 'waiting_other_side';
+  const revealed = normalizedStatus === 'revealed';
+  const isCooking = normalizedStatus === 'cooking_reveal';
+  const isReady = normalizedStatus === 'reveal_ready';
+
+  const sideAPresent = data.side_a_present === true;
+  const sideBPresent = data.side_b_present === true;
+
+  function toOptionalTs(value: string | null | undefined): string | undefined {
+    return typeof value === 'string' && value.length > 0 ? value : undefined;
+  }
+
+  return {
+    sideA: {
+      exists: sideAPresent,
+      identityStatus: sideAPresent ? 'verified' : 'missing',
+      hasPrivateReading: sideAPresent && data.side_a_reading_id !== null,
+    },
+    sideB: {
+      exists: sideBPresent,
+      identityStatus: sideBPresent ? 'verified' : 'missing',
+      hasPrivateReading: sideBPresent && data.side_b_reading_id !== null,
+    },
+    revealSnapshot: {
+      status: normalizedStatus,
+      revealed,
+      relationshipNameRevealed: revealed ? data.relationship_name_revealed === true : false,
+      // cooking_started_at and unlock_at are only meaningful during cooking_reveal.
+      // ready_at is only meaningful from reveal_ready onward.
+      // revealed_at is only meaningful once revealed.
+      cookingStartedAt: isCooking || isReady || revealed ? toOptionalTs(data.cooking_started_at) : undefined,
+      unlockAt: isCooking ? toOptionalTs(data.unlock_at) : undefined,
+      readyAt: isReady || revealed ? toOptionalTs(data.ready_at) : undefined,
+      revealedAt: revealed ? toOptionalTs(data.revealed_at) : undefined,
+    },
+  };
+}
 
 /**
  * Idempotent upsert: for each backend row, create a minimal local relation if one
@@ -1159,15 +1233,8 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     );
     if (alreadyPresent) continue;
 
-    const normalizedStatus: RelationshipRevealSnapshot['status'] = isRevealStatus(row.status)
-      ? row.status
-      : 'waiting_other_side';
-    const revealed = normalizedStatus === 'revealed';
-    // Presence is driven by explicit boolean from backend, not inferred from reading state.
-    const sideAPresent = row.side_a_present === true;
-    const sideBPresent = row.side_b_present === true;
-    const sideAHasReading = sideAPresent && row.side_a_reading_id !== null;
-    const sideBHasReading = sideBPresent && row.side_b_reading_id !== null;
+    const localState = buildSharedRevealLocalState(row);
+    const revealed = localState.revealSnapshot.revealed;
 
     const relation: Relation = {
       // Suffix ensures uniqueness when multiple rows are bootstrapped in the same tick.
@@ -1182,23 +1249,7 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
       avatarSeed: '?',
       source: 'bootstrap',
       canonicalRelationId: canonicalId,
-      localState: {
-        sideA: {
-          exists: sideAPresent,
-          identityStatus: sideAPresent ? 'verified' : 'missing',
-          hasPrivateReading: sideAHasReading,
-        },
-        sideB: {
-          exists: sideBPresent,
-          identityStatus: sideBPresent ? 'verified' : 'missing',
-          hasPrivateReading: sideBHasReading,
-        },
-        revealSnapshot: {
-          status: normalizedStatus,
-          revealed,
-          relationshipNameRevealed: revealed,
-        },
-      },
+      localState,
     };
 
     state.relations = [relation, ...state.relations];
