@@ -35,6 +35,7 @@ export default function ScanCardScreen() {
           prefillHandle: payload.handle,
           prefillAvatarSeed: payload.avatarSeed,
           scannedMeId: payload.meId,
+          ...(payload.publicProfileId ? { scannedPublicProfileId: payload.publicProfileId } : {}),
           fromScan: '1',
         },
       });

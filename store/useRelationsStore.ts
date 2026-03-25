@@ -58,11 +58,18 @@ export type Relation = {
   avatarSeed?: string;
   source: 'manual' | 'scan';
   /**
-   * The scanned user's public profile identifier.
-   * Holds publicProfileId (v2 QR) or a legacy me.id local alias (v1 QR).
-   * Treat v1 values as opaque strings — not queryable against the backend.
+   * The scanned card's meId field.
+   * v1 QR: opaque legacy local alias — not backend-queryable.
+   * v2 QR: mirrors publicProfileId — same value as sourcePublicProfileId.
+   * Used for local dedup. Do not use as a backend lookup key without checking version.
    */
   sourceCardMeId?: string;
+  /**
+   * Canonical public profile identifier of the scanned card owner.
+   * Only present for v2 QR scans. Undefined for v1 scans and manual relations.
+   * Backend-queryable — use for future lookup and cross-user reconciliation.
+   */
+  sourcePublicProfileId?: string;
   sourceHandle?: string;
   localState: RelationshipLocalState;
   /**
@@ -942,6 +949,7 @@ type RelationSourceMeta = {
   handle?: string;
   avatarSeed?: string;
   sourceCardMeId?: string;
+  sourcePublicProfileId?: string;
   sourceHandle?: string;
 };
 
@@ -963,6 +971,7 @@ function pushRelationWithSource(
     avatarSeed: meta.avatarSeed || cleanName.charAt(0).toUpperCase() || '?',
     source: meta.source,
     sourceCardMeId: meta.sourceCardMeId,
+    sourcePublicProfileId: meta.sourcePublicProfileId,
     sourceHandle: meta.sourceHandle,
     localState: {
       sideA: {

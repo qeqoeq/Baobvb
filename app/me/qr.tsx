@@ -9,7 +9,7 @@ import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function MyCardQrScreen() {
   const { me } = useRelationsStore();
-  const payload = encodePersonCardPayload(buildPersonCardPayload(me));
+  const payload = encodePersonCardPayload(buildPersonCardPayload(me, { preferV2: true }));
 
   return (
     <View style={styles.screen}>

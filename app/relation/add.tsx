@@ -31,6 +31,7 @@ export default function AddRelationScreen() {
     prefillHandle?: string;
     prefillAvatarSeed?: string;
     scannedMeId?: string;
+    scannedPublicProfileId?: string;
     fromScan?: string;
   }>();
   const { me, relations, addRelation } = useRelationsStore();
@@ -43,7 +44,14 @@ export default function AddRelationScreen() {
   const handleCreate = () => {
     if (!canSubmit) return;
 
-    if (params.scannedMeId && params.scannedMeId === me.id) {
+    const isOwnCard =
+      (params.scannedMeId && params.scannedMeId === me.id) ||
+      Boolean(
+        params.scannedPublicProfileId &&
+          me.publicProfileId &&
+          params.scannedPublicProfileId === me.publicProfileId,
+      );
+    if (isOwnCard) {
       Alert.alert('This is your own card', 'Scan another person to add a new relationship.');
       return;
     }
@@ -64,6 +72,7 @@ export default function AddRelationScreen() {
       ? normalizedScannedHandle || normalizedInputHandle
       : normalizedInputHandle;
     const scannedCardMeId = params.scannedMeId?.trim() || '';
+    const scannedPublicProfileId = params.scannedPublicProfileId?.trim() || undefined;
     const scannedAvatarSeed = params.prefillAvatarSeed?.trim().toUpperCase().slice(0, 2);
 
     const existingByCardMeId = scannedCardMeId
@@ -111,6 +120,7 @@ export default function AddRelationScreen() {
                   handle: normalizedHandle || undefined,
                   avatarSeed: scannedAvatarSeed || cleanName.charAt(0).toUpperCase(),
                   sourceCardMeId: scannedCardMeId || undefined,
+                  sourcePublicProfileId: scannedPublicProfileId,
                   sourceHandle: normalizedScannedHandle || undefined,
                 }
               : {
@@ -137,6 +147,7 @@ export default function AddRelationScreen() {
           handle: normalizedHandle || undefined,
           avatarSeed: scannedAvatarSeed || cleanName.charAt(0).toUpperCase(),
           sourceCardMeId: scannedCardMeId || undefined,
+          sourcePublicProfileId: scannedPublicProfileId,
           sourceHandle: normalizedScannedHandle || undefined,
         }
       : {
