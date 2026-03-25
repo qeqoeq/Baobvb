@@ -102,3 +102,57 @@ export function findAssistedReconciliationSuggestionForRelation(
     matchedPublicProfileId: counterpartId,
   };
 }
+
+/**
+ * Symmetric inverse: looks for a draft resolution suggestion from the perspective
+ * of an unlinked scan draft.
+ *
+ * Decision matrix:
+ *   1. The relation must exist in the list.
+ *   2. It must be an unlinked scan draft:
+ *        - source === 'scan'
+ *        - no canonicalRelationId
+ *   3. It must have a non-empty sourcePublicProfileId.
+ *   4. There must be at least one other relation with:
+ *        - different id
+ *        - shared-backed (canonicalRelationId present, or source bootstrap/claim)
+ *        - counterpartPublicProfileId === sourcePublicProfileId of the draft
+ *   5. Returns the first such shared relation found (arbitrary order).
+ *   6. If no match → null.
+ *
+ * Same signal invariants as findAssistedReconciliationSuggestionForRelation:
+ * this is a person signal, not proof of same relation. No merge, no link.
+ */
+export type DraftResolutionSuggestion = {
+  draftRelationId: string;
+  sharedRelationId: string;
+  matchedPublicProfileId: string;
+};
+
+export function findDraftResolutionSuggestionForRelation(
+  relationId: string,
+  relations: readonly Relation[],
+): DraftResolutionSuggestion | null {
+  const draft = relations.find((r) => r.id === relationId) ?? null;
+  if (!draft) return null;
+
+  if (draft.source !== 'scan' || !!draft.canonicalRelationId) return null;
+
+  const profileId = draft.sourcePublicProfileId;
+  if (!profileId) return null;
+
+  const shared = relations.find(
+    (r) =>
+      r.id !== relationId &&
+      isSharedBacked(r) &&
+      r.counterpartPublicProfileId === profileId,
+  ) ?? null;
+
+  if (!shared) return null;
+
+  return {
+    draftRelationId: relationId,
+    sharedRelationId: shared.id,
+    matchedPublicProfileId: profileId,
+  };
+}

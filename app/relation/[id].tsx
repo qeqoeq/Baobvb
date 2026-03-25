@@ -41,7 +41,7 @@ const PILLAR_ORDER: PillarKey[] = [
 
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
-  const { relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, getAssistedReconciliationSuggestionForRelation } = useRelationsStore();
+  const { relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation } = useRelationsStore();
   const [sharedReveal, setSharedReveal] = useState<Awaited<
     ReturnType<typeof getSharedRevealRecordForCurrentUser>
   > | null>(null);
@@ -102,6 +102,7 @@ export default function RelationDetailScreen() {
   );
 
   const assistedSuggestion = id ? getAssistedReconciliationSuggestionForRelation(id) : null;
+  const draftResolutionSuggestion = id ? getDraftResolutionSuggestionForRelation(id) : null;
 
   useEffect(() => {
     if (!relation || !effectiveRelation) return;
@@ -444,6 +445,27 @@ export default function RelationDetailScreen() {
             style={styles.reconciliationCTA}
           >
             <Text style={styles.reconciliationCTAText}>Open local draft</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {draftResolutionSuggestion ? (
+        <View style={styles.reconciliationCard}>
+          <Text style={styles.reconciliationTitle}>Possible shared relation found</Text>
+          <Text style={styles.reconciliationBody}>
+            This draft appears tied to a public profile already present in a shared-backed relation. If you no longer need this local draft, you can archive it.
+          </Text>
+          <Pressable
+            onPress={() => router.push(`/relation/${draftResolutionSuggestion.sharedRelationId}`)}
+            style={styles.reconciliationCTA}
+          >
+            <Text style={styles.reconciliationCTAText}>Open shared relation</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => { archiveRelation(draftResolutionSuggestion.draftRelationId); router.replace('/(tabs)'); }}
+            style={styles.draftResolutionArchive}
+          >
+            <Text style={styles.draftResolutionArchiveText}>Archive this draft</Text>
           </Pressable>
         </View>
       ) : null}
@@ -872,5 +894,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: colors.text.primary,
+  },
+  draftResolutionArchive: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs + 2,
+  },
+  draftResolutionArchiveText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.muted,
+    textDecorationLine: 'underline',
   },
 });

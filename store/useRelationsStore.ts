@@ -10,7 +10,10 @@ import {
   type Tier,
 } from '../lib/evaluation';
 import { clearPersistedState, loadPersistedState, persistState } from '../lib/storage';
-import { findAssistedReconciliationSuggestionForRelation } from '../lib/assisted-reconciliation';
+import {
+  findAssistedReconciliationSuggestionForRelation,
+  findDraftResolutionSuggestionForRelation,
+} from '../lib/assisted-reconciliation';
 
 export type RelationshipSideIdentityStatus = 'missing' | 'draft' | 'verified';
 
@@ -1354,6 +1357,9 @@ export function useRelationsStore() {
   const getAssistedReconciliationSuggestionForRelation = (relationId: string) =>
     findAssistedReconciliationSuggestionForRelation(relationId, relations);
 
+  const getDraftResolutionSuggestionForRelation = (relationId: string) =>
+    findDraftResolutionSuggestionForRelation(relationId, relations);
+
   return {
     me,
     relations,
@@ -1381,5 +1387,6 @@ export function useRelationsStore() {
     setCanonicalRelationId,
     bootstrapSharedRelations,
     getAssistedReconciliationSuggestionForRelation,
+    getDraftResolutionSuggestionForRelation,
   };
 }
