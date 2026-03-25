@@ -70,3 +70,42 @@ $$;
 
 revoke execute on function public.get_or_create_public_profile_id() from public;
 grant execute on function public.get_or_create_public_profile_id() to authenticated;
+
+-- ── RPC: lookup_public_profile ───────────────────────────────────────────────
+--
+-- Checks whether a given public_profile_id belongs to a registered Baobab user.
+-- Returns true if found, false if not.
+--
+-- Security model:
+--   - Caller must be authenticated (auth.uid() is validated).
+--   - security definer is required to bypass the own-row RLS policy and allow
+--     cross-user existence checks on public_profile_id.
+--   - Only existence is disclosed — user_id is never returned.
+--   - The looked-up UUID is public by design (it appears in QR cards).
+--
+-- What this does NOT imply:
+--   - Any relational connection between caller and the looked-up profile.
+--   - Any shared reveal, mutual disclosure, or profile data access.
+--   - "Found" means only: this UUID is registered in Baobab.
+
+create or replace function public.lookup_public_profile(lookup_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'authenticated user required';
+  end if;
+
+  return exists (
+    select 1
+    from public.user_public_profiles
+    where public_profile_id = lookup_id
+  );
+end;
+$$;
+
+revoke execute on function public.lookup_public_profile(uuid) from public;
+grant execute on function public.lookup_public_profile(uuid) to authenticated;

@@ -1,9 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import {
+  lookupPublicProfile,
+  type PublicProfileLookupState,
+} from '../../lib/lookup-public-profile';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 function normalizeHandle(raw: string) {
@@ -37,6 +41,23 @@ export default function AddRelationScreen() {
   const { me, relations, addRelation } = useRelationsStore();
   const [name, setName] = useState(params.prefillName ?? '');
   const [handle, setHandle] = useState(params.prefillHandle ?? '');
+  const [scanLookup, setScanLookup] = useState<PublicProfileLookupState>({ status: 'idle' });
+
+  // For v2 scans only: verify the publicProfileId exists in Baobab backend.
+  // Runs in background — does not block navigation or relation creation.
+  // v1 scans have no scannedPublicProfileId and stay idle.
+  useEffect(() => {
+    const publicProfileId = params.scannedPublicProfileId?.trim();
+    if (!publicProfileId) return;
+    let cancelled = false;
+    setScanLookup({ status: 'pending', publicProfileId });
+    void lookupPublicProfile(publicProfileId).then((result) => {
+      if (!cancelled) setScanLookup(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [params.scannedPublicProfileId]);
 
   const canSubmit = sanitizeRelationName(name).length > 0;
   const fromScan = params.fromScan === '1';
@@ -176,6 +197,9 @@ export default function AddRelationScreen() {
               {params.prefillHandle ?? 'No handle on this card'}
               {params.prefillAvatarSeed ? ` · seed ${params.prefillAvatarSeed}` : ''}
             </Text>
+            {scanLookup.status === 'found' && (
+              <Text style={styles.scanHintVerified}>Baobab account confirmed</Text>
+            )}
           </View>
         )}
 
@@ -273,6 +297,12 @@ const styles = StyleSheet.create({
   scanHintText: {
     fontSize: 12,
     color: colors.text.secondary,
+  },
+  scanHintVerified: {
+    fontSize: 11,
+    color: colors.accent.warmGold,
+    fontWeight: '600',
+    marginTop: 2,
   },
   button: {
     backgroundColor: colors.accent.deepTeal,
