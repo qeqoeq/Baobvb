@@ -4,6 +4,7 @@ import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import { takeClaimRecord } from '../../lib/claim-shared-record-handoff';
 import { isLocalDraftId } from '../../lib/identity';
 import {
   lookupPublicProfile,
@@ -119,10 +120,14 @@ export default function AddRelationScreen() {
         router.replace({ pathname: '/relation/[id]', params: { id: existingByClaim.id } });
         return;
       }
+      const claimSharedRecord = claimedCanonicalRelationId
+        ? takeClaimRecord(claimedCanonicalRelationId) ?? undefined
+        : undefined;
       const created = addRelation(cleanName, {
         source: 'claim',
         avatarSeed: cleanName.charAt(0).toUpperCase(),
         canonicalRelationId: claimedCanonicalRelationId,
+        claimSharedRecord,
       });
       if (!created) return;
       router.replace({

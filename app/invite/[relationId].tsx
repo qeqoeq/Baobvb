@@ -6,7 +6,9 @@ import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { devLogLinking } from '../../lib/dev-linking-log';
 import { isLocalDraftId } from '../../lib/identity';
+import { putClaimRecord } from '../../lib/claim-shared-record-handoff';
 import { claimRelationshipInviteForCurrentUser } from '../../lib/reveal-shared-repo';
+import type { SharedInviteClaimResult } from '../../lib/reveal-shared-types';
 import type { RelationshipSideKey } from '../../store/useRelationsStore';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
@@ -77,11 +79,13 @@ export default function InviteArrivalScreen() {
 
       let claimedSide: RelationshipSideKey = 'sideB';
       let claimedCanonicalId: string | null = null;
+      let claimResult: SharedInviteClaimResult | null = null;
       if (token?.trim()) {
         try {
           const claim = await claimRelationshipInviteForCurrentUser(token);
           claimedSide = claim.claimed_side;
           claimedCanonicalId = claim.relationship_id;
+          claimResult = claim;
         } catch (error) {
           if (__DEV__) {
             devLogLinking('invite: claim failed', {
@@ -128,6 +132,9 @@ export default function InviteArrivalScreen() {
       // navigate to the add flow so the user can name the person and materialize
       // a proper local relation anchored on this canonicalRelationId.
       if (claimedCanonicalId && !isLocalDraftId(claimedCanonicalId)) {
+        if (claimResult) {
+          putClaimRecord(claimedCanonicalId, claimResult);
+        }
         router.push({
           pathname: '/relation/add',
           params: {

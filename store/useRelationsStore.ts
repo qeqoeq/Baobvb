@@ -987,6 +987,12 @@ type RelationSourceMeta = {
    * Set as Relation.canonicalRelationId at creation time.
    */
   canonicalRelationId?: string;
+  /**
+   * For 'claim' source only.
+   * The full shared_record from the claim response, projected via buildSharedRevealLocalState.
+   * When present, provides accurate initial localState instead of the conservative default.
+   */
+  claimSharedRecord?: SharedRelationBootstrapInput;
 };
 
 function pushRelationWithSource(
@@ -1016,14 +1022,16 @@ function pushRelationWithSource(
     // For other sources: null (set later via setCanonicalRelationId at invite creation).
     canonicalRelationId: meta.canonicalRelationId ?? null,
     localState: isClaim
-      ? {
-          // Both sides are proven to exist: inviter (sideA) created the invite,
-          // claimer (sideB) just claimed it. Neither reading is confirmed yet locally —
-          // the actual reading state is fetched from backend on relation screen open.
-          sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: false },
-          sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: false },
-          revealSnapshot: { status: 'waiting_other_side', revealed: false, relationshipNameRevealed: false },
-        }
+      ? meta.claimSharedRecord
+        ? buildSharedRevealLocalState(meta.claimSharedRecord)
+        : {
+            // Conservative default when shared_record was not transported (should not happen
+            // in normal flow; claim-shared-record-handoff module is the primary path).
+            // Both sides are proven to exist: inviter created the invite, claimer just claimed it.
+            sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: false },
+            sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: false },
+            revealSnapshot: { status: 'waiting_other_side', revealed: false, relationshipNameRevealed: false },
+          }
       : {
           sideA: {
             exists: true,
