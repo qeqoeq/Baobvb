@@ -8,6 +8,7 @@ import {
   getLaunchRelationIdFromLastNotification,
   registerDevicePushTokenForCurrentUser,
 } from '../lib/push-notifications';
+import { getOrCreatePublicProfileId } from '../lib/public-profile';
 import { getCurrentAuthenticatedUser } from '../lib/supabase-auth';
 import { supabase } from '../lib/supabase';
 import { useRelationsStore } from '../store/useRelationsStore';
@@ -18,7 +19,8 @@ export default function RootLayout() {
   const [authResolved, setAuthResolved] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const pushRegistrationRef = useRef(false);
-  const { setAuthIdentity } = useRelationsStore();
+  const { me, setAuthIdentity, setPublicProfileId } = useRelationsStore();
+  const provisionedForUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     configureNotificationPresentation();
@@ -78,6 +80,30 @@ export default function RootLayout() {
       return;
     }
   }, [authResolved, isAuthenticated, pathname, globalParams.relationId, globalParams.token]);
+
+  useEffect(() => {
+    const userId = me.internalAuthUserId ?? null;
+    if (!userId) {
+      // Signed out or not yet resolved — reset so a different account can provision cleanly.
+      provisionedForUserIdRef.current = null;
+      setPublicProfileId(null);
+      return;
+    }
+    if (provisionedForUserIdRef.current === userId) return;
+    provisionedForUserIdRef.current = userId;
+    void getOrCreatePublicProfileId()
+      .then((id) => {
+        setPublicProfileId(id);
+      })
+      .catch(() => {
+        // Best-effort: publicProfileId stays null, QR remains v1, app is unaffected.
+        // Will retry on next app launch when the user is still authenticated.
+        provisionedForUserIdRef.current = null;
+        if (__DEV__) {
+          console.warn('[identity] publicProfileId provisioning failed — QR stays v1');
+        }
+      });
+  }, [me.internalAuthUserId]);
 
   useEffect(() => {
     if (!isAuthenticated || pushRegistrationRef.current) return;
