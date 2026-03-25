@@ -41,7 +41,7 @@ const PILLAR_ORDER: PillarKey[] = [
 
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
-  const { relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId } = useRelationsStore();
+  const { relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, getAssistedReconciliationSuggestionForRelation } = useRelationsStore();
   const [sharedReveal, setSharedReveal] = useState<Awaited<
     ReturnType<typeof getSharedRevealRecordForCurrentUser>
   > | null>(null);
@@ -100,6 +100,8 @@ export default function RelationDetailScreen() {
     () => (relation ? applyEffectiveRevealToRelation(relation, sharedReveal) : null),
     [relation, sharedReveal],
   );
+
+  const assistedSuggestion = id ? getAssistedReconciliationSuggestionForRelation(id) : null;
 
   useEffect(() => {
     if (!relation || !effectiveRelation) return;
@@ -430,6 +432,21 @@ export default function RelationDetailScreen() {
           </Pressable>
         </View>
       )}
+
+      {assistedSuggestion ? (
+        <View style={styles.reconciliationCard}>
+          <Text style={styles.reconciliationTitle}>Possible local draft found</Text>
+          <Text style={styles.reconciliationBody}>
+            You also have a local draft tied to this same public profile. Review it before deciding what to keep.
+          </Text>
+          <Pressable
+            onPress={() => router.push(`/relation/${assistedSuggestion.draftRelationId}`)}
+            style={styles.reconciliationCTA}
+          >
+            <Text style={styles.reconciliationCTAText}>Open local draft</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -823,5 +840,37 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontSize: 16,
     fontWeight: '700',
+  },
+
+  reconciliationCard: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  reconciliationTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  reconciliationBody: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.text.secondary,
+  },
+  reconciliationCTA: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.strong,
+    backgroundColor: colors.background.tertiary,
+    paddingVertical: spacing.sm + 2,
+    alignItems: 'center',
+  },
+  reconciliationCTAText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text.primary,
   },
 });

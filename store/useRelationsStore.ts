@@ -10,7 +10,7 @@ import {
   type Tier,
 } from '../lib/evaluation';
 import { clearPersistedState, loadPersistedState, persistState } from '../lib/storage';
-import { findCanonicalDuplicate } from '../lib/soft-reconciliation';
+import { findAssistedReconciliationSuggestionForRelation } from '../lib/assisted-reconciliation';
 
 export type RelationshipSideIdentityStatus = 'missing' | 'draft' | 'verified';
 
@@ -1263,8 +1263,7 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     if (!canonicalId) continue;
 
     // Idempotent: skip if already materialized by any source.
-    // Only the canonical ID is a strong enough signal — see lib/soft-reconciliation.ts.
-    if (findCanonicalDuplicate(canonicalId, state.relations) !== null) continue;
+    if (state.relations.some((r) => r.canonicalRelationId === canonicalId)) continue;
 
     const localState = buildSharedRevealLocalState(row);
     const revealed = localState.revealSnapshot.revealed;
@@ -1352,6 +1351,9 @@ export function useRelationsStore() {
   const bootstrapSharedRelations = (rows: SharedRelationBootstrapInput[]) =>
     upsertBootstrappedSharedRelations(rows);
 
+  const getAssistedReconciliationSuggestionForRelation = (relationId: string) =>
+    findAssistedReconciliationSuggestionForRelation(relationId, relations);
+
   return {
     me,
     relations,
@@ -1378,5 +1380,6 @@ export function useRelationsStore() {
     setPublicProfileId,
     setCanonicalRelationId,
     bootstrapSharedRelations,
+    getAssistedReconciliationSuggestionForRelation,
   };
 }
