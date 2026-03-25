@@ -4,6 +4,7 @@ import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'rea
 
 import { colors } from '../../constants/colors';
 import { devLogLinking, maskIdForLog } from '../../lib/dev-linking-log';
+import { isLocalDraftId, newCanonicalRelationId } from '../../lib/identity';
 import { radius, spacing } from '../../constants/spacing';
 import { getTierAccent, type PillarKey } from '../../lib/evaluation';
 import {
@@ -40,7 +41,7 @@ const PILLAR_ORDER: PillarKey[] = [
 
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
-  const { relations, evaluations, syncRevealReadyState, revealMutualRelationship } = useRelationsStore();
+  const { relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId } = useRelationsStore();
   const [sharedReveal, setSharedReveal] = useState<Awaited<
     ReturnType<typeof getSharedRevealRecordForCurrentUser>
   > | null>(null);
@@ -209,9 +210,20 @@ export default function RelationDetailScreen() {
 
   const handleInviteToReveal = async () => {
     try {
-      const invite = await createRelationshipInviteForCurrentUser(relation.id, 'sideA');
+      // Ensure a canonical relation ID exists before promoting this relation to shared.
+      // If absent, generate a new UUID and persist it — idempotent on subsequent invites.
+      // This UUID replaces relation.id (localDraftId) as the backend relationship_id.
+      const canonicalId = relation.canonicalRelationId ?? newCanonicalRelationId();
+      if (!relation.canonicalRelationId) {
+        setCanonicalRelationId(relation.id, canonicalId);
+      }
+      // Hard guard: never send a localDraftId to the backend as a relation join key.
+      if (isLocalDraftId(canonicalId)) {
+        throw new Error('[invite] canonicalRelationId must not be a localDraftId');
+      }
+      const invite = await createRelationshipInviteForCurrentUser(canonicalId, 'sideA');
       const { message, url } = getRelationshipInviteMessage({
-        relationId: relation.id,
+        relationId: canonicalId,
         inviteToken: invite.invite_token,
       });
       await Share.share({ message: url ? `${message}\n${url}` : message });

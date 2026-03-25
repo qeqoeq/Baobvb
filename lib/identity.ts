@@ -16,9 +16,8 @@
  * publicProfileId (PublicProfileId)
  *   A stable, shareable identifier for QR cards, invite lookup, and future
  *   social graph features. Explicitly distinct from the auth UUID.
- *   Currently null — not yet provisioned.
+ *   Provisioned at app bootstrap via get_or_create_public_profile_id() RPC.
  *   Do not substitute internalAuthUserId here even temporarily.
- *   Will be provisioned and stored in MeProfile.publicProfileId in a future stage.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * RELATION IDENTITY
@@ -32,12 +31,12 @@
  *
  * canonicalRelationId (CanonicalRelationId)
  *   A stable UUID assigned when a local relation is promoted to shared —
- *   specifically at invite creation time, mirrored from the backend record.
+ *   specifically at invite creation time.
  *   This is the only valid cross-user / cross-device join key for a relation.
  *   Stored in Relation.canonicalRelationId. Null for purely local relations.
- *   Note: shared_relationship_reveals.relationship_id on the backend currently
- *   accepts arbitrary text. It must migrate to uuid (separate stage) before
- *   canonicalRelationId can be reliably enforced end-to-end.
+ *   Generated client-side via newCanonicalRelationId() and sent to the backend
+ *   as relationship_id. The backend column is text; only UUID-only values are
+ *   sent from this point forward. A text→uuid column migration is a separate stage.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * INVARIANTS
@@ -46,6 +45,9 @@
  *   - Never expose internalAuthUserId in QR cards, deep links, or public flows.
  *   - Never infer publicProfileId from internalAuthUserId without explicit provisioning.
  *   - Relation.canonicalRelationId is null until a relation has been promoted to shared.
+ *   - Never send Relation.id (localDraftId) to the backend as relationship_id.
+ *   - Always call newCanonicalRelationId() and persist via setCanonicalRelationId()
+ *     before the first invite creation for any relation.
  *   - Relation.sourceCardMeId stores the scanned user's publicProfileId (v2 QR)
  *     or their legacy me.id local alias (v1 QR). Treat v1 values as opaque strings —
  *     never query the backend using a v1 sourceCardMeId as a user lookup key.
@@ -86,6 +88,20 @@ export type LocalDraftId = string;
 export type CanonicalRelationId = string;
 
 // ── Generators ────────────────────────────────────────────────────────────────
+
+/**
+ * Generates a new canonical relation ID for a relation being promoted to shared.
+ *
+ * Call this exactly once per relation, at invite creation time, when
+ * Relation.canonicalRelationId is null. Persist the result immediately via
+ * store.setCanonicalRelationId() before sending it to the backend.
+ *
+ * This UUID becomes the cross-user / cross-device join key for the relation
+ * and the relationship_id stored in shared_relationship_reveals.
+ */
+export function newCanonicalRelationId(): CanonicalRelationId {
+  return generateUUID();
+}
 
 /**
  * Generates a new local draft ID for a relation.

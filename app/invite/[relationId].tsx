@@ -19,7 +19,11 @@ export default function InviteArrivalScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const relation = useMemo(
-    () => relations.find((item) => item.id === relationIdTrim) ?? null,
+    () =>
+      relations.find(
+        (item) =>
+          item.id === relationIdTrim || item.canonicalRelationId === relationIdTrim,
+      ) ?? null,
     [relations, relationIdTrim],
   );
 

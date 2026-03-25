@@ -1063,6 +1063,21 @@ function setRelation(id: string, update: RelationUpdate): boolean {
   return true;
 }
 
+function attachCanonicalRelationId(localId: string, canonicalId: string): boolean {
+  let didUpdate = false;
+  state.relations = state.relations.map((relation) => {
+    if (relation.id !== localId) return relation;
+    // Never overwrite an existing canonicalRelationId — it is immutable once set.
+    if (relation.canonicalRelationId) return relation;
+    didUpdate = true;
+    return { ...relation, canonicalRelationId: canonicalId };
+  });
+  if (!didUpdate) return false;
+  emitChange();
+  persist();
+  return true;
+}
+
 function resetDevStateToSeed() {
   state.me = { ...SEED_ME };
   state.relations = [...SEED_RELATIONS];
@@ -1114,6 +1129,8 @@ export function useRelationsStore() {
   const resetDevState = () => resetDevStateToSeed();
   const setAuthIdentity = (userId: string | null) => hydrateAuthIdentity(userId);
   const setPublicProfileId = (id: string | null) => hydratePublicProfileId(id);
+  const setCanonicalRelationId = (localId: string, canonicalId: string) =>
+    attachCanonicalRelationId(localId, canonicalId);
 
   return {
     me,
@@ -1139,5 +1156,6 @@ export function useRelationsStore() {
     isHydrated,
     setAuthIdentity,
     setPublicProfileId,
+    setCanonicalRelationId,
   };
 }
