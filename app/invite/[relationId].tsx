@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { devLogLinking } from '../../lib/dev-linking-log';
+import { isLocalDraftId } from '../../lib/identity';
 import { claimRelationshipInviteForCurrentUser } from '../../lib/reveal-shared-repo';
 import type { RelationshipSideKey } from '../../store/useRelationsStore';
 import { useRelationsStore } from '../../store/useRelationsStore';
@@ -75,10 +76,12 @@ export default function InviteArrivalScreen() {
       }
 
       let claimedSide: RelationshipSideKey = 'sideB';
+      let claimedCanonicalId: string | null = null;
       if (token?.trim()) {
         try {
           const claim = await claimRelationshipInviteForCurrentUser(token);
           claimedSide = claim.claimed_side;
+          claimedCanonicalId = claim.relationship_id;
         } catch (error) {
           if (__DEV__) {
             devLogLinking('invite: claim failed', {
@@ -120,8 +123,23 @@ export default function InviteArrivalScreen() {
         return;
       }
 
-      // Claim succeeded but no local relation row yet (cold invite open).
-      // The relationship will appear once synced from the backend.
+      // Cold invite: claim succeeded but no local relation exists yet.
+      // If we have a canonical relation ID (UUID, not a legacy localDraftId),
+      // navigate to the add flow so the user can name the person and materialize
+      // a proper local relation anchored on this canonicalRelationId.
+      if (claimedCanonicalId && !isLocalDraftId(claimedCanonicalId)) {
+        router.push({
+          pathname: '/relation/add',
+          params: {
+            fromClaim: '1',
+            claimedSide,
+            canonicalRelationId: claimedCanonicalId,
+          },
+        });
+        return;
+      }
+      // Legacy or broken claim: canonical ID absent or non-UUID.
+      // Fall back to the unresolved continuation message.
       setShowUnresolvedContinuation(true);
     } finally {
       setIsSubmitting(false);

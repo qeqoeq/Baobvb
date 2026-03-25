@@ -56,7 +56,13 @@ export type Relation = {
   relationshipNameRevealed?: boolean;
   handle?: string;
   avatarSeed?: string;
-  source: 'manual' | 'scan';
+  /**
+   * 'manual' — created by hand
+   * 'scan'   — seeded from a scanned QR card
+   * 'claim'  — materialized after claiming a shared invite.
+   *            Both sides known to exist. canonicalRelationId always set.
+   */
+  source: 'manual' | 'scan' | 'claim';
   /**
    * The scanned card's meId field.
    * v1 QR: opaque legacy local alias — not backend-queryable.
@@ -945,12 +951,18 @@ function pushRelation(name: string): Relation | null {
 }
 
 type RelationSourceMeta = {
-  source: 'manual' | 'scan';
+  source: 'manual' | 'scan' | 'claim';
   handle?: string;
   avatarSeed?: string;
   sourceCardMeId?: string;
   sourcePublicProfileId?: string;
   sourceHandle?: string;
+  /**
+   * For 'claim' source only.
+   * The canonical relation UUID from the claim response (claim.relationship_id).
+   * Set as Relation.canonicalRelationId at creation time.
+   */
+  canonicalRelationId?: string;
 };
 
 function pushRelationWithSource(
@@ -960,12 +972,15 @@ function pushRelationWithSource(
   const cleanName = name.trim();
   if (!cleanName) return null;
 
+  const isClaim = meta.source === 'claim';
+  const isVerified = meta.source === 'scan' || isClaim;
+
   const relation: Relation = {
     id: `r-${Date.now()}`,
     name: cleanName,
     archived: false,
     createdAt: new Date().toISOString(),
-    identityStatus: meta.source === 'scan' ? 'verified' : 'draft',
+    identityStatus: isVerified ? 'verified' : 'draft',
     relationshipNameRevealed: false,
     handle: meta.handle,
     avatarSeed: meta.avatarSeed || cleanName.charAt(0).toUpperCase() || '?',
@@ -973,23 +988,35 @@ function pushRelationWithSource(
     sourceCardMeId: meta.sourceCardMeId,
     sourcePublicProfileId: meta.sourcePublicProfileId,
     sourceHandle: meta.sourceHandle,
-    localState: {
-      sideA: {
-        exists: true,
-        identityStatus: meta.source === 'scan' ? 'verified' : 'draft',
-        hasPrivateReading: false,
-      },
-      sideB: {
-        exists: false,
-        identityStatus: 'missing',
-        hasPrivateReading: false,
-      },
-      revealSnapshot: {
-        status: 'waiting_other_side',
-        revealed: false,
-        relationshipNameRevealed: false,
-      },
-    },
+    // For claim source: canonicalRelationId is known at creation time.
+    // For other sources: null (set later via setCanonicalRelationId at invite creation).
+    canonicalRelationId: meta.canonicalRelationId ?? null,
+    localState: isClaim
+      ? {
+          // Both sides are proven to exist: inviter (sideA) created the invite,
+          // claimer (sideB) just claimed it. Neither reading is confirmed yet locally —
+          // the actual reading state is fetched from backend on relation screen open.
+          sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: false },
+          sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: false },
+          revealSnapshot: { status: 'waiting_other_side', revealed: false, relationshipNameRevealed: false },
+        }
+      : {
+          sideA: {
+            exists: true,
+            identityStatus: isVerified ? 'verified' : 'draft',
+            hasPrivateReading: false,
+          },
+          sideB: {
+            exists: false,
+            identityStatus: 'missing',
+            hasPrivateReading: false,
+          },
+          revealSnapshot: {
+            status: 'waiting_other_side',
+            revealed: false,
+            relationshipNameRevealed: false,
+          },
+        },
   };
   state.relations = [relation, ...state.relations];
   emitChange();

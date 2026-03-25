@@ -4,6 +4,7 @@ import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import { isLocalDraftId } from '../../lib/identity';
 import {
   lookupPublicProfile,
   type PublicProfileLookupState,
@@ -37,6 +38,10 @@ export default function AddRelationScreen() {
     scannedMeId?: string;
     scannedPublicProfileId?: string;
     fromScan?: string;
+    // Claim path: set when navigated from a cold invite claim.
+    fromClaim?: string;
+    canonicalRelationId?: string;
+    claimedSide?: string;
   }>();
   const { me, relations, addRelation } = useRelationsStore();
   const [name, setName] = useState(params.prefillName ?? '');
@@ -61,6 +66,23 @@ export default function AddRelationScreen() {
 
   const canSubmit = sanitizeRelationName(name).length > 0;
   const fromScan = params.fromScan === '1';
+  const _fromClaimFlag = params.fromClaim === '1';
+  const _claimedCanonicalRelationId = params.canonicalRelationId?.trim() || undefined;
+  const _claimedSide = params.claimedSide?.trim();
+
+  // Strict guard: claim path is only active when all four conditions hold.
+  // Any tampered or stale param falls through to the normal add flow.
+  const claimedSide: 'sideA' | 'sideB' | undefined =
+    _claimedSide === 'sideA' || _claimedSide === 'sideB' ? _claimedSide : undefined;
+  const claimedCanonicalRelationId =
+    _claimedCanonicalRelationId && !isLocalDraftId(_claimedCanonicalRelationId)
+      ? _claimedCanonicalRelationId
+      : undefined;
+  const isValidClaimPath =
+    _fromClaimFlag &&
+    !!claimedCanonicalRelationId &&
+    (claimedSide === 'sideA' || claimedSide === 'sideB');
+  const fromClaim = isValidClaimPath;
 
   const handleCreate = () => {
     if (!canSubmit) return;
@@ -84,6 +106,29 @@ export default function AddRelationScreen() {
         'Invalid name',
         'Use a real name with letters. Allowed: letters, spaces, apostrophes, and hyphens.',
       );
+      return;
+    }
+
+    // Claim path: create a minimal shared-materialized relation and navigate to evaluate.
+    if (fromClaim) {
+      const existingByClaim = claimedCanonicalRelationId
+        ? relations.find((r) => r.canonicalRelationId === claimedCanonicalRelationId)
+        : null;
+      if (existingByClaim) {
+        // Already materialized (duplicate tap or race). Navigate directly.
+        router.replace({ pathname: '/relation/[id]', params: { id: existingByClaim.id } });
+        return;
+      }
+      const created = addRelation(cleanName, {
+        source: 'claim',
+        avatarSeed: cleanName.charAt(0).toUpperCase(),
+        canonicalRelationId: claimedCanonicalRelationId,
+      });
+      if (!created) return;
+      router.replace({
+        pathname: '/relation/evaluate/[id]',
+        params: { id: created.id, side: claimedSide ?? 'sideB' },
+      });
       return;
     }
 
@@ -186,9 +231,13 @@ export default function AddRelationScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>{fromScan ? 'Add a person' : 'Create a private link'}</Text>
+        <Text style={styles.title}>
+          {fromClaim ? 'Name this person' : fromScan ? 'Add a person' : 'Create a private link'}
+        </Text>
         <Text style={styles.subtitle}>
-          Create a private draft relationship. A name is a local label, not a unique identity.
+          {fromClaim
+            ? 'Your participation has been recorded. Give this person a name for your Garden — it stays private.'
+            : 'Create a private draft relationship. A name is a local label, not a unique identity.'}
         </Text>
         {fromScan && (
           <View style={styles.scanHintCard}>
@@ -228,7 +277,9 @@ export default function AddRelationScreen() {
           disabled={!canSubmit}
           style={[styles.button, !canSubmit && styles.buttonDisabled]}
         >
-          <Text style={styles.buttonText}>{fromScan ? 'Add person' : 'Create private draft'}</Text>
+          <Text style={styles.buttonText}>
+            {fromClaim ? 'Save and continue' : fromScan ? 'Add person' : 'Create private draft'}
+          </Text>
         </Pressable>
         <Text style={styles.helperText}>
           {fromScan
