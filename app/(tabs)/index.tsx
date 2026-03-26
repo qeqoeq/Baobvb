@@ -158,13 +158,10 @@ export default function GardenScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.framingCard}>
-        <Text style={styles.framingText}>
-          Add the people you already trust, starting with those you would actually turn to first.
-        </Text>
-      </View>
-
       <View style={styles.trustPromptShell}>
+        <Text style={styles.framingText}>
+          Add the people you already trust.
+        </Text>
         <Text style={styles.trustPromptQuestion}>
           When it matters, whose judgment would you trust first?
         </Text>
@@ -730,14 +727,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  framingCard: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
   framingText: {
     fontSize: 13,
     lineHeight: 20,
@@ -750,6 +739,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    gap: spacing.sm,
   },
   trustPromptQuestion: {
     fontSize: 14,
