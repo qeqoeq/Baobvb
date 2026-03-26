@@ -11,6 +11,10 @@
  *   - Returns at most one suggestion per call.
  *   - Signal used: counterpartPublicProfileId === sourcePublicProfileId.
  *   - Both fields are backend-owned public identities — no auth.uid() involved.
+ *   - Archived relations are never considered as suggestion candidates.
+ *   - If more than one candidate matches the signal, no suggestion is returned.
+ *     Ambiguity is not resolved by arbitrary selection — silence is preferable
+ *     to a misleading pointer.
  *
  * What this is NOT:
  *   - Proof that two relations are the same relation.
@@ -63,13 +67,15 @@ function isSharedBacked(relation: Relation): boolean {
  *   1. The relation must exist in the list.
  *   2. It must be shared-backed (canonicalRelationId present, or source bootstrap/claim).
  *   3. It must have a non-empty counterpartPublicProfileId.
- *   4. There must be at least one other relation with:
+ *   4. There must be exactly one other relation with:
  *        - different id
  *        - source === 'scan'
  *        - no canonicalRelationId (unlinked draft)
+ *        - not archived
  *        - sourcePublicProfileId === counterpartPublicProfileId
- *   5. Returns the first such draft found (arbitrary order).
- *   6. If no match → null.
+ *      More than one match → ambiguity → null (no arbitrary selection).
+ *   5. Returns that single draft.
+ *   6. If no match or ambiguous → null.
  *
  * Never uses: name, handle, avatar, timing, reveal status, source alone, or
  * either identifier in isolation as proof of same relation.
@@ -86,19 +92,21 @@ export function findAssistedReconciliationSuggestionForRelation(
 
   if (!isSharedBacked(sharedRelation)) return null;
 
-  const draft = relations.find(
+  const draftCandidates = relations.filter(
     (r) =>
       r.id !== relationId &&
       r.source === 'scan' &&
       !r.canonicalRelationId &&
+      !r.archived &&
       r.sourcePublicProfileId === counterpartId,
-  ) ?? null;
+  );
 
-  if (!draft) return null;
+  // Ambiguity: more than one plausible draft → no suggestion.
+  if (draftCandidates.length !== 1) return null;
 
   return {
     sharedRelationId: relationId,
-    draftRelationId: draft.id,
+    draftRelationId: draftCandidates[0].id,
     matchedPublicProfileId: counterpartId,
   };
 }
@@ -113,12 +121,14 @@ export function findAssistedReconciliationSuggestionForRelation(
  *        - source === 'scan'
  *        - no canonicalRelationId
  *   3. It must have a non-empty sourcePublicProfileId.
- *   4. There must be at least one other relation with:
+ *   4. There must be exactly one other relation with:
  *        - different id
  *        - shared-backed (canonicalRelationId present, or source bootstrap/claim)
+ *        - not archived
  *        - counterpartPublicProfileId === sourcePublicProfileId of the draft
- *   5. Returns the first such shared relation found (arbitrary order).
- *   6. If no match → null.
+ *      More than one match → ambiguity → null (no arbitrary selection).
+ *   5. Returns that single shared relation.
+ *   6. If no match or ambiguous → null.
  *
  * Same signal invariants as findAssistedReconciliationSuggestionForRelation:
  * this is a person signal, not proof of same relation. No merge, no link.
@@ -136,23 +146,25 @@ export function findDraftResolutionSuggestionForRelation(
   const draft = relations.find((r) => r.id === relationId) ?? null;
   if (!draft) return null;
 
-  if (draft.source !== 'scan' || !!draft.canonicalRelationId) return null;
+  if (draft.source !== 'scan' || !!draft.canonicalRelationId || draft.archived) return null;
 
   const profileId = draft.sourcePublicProfileId;
   if (!profileId) return null;
 
-  const shared = relations.find(
+  const sharedCandidates = relations.filter(
     (r) =>
       r.id !== relationId &&
       isSharedBacked(r) &&
+      !r.archived &&
       r.counterpartPublicProfileId === profileId,
-  ) ?? null;
+  );
 
-  if (!shared) return null;
+  // Ambiguity: more than one plausible shared relation → no suggestion.
+  if (sharedCandidates.length !== 1) return null;
 
   return {
     draftRelationId: relationId,
-    sharedRelationId: shared.id,
+    sharedRelationId: sharedCandidates[0].id,
     matchedPublicProfileId: profileId,
   };
 }
