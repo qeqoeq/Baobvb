@@ -159,9 +159,6 @@ export default function GardenScreen() {
       </View>
 
       <View style={styles.trustPromptShell}>
-        <Text style={styles.framingText}>
-          Add the people you already trust.
-        </Text>
         <Text style={styles.trustPromptQuestion}>
           When it matters, whose judgment would you trust first?
         </Text>
@@ -727,11 +724,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  framingText: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: colors.text.secondary,
-  },
   trustPromptShell: {
     borderRadius: radius.md,
     borderWidth: 1,
@@ -739,7 +731,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    gap: spacing.sm,
   },
   trustPromptQuestion: {
     fontSize: 14,
