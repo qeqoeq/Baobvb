@@ -292,16 +292,18 @@ export default function RelationDetailScreen() {
             </Pressable>
           ) : null}
         </View>
+      </View>
+
+      <View style={styles.originRow}>
+        <View style={styles.originCard}>
+          <Text style={styles.originLabel}>{identityLabel}</Text>
+          {identitySubtext ? (
+            <Text style={styles.originSubtext}>{identitySubtext}</Text>
+          ) : null}
+        </View>
         <Pressable onPress={() => router.push(`./edit/${relation.id}`)} style={styles.editLink}>
           <Text style={styles.editLinkText}>Edit relation</Text>
         </Pressable>
-      </View>
-
-      <View style={styles.originCard}>
-        <Text style={styles.originLabel}>{identityLabel}</Text>
-        {identitySubtext ? (
-          <Text style={styles.originSubtext}>{identitySubtext}</Text>
-        ) : null}
       </View>
 
       {relationContextCard ? (
@@ -606,6 +608,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 14,
   },
+  originRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   originCard: {
     alignSelf: 'flex-start',
     alignItems: 'center',
@@ -628,9 +635,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.muted,
   },
-  editLink: {
-    paddingTop: spacing.xs,
-  },
+  editLink: {},
   editLinkText: {
     fontSize: 12,
     color: colors.text.secondary,
