@@ -451,10 +451,9 @@ export default function RelationDetailScreen() {
           ) : null}
 
           <View style={[styles.unreadCard, shouldHighlightReadNext && styles.unreadCardEmphasis]}>
-            <Text style={styles.unreadTitle}>This relationship has not been read yet</Text>
+            <Text style={styles.unreadTitle}>No trust reading yet</Text>
             <Text style={styles.unreadText}>
-              A foundational reading captures the shape and strength of your
-              relationship through 5 pillars.
+              A trust reading maps the strength and reliability of this connection across 5 dimensions.
             </Text>
           </View>
 

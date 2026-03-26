@@ -158,10 +158,10 @@ export default function GardenScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionLabel}>
             {entries.length === 0
-              ? 'Your relationships'
+              ? 'Your trust network'
               : selectedFilter === 'archived'
-                ? 'Archived relationships'
-                : 'Continue mapping'}
+                ? 'Archived'
+                : 'Trusted people'}
           </Text>
           <View style={styles.sectionLine} />
         </View>
@@ -170,9 +170,9 @@ export default function GardenScreen() {
           <View style={styles.emptyCard}>
             {entries.length === 0 ? (
               <>
-                <Text style={styles.emptyTitle}>Your garden is empty</Text>
+                <Text style={styles.emptyTitle}>Your trust network is empty</Text>
                 <Text style={styles.emptyText}>
-                  Add your first relationship to begin mapping your links.
+                  Add people you trust to start building context around your network.
                 </Text>
                 <Pressable onPress={() => router.push('../relation/add')} style={styles.emptyAction}>
                   <Text style={styles.emptyActionText}>Add a person</Text>
@@ -266,14 +266,14 @@ export default function GardenScreen() {
         )}
         {filteredEntries.length > 0 ? (
           <Text style={styles.sectionSupportText}>
-            Showing {filteredEntries.length} {filterLabel.toLowerCase()} relationship card{filteredEntries.length > 1 ? 's' : ''}.
+            Showing {filteredEntries.length} {filterLabel.toLowerCase()} {filteredEntries.length === 1 ? 'contact' : 'contacts'}.
           </Text>
         ) : null}
       </View>
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>Garden pulse</Text>
+          <Text style={styles.sectionLabel}>Network overview</Text>
           <View style={styles.sectionLine} />
         </View>
         <View style={styles.pulseRow}>
@@ -320,7 +320,7 @@ export default function GardenScreen() {
           </Pressable>
         )}
         <Text style={styles.pulseSupportText}>
-          Tap a chip to filter visible relationship cards.
+          Tap a chip to filter your network.
         </Text>
       </View>
 
