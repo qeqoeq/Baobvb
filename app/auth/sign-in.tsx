@@ -76,8 +76,9 @@ export default function AuthSignInScreen() {
     setIsSubmitting(true);
     setError(null);
     try {
-      await signInWithApple();
-      resolvePostAuthRoute();
+      const user = await signInWithApple();
+      // null = user cancelled the Apple sheet — reset silently, no error shown.
+      if (user) resolvePostAuthRoute();
     } catch (authError) {
       const message =
         authError instanceof Error
