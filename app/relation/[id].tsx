@@ -429,7 +429,7 @@ export default function RelationDetailScreen() {
           <View style={styles.readingNote}>
             <Text style={styles.readingNoteText}>
               {nameRevealed
-                ? 'This foundational reading captures the current shape of this relationship.'
+                ? 'This reading helps define how this connection is understood.'
                 : revealStatus === 'reveal_ready'
                   ? 'Opening the reveal is a one-time action.'
                   : 'Your private side is saved and stays hidden until reveal.'}
@@ -453,7 +453,7 @@ export default function RelationDetailScreen() {
           <View style={[styles.unreadCard, shouldHighlightReadNext && styles.unreadCardEmphasis]}>
             <Text style={styles.unreadTitle}>No trust reading yet</Text>
             <Text style={styles.unreadText}>
-              A trust reading maps the strength and reliability of this connection.
+              Once read, this connection carries clearer trust context.
             </Text>
           </View>
 
