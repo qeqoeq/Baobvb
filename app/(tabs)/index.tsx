@@ -111,6 +111,10 @@ export default function GardenScreen() {
           </View>
         </View>
 
+        <Text style={styles.heroTagline}>
+          Know who you can trust through people you already trust.
+        </Text>
+
         <View style={styles.profileRow}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarRing}>
@@ -512,6 +516,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
+  },
+  heroTagline: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.text.secondary,
+    fontWeight: '500',
   },
   heroActionsRow: {
     flexDirection: 'row',
