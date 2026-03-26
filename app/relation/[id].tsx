@@ -134,7 +134,7 @@ export default function RelationDetailScreen() {
           <Text style={styles.unavailableTitle}>Relationship unavailable</Text>
           <Text style={styles.unavailableBody}>This relationship could not be opened.</Text>
           <Pressable onPress={navigateAway} style={styles.unavailableCTA}>
-            <Text style={styles.unavailableCTAText}>Back to Garden</Text>
+            <Text style={styles.unavailableCTAText}>Back to network</Text>
           </Pressable>
         </View>
       </View>
@@ -150,7 +150,7 @@ export default function RelationDetailScreen() {
     ? getTierAccent(reading.linkTier)
     : colors.text.muted;
   const badgeLabel = reading?.badgeLabel ?? 'Unread';
-  const identityLabel = relation.identityStatus === 'verified' ? 'Verified by scan' : 'Private draft';
+  const identityLabel = relation.identityStatus === 'verified' ? 'Verified by scan' : 'Added manually';
   const identitySubtext = relation.identityStatus === 'verified' && relation.sourceHandle
     ? `Scanned from ${relation.sourceHandle}`
     : null;
@@ -162,7 +162,7 @@ export default function RelationDetailScreen() {
   const relationContextCard: { title: string; body: string } | null = relation.archived
     ? {
         title: 'Archived relation',
-        body: 'This relation is archived locally and no longer appears in your active garden.',
+        body: 'This relation is archived locally and no longer appears in your active trust network.',
       }
     : isSharedBacked
       ? {
@@ -388,7 +388,7 @@ export default function RelationDetailScreen() {
                   <Text style={styles.revealPrimaryButtonText}>Reveal now</Text>
                 </Pressable>
                 <Pressable onPress={handleBackToGarden} style={styles.secondaryInlineCTA}>
-                  <Text style={styles.secondaryInlineCTALabel}>Back to Garden</Text>
+                  <Text style={styles.secondaryInlineCTALabel}>Back to network</Text>
                 </Pressable>
               </View>
             ) : (
@@ -420,7 +420,7 @@ export default function RelationDetailScreen() {
                   </>
                 )}
                 <Pressable onPress={handleBackToGarden} style={styles.secondaryInlineCTA}>
-                  <Text style={styles.secondaryInlineCTALabel}>Back to Garden</Text>
+                  <Text style={styles.secondaryInlineCTALabel}>Back to network</Text>
                 </Pressable>
               </View>
             )}
@@ -453,7 +453,7 @@ export default function RelationDetailScreen() {
           <View style={[styles.unreadCard, shouldHighlightReadNext && styles.unreadCardEmphasis]}>
             <Text style={styles.unreadTitle}>No trust reading yet</Text>
             <Text style={styles.unreadText}>
-              A trust reading maps the strength and reliability of this connection across 5 dimensions.
+              A trust reading maps the strength and reliability of this connection.
             </Text>
           </View>
 
