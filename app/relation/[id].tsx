@@ -154,6 +154,32 @@ export default function RelationDetailScreen() {
   const identitySubtext = relation.identityStatus === 'verified' && relation.sourceHandle
     ? `Scanned from ${relation.sourceHandle}`
     : null;
+
+  const isSharedBacked =
+    !!relation.canonicalRelationId ||
+    relation.source === 'bootstrap' ||
+    relation.source === 'claim';
+  const relationContextCard: { title: string; body: string } | null = relation.archived
+    ? {
+        title: 'Archived relation',
+        body: 'This relation is archived locally and no longer appears in your active garden.',
+      }
+    : isSharedBacked
+      ? {
+          title: 'Shared-backed relation',
+          body: 'This relation is backed by a shared record. Shared status does not imply a merged local history.',
+        }
+      : relation.source === 'scan'
+        ? {
+            title: 'Local scan draft',
+            body: 'This is a local draft created from a scanned public profile. It is not a shared relation.',
+          }
+        : relation.source === 'manual'
+          ? {
+              title: 'Local draft',
+              body: 'This relation currently exists only on this device and is not shared.',
+            }
+          : null;
   const shouldHighlightReadNext = justCreated === '1' && !evaluation;
   const strongestLabel = getPillarLabel(reading?.strongestPillar ?? null);
   const weakestLabel = getPillarLabel(reading?.weakestPillar ?? null);
@@ -276,6 +302,13 @@ export default function RelationDetailScreen() {
           <Text style={styles.editLinkText}>Edit relation</Text>
         </Pressable>
       </View>
+
+      {relationContextCard ? (
+        <View style={styles.privateStateCard}>
+          <Text style={styles.privateStateTitle}>{relationContextCard.title}</Text>
+          <Text style={styles.privateStateText}>{relationContextCard.body}</Text>
+        </View>
+      ) : null}
 
       {evaluation ? (
         <View style={styles.readingSection}>
