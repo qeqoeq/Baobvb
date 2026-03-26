@@ -163,7 +163,7 @@ export default function GardenScreen() {
           Add the people you already trust, starting with those you would actually turn to first.
         </Text>
         <Text style={styles.framingHint}>
-          When something important comes up, trusted judgment starts with your network.
+          When it matters, whose judgment would you trust first?
         </Text>
       </View>
 
