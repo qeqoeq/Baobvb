@@ -162,6 +162,9 @@ export default function GardenScreen() {
         <Text style={styles.framingText}>
           Add the people you already trust. That's how your network becomes useful — for introductions, recommendations, and knowing who to rely on.
         </Text>
+        <Text style={styles.framingHint}>
+          Start with the people you would actually turn to first.
+        </Text>
       </View>
 
       <View style={styles.section}>
@@ -736,6 +739,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     color: colors.text.secondary,
+  },
+  framingHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.muted,
+    marginTop: spacing.xs,
   },
 
   emptyCard: {
