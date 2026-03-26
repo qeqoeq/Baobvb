@@ -162,7 +162,10 @@ export default function GardenScreen() {
         <Text style={styles.framingText}>
           Add the people you already trust, starting with those you would actually turn to first.
         </Text>
-        <Text style={styles.framingHint}>
+      </View>
+
+      <View style={styles.trustQuestionRow}>
+        <Text style={styles.trustQuestionText}>
           When it matters, whose judgment would you trust first?
         </Text>
       </View>
@@ -745,6 +748,17 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.text.muted,
     marginTop: spacing.xs,
+  },
+  trustQuestionRow: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  trustQuestionText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 
   emptyCard: {
