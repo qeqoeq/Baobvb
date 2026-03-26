@@ -160,10 +160,10 @@ export default function GardenScreen() {
 
       <View style={styles.framingCard}>
         <Text style={styles.framingText}>
-          Add the people you already trust. That's how your network becomes useful — for introductions, recommendations, and knowing who to rely on.
+          Add the people you already trust, starting with those you would actually turn to first.
         </Text>
         <Text style={styles.framingHint}>
-          Start with the people you would actually turn to first.
+          When something important comes up, trusted judgment starts with your network.
         </Text>
       </View>
 
