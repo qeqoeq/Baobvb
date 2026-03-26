@@ -174,6 +174,9 @@ export default function GardenScreen() {
                 : 'Trusted people'}
           </Text>
           <View style={styles.sectionLine} />
+          {filteredEntries.length > 0 ? (
+            <Text style={styles.sectionSupportText}>{filteredEntries.length} {filterLabel.toLowerCase()}</Text>
+          ) : null}
         </View>
 
         {filteredEntries.length === 0 ? (
@@ -274,11 +277,6 @@ export default function GardenScreen() {
             })}
           </View>
         )}
-        {filteredEntries.length > 0 ? (
-          <Text style={styles.sectionSupportText}>
-            Showing {filteredEntries.length} {filterLabel.toLowerCase()} {filteredEntries.length === 1 ? 'contact' : 'contacts'}.
-          </Text>
-        ) : null}
       </View>
 
       <View style={styles.section}>
