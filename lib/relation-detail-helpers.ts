@@ -98,3 +98,34 @@ export function getReadingNoteText(nameRevealed: boolean, revealStatus: RevealSt
   if (revealStatus === 'reveal_ready') return 'Opening the reveal is a one-time action.';
   return 'Your private side is saved and stays hidden until reveal.';
 }
+
+/**
+ * The 6 mutually exclusive states of the reading card.
+ * Replaces the 3-level ternary nesting in the relation detail screen.
+ */
+export type ReadingCardVariant =
+  | 'unread'
+  | 'revealed'
+  | 'reveal_ready'
+  | 'waiting_other_side'
+  | 'cooking'
+  | 'private_fallback';
+
+/**
+ * Resolves the active reading card variant from evaluation presence and reveal state.
+ * The order of checks matters: reveal_ready exits the privateStateCard path; the inner
+ * waiting/cooking/fallback branches share a common wrapper and are checked last.
+ * Pure — no side effects.
+ */
+export function getReadingCardVariant(input: {
+  hasEvaluation: boolean;
+  nameRevealed: boolean;
+  revealStatus: RevealStatus;
+}): ReadingCardVariant {
+  if (!input.hasEvaluation) return 'unread';
+  if (input.nameRevealed) return 'revealed';
+  if (input.revealStatus === 'reveal_ready') return 'reveal_ready';
+  if (input.revealStatus === 'waiting_other_side') return 'waiting_other_side';
+  if (input.revealStatus === 'cooking_reveal') return 'cooking';
+  return 'private_fallback';
+}

@@ -30,6 +30,7 @@ import {
   openSharedReveal,
 } from '../../lib/reveal-shared-repo';
 import {
+  getReadingCardVariant,
   getReadingNoteText,
   getRelationContextCard,
   getRelationIdentityAnnotation,
@@ -172,6 +173,7 @@ export default function RelationDetailScreen() {
     : null;
   const visibleTierLabel = getVisibleTierLabel(nameRevealed, Boolean(evaluation), badgeLabel);
   const revealStatus = relationForDisplay.localState.revealSnapshot.status;
+  const readingVariant = getReadingCardVariant({ hasEvaluation: Boolean(evaluation), nameRevealed, revealStatus });
   const frozenMutualScore = relationForDisplay.localState.revealSnapshot.mutualScore;
   const frozenMutualTier = relationForDisplay.localState.revealSnapshot.tier;
   const visibleScore = nameRevealed
@@ -298,13 +300,13 @@ export default function RelationDetailScreen() {
         <View style={styles.readingSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionLabel}>
-              {nameRevealed ? 'Foundational reading' : 'Private reading'}
+              {readingVariant === 'revealed' ? 'Foundational reading' : 'Private reading'}
             </Text>
             <View style={styles.sectionLine} />
           </View>
 
           <View style={styles.readingCard}>
-            {nameRevealed ? (
+            {readingVariant === 'revealed' ? (
               <>
                 <View style={styles.scoreRow}>
                   <Text style={[styles.scoreValue, { color: accent }]}>
@@ -359,7 +361,7 @@ export default function RelationDetailScreen() {
                   <Text style={styles.nextActionText}>{growthSuggestion}</Text>
                 </View>
               </>
-            ) : revealStatus === 'reveal_ready' ? (
+            ) : readingVariant === 'reveal_ready' ? (
               <View style={styles.revealReadyCard}>
                 <Text style={styles.privateStateDate}>
                   Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
@@ -380,7 +382,7 @@ export default function RelationDetailScreen() {
                 <Text style={styles.privateStateDate}>
                   Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
                 </Text>
-                {revealStatus === 'waiting_other_side' ? (
+                {readingVariant === 'waiting_other_side' ? (
                   <>
                     <Text style={styles.privateStateTitle}>Your reading is saved</Text>
                     <Text style={styles.privateStateText}>
@@ -390,7 +392,7 @@ export default function RelationDetailScreen() {
                       <Text style={styles.revealInviteCTALabel}>Invite to reveal</Text>
                     </Pressable>
                   </>
-                ) : revealStatus === 'cooking_reveal' ? (
+                ) : readingVariant === 'cooking' ? (
                   <>
                     <Text style={styles.privateStateTitle}>Both sides are in</Text>
                     <Text style={styles.privateStateText}>
