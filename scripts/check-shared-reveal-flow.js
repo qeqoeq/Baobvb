@@ -41,8 +41,8 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function buildRelationId(runId, caseKey) {
-  return `day6-test-${runId}-${caseKey}-${Math.random().toString(36).slice(2, 8)}`;
+function buildRelationId(_runId, _caseKey) {
+  return require('crypto').randomUUID();
 }
 
 async function signIn(client, label) {

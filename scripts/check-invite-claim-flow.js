@@ -32,7 +32,7 @@ const payload = {
 
 async function main() {
   const runNs = `day6-verify-${Date.now()}`;
-  const relationshipId = `${runNs}-claim-path`;
+  const relationshipId = require('crypto').randomUUID();
 
   const a = buildClient();
   const b = buildClient();
