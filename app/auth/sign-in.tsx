@@ -1,84 +1,32 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
-import { devLogLinking, maskIdForLog } from '../../lib/dev-linking-log';
-import { getCurrentAuthenticatedUser, signInWithApple } from '../../lib/supabase-auth';
+import { signInWithApple } from '../../lib/supabase-auth';
 
 export default function AuthSignInScreen() {
-  const { redirectPath, relationId, token } = useLocalSearchParams<{
-    redirectPath?: string;
+  const { relationId } = useLocalSearchParams<{
     relationId?: string;
-    token?: string;
   }>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const inviteRelationId = typeof relationId === 'string' ? relationId.trim() : '';
 
-  const resolvePostAuthRoute = () => {
-    const redirect = typeof redirectPath === 'string' ? redirectPath : '';
-    const inviteToken = typeof token === 'string' ? token.trim() : '';
-
-    devLogLinking('sign-in: post-auth route', {
-      redirect,
-      relationId: maskIdForLog(inviteRelationId),
-      hasToken: Boolean(inviteToken),
-    });
-
-    if (redirect === '/invite/identity/[relationId]' && inviteRelationId) {
-      router.replace({
-        pathname: '/invite/identity/[relationId]',
-        params: {
-          relationId: inviteRelationId,
-          ...(inviteToken ? { token: inviteToken } : {}),
-        },
-      });
-      return;
-    }
-
-    if (redirect === '/invite/[relationId]' && inviteRelationId) {
-      router.replace({
-        pathname: '/invite/[relationId]',
-        params: {
-          relationId: inviteRelationId,
-          ...(inviteToken ? { token: inviteToken } : {}),
-        },
-      });
-      return;
-    }
-
-    const relationMatch = redirect.match(/^\/relation\/([^/]+)$/);
-    if (relationMatch?.[1]) {
-      router.replace({
-        pathname: '/relation/[id]',
-        params: { id: decodeURIComponent(relationMatch[1]) },
-      });
-      return;
-    }
-
-    router.replace('/(tabs)');
-  };
-
-  useEffect(() => {
-    void (async () => {
-      const existing = await getCurrentAuthenticatedUser();
-      if (existing) {
-        resolvePostAuthRoute();
-      }
-    })();
-  }, []);
-
+  // Post-auth navigation is handled entirely by the auth gate in _layout.tsx,
+  // triggered by onAuthStateChange → setIsAuthenticated(true). This prevents a
+  // race condition where router.replace() would change the pathname before
+  // isAuthenticated propagated, causing the auth gate to redirect back to sign-in.
   const handleSignIn = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     setError(null);
     try {
-      const user = await signInWithApple();
-      // null = user cancelled the Apple sheet — reset silently, no error shown.
-      if (user) resolvePostAuthRoute();
+      await signInWithApple();
+      // On success: onAuthStateChange fires → _layout auth gate navigates.
+      // On null (user cancelled): no action needed, button resets via finally.
     } catch (authError) {
       const message =
         authError instanceof Error
@@ -93,12 +41,14 @@ export default function AuthSignInScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>Sign in to Baobab</Text>
-        <Text style={styles.body}>
-          {inviteRelationId
-            ? 'Sign in to accept this invitation and add your side of the relationship.'
-            : 'Sign in to access your readings and reveals.'}
-        </Text>
+        <View style={styles.copyZone}>
+          <Text style={styles.title}>Sign in to Baobab</Text>
+          <Text style={styles.body}>
+            {inviteRelationId
+              ? 'Sign in to accept this invitation and add your side of the relationship.'
+              : 'Sign in to access your readings and reveals.'}
+          </Text>
+        </View>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <Pressable onPress={() => void handleSignIn()} style={styles.primaryButton}>
           <Text style={styles.primaryButtonText}>
@@ -125,6 +75,9 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
+  copyZone: {
+    gap: spacing.xs,
+  },
   title: {
     fontSize: 24,
     lineHeight: 30,
@@ -146,6 +99,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent.deepTeal,
     alignItems: 'center',
     paddingVertical: spacing.md,
+    marginTop: spacing.sm,
   },
   primaryButtonText: {
     fontSize: 15,
