@@ -10,13 +10,14 @@ import {
   registerDevicePushTokenForCurrentUser,
 } from '../lib/push-notifications';
 import { getOrCreatePublicProfileId } from '../lib/public-profile';
+import { resolvePostAuthDestination, resolveSignInRedirectTarget } from '../lib/auth-routing';
 import { getCurrentAuthenticatedUser } from '../lib/supabase-auth';
 import { supabase } from '../lib/supabase';
 import { useRelationsStore } from '../store/useRelationsStore';
 
 export default function RootLayout() {
   const pathname = usePathname();
-  const globalParams = useGlobalSearchParams<{ relationId?: string; token?: string }>();
+  const globalParams = useGlobalSearchParams<{ redirectPath?: string; relationId?: string; token?: string }>();
   const [authResolved, setAuthResolved] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const pushRegistrationRef = useRef(false);
@@ -55,33 +56,85 @@ export default function RootLayout() {
   useEffect(() => {
     if (!authResolved) return;
     const onAuthScreen = pathname === '/auth/sign-in';
+
+    // Not authenticated and not already on the auth screen → redirect to sign-in.
     if (!isAuthenticated && !onAuthScreen) {
-      const relationId =
-        typeof globalParams.relationId === 'string' ? globalParams.relationId.trim() : '';
-      const token = typeof globalParams.token === 'string' ? globalParams.token.trim() : '';
-      if (pathname.startsWith('/invite/') && relationId) {
-        const isIdentityInvite = pathname.startsWith('/invite/identity/');
+      const signInTarget = resolveSignInRedirectTarget({
+        pathname,
+        relationId: typeof globalParams.relationId === 'string' ? globalParams.relationId.trim() : '',
+        token: typeof globalParams.token === 'string' ? globalParams.token.trim() : '',
+      });
+      if (signInTarget.relationId) {
         devLogLinking('auth-gate → sign-in (invite)', {
           pathname,
-          inviteKind: isIdentityInvite ? 'identity' : 'arrival',
-          relationId: maskIdForLog(relationId),
-          hasToken: Boolean(token),
+          inviteKind: signInTarget.redirectPath.startsWith('/invite/identity/') ? 'identity' : 'arrival',
+          relationId: maskIdForLog(signInTarget.relationId),
+          hasToken: Boolean(signInTarget.token),
+        });
+      } else {
+        devLogLinking('auth-gate → sign-in (generic)', { pathname });
+      }
+      router.replace({
+        pathname: '/auth/sign-in',
+        params: {
+          redirectPath: signInTarget.redirectPath,
+          ...(signInTarget.relationId ? { relationId: signInTarget.relationId } : {}),
+          ...(signInTarget.token ? { token: signInTarget.token } : {}),
+        },
+      });
+      return;
+    }
+
+    // Authenticated and still on the sign-in screen → navigate to destination.
+    // This is the only place post-auth navigation happens, ensuring isAuthenticated
+    // is already true before any route change occurs (no race with the auth gate).
+    if (isAuthenticated && onAuthScreen) {
+      const redirectPath =
+        typeof globalParams.redirectPath === 'string' ? globalParams.redirectPath.trim() : '';
+      const relationId =
+        typeof globalParams.relationId === 'string' ? globalParams.relationId.trim() : '';
+      const inviteToken =
+        typeof globalParams.token === 'string' ? globalParams.token.trim() : '';
+
+      const destination = resolvePostAuthDestination({ redirectPath, relationId, inviteToken });
+
+      if (destination.route === '/invite/identity/[relationId]') {
+        devLogLinking('auth-gate → invite identity (post-auth)', {
+          relationId: maskIdForLog(destination.relationId),
+          hasToken: Boolean(destination.token),
         });
         router.replace({
-          pathname: '/auth/sign-in',
-          params: {
-            redirectPath: isIdentityInvite ? '/invite/identity/[relationId]' : '/invite/[relationId]',
-            relationId,
-            ...(token ? { token } : {}),
-          },
+          pathname: '/invite/identity/[relationId]',
+          params: { relationId: destination.relationId, ...(destination.token ? { token: destination.token } : {}) },
         });
         return;
       }
-      devLogLinking('auth-gate → sign-in (generic)', { pathname });
-      router.replace({ pathname: '/auth/sign-in', params: { redirectPath: pathname } });
+      if (destination.route === '/invite/[relationId]') {
+        devLogLinking('auth-gate → invite arrival (post-auth)', {
+          relationId: maskIdForLog(destination.relationId),
+          hasToken: Boolean(destination.token),
+        });
+        router.replace({
+          pathname: '/invite/[relationId]',
+          params: { relationId: destination.relationId, ...(destination.token ? { token: destination.token } : {}) },
+        });
+        return;
+      }
+      if (destination.route === '/relation/[id]') {
+        devLogLinking('auth-gate → relation (post-auth)', {
+          id: maskIdForLog(destination.id),
+        });
+        router.replace({
+          pathname: '/relation/[id]',
+          params: { id: destination.id },
+        });
+        return;
+      }
+      devLogLinking('auth-gate → tabs (post-auth)', { redirectPath });
+      router.replace('/(tabs)');
       return;
     }
-  }, [authResolved, isAuthenticated, pathname, globalParams.relationId, globalParams.token]);
+  }, [authResolved, isAuthenticated, pathname, globalParams.redirectPath, globalParams.relationId, globalParams.token]);
 
   useEffect(() => {
     const userId = me.internalAuthUserId ?? null;
