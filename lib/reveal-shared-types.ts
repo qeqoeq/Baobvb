@@ -13,8 +13,10 @@ export type SharedRelationshipRevealRecord = {
   status: SharedRevealStatus;
   side_a_reading_id: string | null;
   side_b_reading_id: string | null;
-  side_a_reading_payload: SharedReadingPayload | null;
-  side_b_reading_payload: SharedReadingPayload | null;
+  // side_a_reading_payload and side_b_reading_payload are intentionally omitted.
+  // Private ratings are never needed on the client — the mutual score is computed
+  // server-side and frozen. Exposing raw payloads would violate reading privacy
+  // before the reveal is opened.
   cooking_started_at: string | null;
   unlock_at: string | null;
   ready_at: string | null;

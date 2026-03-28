@@ -18,7 +18,13 @@ export async function getSharedRevealRecordForCurrentUser(
 
   const { data, error } = await supabase
     .from(TABLE)
-    .select('*')
+    .select(
+      'relationship_id,status,side_a_user_id,side_b_user_id,' +
+      'side_a_reading_id,side_b_reading_id,' +
+      'cooking_started_at,unlock_at,ready_at,first_viewed_at,revealed_at,' +
+      'mutual_score,tier,relationship_name_revealed,finalized_version,' +
+      'created_at,updated_at',
+    )
     .eq('relationship_id', relationshipId)
     .or(`side_a_user_id.eq.${userId},side_b_user_id.eq.${userId}`)
     .maybeSingle();
