@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "check:mutual-parity": "node scripts/check-mutual-parity.js",
     "check:shared-reveal-flow": "node scripts/check-shared-reveal-flow.js",
-    "check:invite-claim-flow": "node scripts/check-invite-claim-flow.js"
+    "check:invite-claim-flow": "node scripts/check-invite-claim-flow.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -54,7 +55,8 @@
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "^4.1.2"
   },
   "private": true
 }
