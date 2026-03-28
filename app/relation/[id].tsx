@@ -29,6 +29,12 @@ import {
   markSharedRevealReadyIfUnlocked,
   openSharedReveal,
 } from '../../lib/reveal-shared-repo';
+import {
+  getReadingNoteText,
+  getRelationContextCard,
+  getRelationIdentityAnnotation,
+  getVisibleTierLabel,
+} from '../../lib/relation-detail-helpers';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 const PILLAR_ORDER: PillarKey[] = [
@@ -150,36 +156,9 @@ export default function RelationDetailScreen() {
     ? getTierAccent(reading.linkTier)
     : colors.text.muted;
   const badgeLabel = reading?.badgeLabel ?? 'Unread';
-  const identityLabel = relation.identityStatus === 'verified' ? 'Verified by scan' : 'Added manually';
-  const identitySubtext = relation.identityStatus === 'verified' && relation.sourceHandle
-    ? `Scanned from ${relation.sourceHandle}`
-    : null;
+  const { label: identityLabel, subtext: identitySubtext } = getRelationIdentityAnnotation(relation);
 
-  const isSharedBacked =
-    !!relation.canonicalRelationId ||
-    relation.source === 'bootstrap' ||
-    relation.source === 'claim';
-  const relationContextCard: { title: string; body: string } | null = relation.archived
-    ? {
-        title: 'Archived relation',
-        body: 'This relation is archived locally and no longer appears in your active trust network.',
-      }
-    : isSharedBacked
-      ? {
-          title: 'Shared-backed relation',
-          body: 'This relation is backed by a shared record. Shared status does not imply a merged local history.',
-        }
-      : relation.source === 'scan'
-        ? {
-            title: 'Local scan draft',
-            body: 'This is a local draft created from a scanned public profile. It is not a shared relation.',
-          }
-        : relation.source === 'manual'
-          ? {
-              title: 'Local draft',
-              body: 'This relation currently exists only on this device and is not shared.',
-            }
-          : null;
+  const relationContextCard = getRelationContextCard(relation);
   const shouldHighlightReadNext = justCreated === '1' && !evaluation;
   const strongestLabel = getPillarLabel(reading?.strongestPillar ?? null);
   const weakestLabel = getPillarLabel(reading?.weakestPillar ?? null);
@@ -191,7 +170,7 @@ export default function RelationDetailScreen() {
   const tierLexicon = nameRevealed && reading?.linkTier
     ? getRelationshipLexiconEntry(reading.linkTier)
     : null;
-  const visibleTierLabel = nameRevealed && evaluation ? badgeLabel : evaluation ? 'Private reading' : 'Unread';
+  const visibleTierLabel = getVisibleTierLabel(nameRevealed, Boolean(evaluation), badgeLabel);
   const revealStatus = relationForDisplay.localState.revealSnapshot.status;
   const frozenMutualScore = relationForDisplay.localState.revealSnapshot.mutualScore;
   const frozenMutualTier = relationForDisplay.localState.revealSnapshot.tier;
@@ -294,24 +273,26 @@ export default function RelationDetailScreen() {
         </View>
       </View>
 
-      <View style={styles.originRow}>
-        <View style={styles.originCard}>
-          <Text style={styles.originLabel}>{identityLabel}</Text>
-          {identitySubtext ? (
-            <Text style={styles.originSubtext}>{identitySubtext}</Text>
-          ) : null}
+      <View style={styles.metaZone}>
+        <View style={styles.originRow}>
+          <View style={styles.originCard}>
+            <Text style={styles.originLabel}>{identityLabel}</Text>
+            {identitySubtext ? (
+              <Text style={styles.originSubtext}>{identitySubtext}</Text>
+            ) : null}
+          </View>
+          <Pressable onPress={() => router.push(`./edit/${relation.id}`)} style={styles.editLink}>
+            <Text style={styles.editLinkText}>Edit relation</Text>
+          </Pressable>
         </View>
-        <Pressable onPress={() => router.push(`./edit/${relation.id}`)} style={styles.editLink}>
-          <Text style={styles.editLinkText}>Edit relation</Text>
-        </Pressable>
-      </View>
 
-      {relationContextCard ? (
-        <View style={styles.privateStateCard}>
-          <Text style={styles.privateStateTitle}>{relationContextCard.title}</Text>
-          <Text style={styles.privateStateText}>{relationContextCard.body}</Text>
-        </View>
-      ) : null}
+        {relationContextCard ? (
+          <View style={styles.privateStateCard}>
+            <Text style={styles.privateStateTitle}>{relationContextCard.title}</Text>
+            <Text style={styles.privateStateText}>{relationContextCard.body}</Text>
+          </View>
+        ) : null}
+      </View>
 
       {evaluation ? (
         <View style={styles.readingSection}>
@@ -431,11 +412,7 @@ export default function RelationDetailScreen() {
 
           <View style={styles.readingNote}>
             <Text style={styles.readingNoteText}>
-              {nameRevealed
-                ? 'This reading helps define how this connection is understood.'
-                : revealStatus === 'reveal_ready'
-                  ? 'Opening the reveal is a one-time action.'
-                  : 'Your private side is saved and stays hidden until reveal.'}
+              {getReadingNoteText(nameRevealed, revealStatus)}
             </Text>
           </View>
         </View>
@@ -608,6 +585,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 14,
   },
+  metaZone: {
+    gap: spacing.sm,
+  },
   originRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -618,8 +598,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.background.secondary,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     gap: 2,
@@ -629,7 +607,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     color: colors.text.secondary,
-    fontWeight: '700',
+    fontWeight: '500',
   },
   originSubtext: {
     fontSize: 12,
@@ -663,6 +641,7 @@ const styles = StyleSheet.create({
 
   readingSection: {
     gap: spacing.md,
+    marginTop: spacing.md,
   },
   readingCard: {
     backgroundColor: colors.background.secondary,
@@ -847,6 +826,7 @@ const styles = StyleSheet.create({
 
   unreadSection: {
     gap: spacing.md,
+    marginTop: spacing.md,
   },
   nextStepCard: {
     backgroundColor: colors.accent.warmGold + '16',
