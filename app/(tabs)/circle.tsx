@@ -236,7 +236,7 @@ export default function CircleScreen() {
 
             {nonRevealedCount > 0 && (
               <Text style={styles.worldCardHint}>
-                +{nonRevealedCount} still forming
+                {nonRevealedCount} {nonRevealedCount === 1 ? 'link' : 'links'} still forming
               </Text>
             )}
           </View>
@@ -270,7 +270,7 @@ export default function CircleScreen() {
             </Pressable>
             <Pressable style={styles.actionChip} onPress={() => handleToggle('list')}>
               <Text style={styles.actionChipText}>
-                {'Need care'}
+                {'Nurture'}
                 {careCount > 0 && (
                   <Text style={styles.actionChipCount}>{` · ${careCount}`}</Text>
                 )}
@@ -682,15 +682,13 @@ const styles = StyleSheet.create({
   worldCardHeader: {
     paddingTop: spacing.md,
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.sm + 4,
     gap: 3,
   },
   worldCardTitle: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.text.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   },
   worldCardSummary: {
     fontSize: 13,
@@ -703,7 +701,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.xs,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
 
