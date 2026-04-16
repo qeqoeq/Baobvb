@@ -1,11 +1,21 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import EgoGraph from '../../components/ui/EgoGraph';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
+import {
+  getCircleNodeStatus,
+  getCircleNodeStatusLabel,
+  type CircleNodeStatus,
+  type EgoGraphMember,
+} from '../../lib/circle-node-state';
 import { useRelationsStore } from '../../store/useRelationsStore';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Proximity = 'direct' | 'near' | 'far';
 
@@ -14,9 +24,12 @@ type CircleMember = {
   name: string;
   handle: string;
   proximity: Proximity;
-  readingLabel: string;
+  status: CircleNodeStatus;
+  archived: boolean;
   avatarSeed?: string;
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const SUFFIXES = ['branch', 'root', 'leaf', 'seed', 'bloom'];
 
@@ -65,41 +78,72 @@ const PROXIMITY_META: Record<
 
 const PROXIMITY_ORDER: Proximity[] = ['direct', 'near', 'far'];
 
+const VIEW_MODE_KEY = 'circle:viewMode';
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
 export default function CircleScreen() {
-  const { relations, evaluations } = useRelationsStore();
+  const { me, relations, evaluations } = useRelationsStore();
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+
+  // Restore persisted view preference
+  useEffect(() => {
+    AsyncStorage.getItem(VIEW_MODE_KEY)
+      .then((val) => { if (val === 'map') setViewMode('map'); })
+      .catch(() => {});
+  }, []);
+
+  const handleToggle = useCallback((mode: 'list' | 'map') => {
+    setViewMode(mode);
+    void AsyncStorage.setItem(VIEW_MODE_KEY, mode);
+  }, []);
+
+  const handleOverflowTap = useCallback(() => {
+    handleToggle('list');
+  }, [handleToggle]);
 
   const readings = useMemo(
     () => getFoundationalReadings(relations, evaluations),
     [relations, evaluations],
   );
 
+  // List view members — all relations (archived appear in 'far' section)
   const members = useMemo<CircleMember[]>(
     () => readings.map((reading) => {
-      // V1 proximity heuristic:
-      // - direct: active + read + not to nurture
-      // - near: active + read + to nurture
-      // - far: archived OR unread
+      const isRevealed =
+        reading.relation.localState.revealSnapshot.status === 'revealed' ||
+        (reading.relation.relationshipNameRevealed ?? false);
       const proximity: Proximity = reading.relation.archived
         ? 'far'
-        : reading.hasFoundationalReading
-          ? reading.toNurture
-            ? 'near'
-            : 'direct'
-          : 'far';
-
-      const readingLabel = reading.relation.archived
-        ? `Archived · ${reading.badgeLabel}`
-        : reading.badgeLabel;
+        : !reading.hasFoundationalReading
+          ? 'far'
+          : isRevealed
+            ? reading.toNurture ? 'near' : 'direct'
+            : 'direct';
 
       return {
         id: reading.relation.id,
         name: reading.relation.name,
         handle: reading.relation.handle || deriveHandle(reading.relation.name, reading.relation.id),
         proximity,
-        readingLabel,
+        status: getCircleNodeStatus(reading),
+        archived: reading.relation.archived,
         avatarSeed: reading.relation.avatarSeed,
       };
     }),
+    [readings],
+  );
+
+  // Graph view members — non-archived only
+  const graphMembers = useMemo<EgoGraphMember[]>(
+    () => readings
+      .filter((r) => !r.relation.archived)
+      .map((r) => ({
+        id: r.relation.id,
+        name: r.relation.name,
+        status: getCircleNodeStatus(r),
+        avatarSeed: r.relation.avatarSeed,
+      })),
     [readings],
   );
 
@@ -115,119 +159,155 @@ export default function CircleScreen() {
   const totalCount = members.length;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
-        <Text style={styles.kicker}>Circle</Text>
-        <View style={styles.heroRow}>
-          <View style={styles.heroText}>
-            <Text style={styles.title}>Your trust{'\n'}network</Text>
-            <Text style={styles.heroCount}>
-              {totalCount} {totalCount === 1 ? 'person' : 'people'} in view
-            </Text>
-          </View>
-          <View style={styles.rings}>
-            <View style={styles.ringOuter}>
-              <View style={styles.ringMiddle}>
-                <View style={styles.ringInner}>
-                  <View style={styles.ringCenter} />
+    <View style={styles.screen}>
+      {/* Toggle — shared header for both views */}
+      <View style={styles.toggleContainer}>
+        <Pressable
+          onPress={() => handleToggle('list')}
+          style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
+        >
+          <Text style={[styles.toggleBtnLabel, viewMode === 'list' && styles.toggleBtnLabelActive]}>
+            List
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => handleToggle('map')}
+          style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
+        >
+          <Text style={[styles.toggleBtnLabel, viewMode === 'map' && styles.toggleBtnLabelActive]}>
+            Map
+          </Text>
+        </Pressable>
+      </View>
+
+      {viewMode === 'map' ? (
+        <EgoGraph
+          members={graphMembers}
+          me={me}
+          onOverflowTap={handleOverflowTap}
+        />
+      ) : (
+        <ScrollView style={styles.listScroll} contentContainerStyle={styles.content}>
+          <View style={styles.hero}>
+            <Text style={styles.kicker}>Circle</Text>
+            <View style={styles.heroRow}>
+              <View style={styles.heroText}>
+                <Text style={styles.title}>Your trust{'\n'}network</Text>
+                <Text style={styles.heroCount}>
+                  {totalCount} {totalCount === 1 ? 'person' : 'people'} in view
+                </Text>
+              </View>
+              <View style={styles.rings}>
+                <View style={styles.ringOuter}>
+                  <View style={styles.ringMiddle}>
+                    <View style={styles.ringInner}>
+                      <View style={styles.ringCenter} />
+                    </View>
+                  </View>
                 </View>
               </View>
             </View>
+            <Text style={styles.intro}>
+              The closer people are to your inner circle, the clearer they appear.
+            </Text>
           </View>
-        </View>
-        <Text style={styles.intro}>
-          The closer people are to your inner circle, the clearer they appear.
-        </Text>
-      </View>
 
-      {totalCount === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No one yet</Text>
-          <Text style={styles.emptyText}>
-            Your circle will grow as you add people in your Garden.
-          </Text>
-        </View>
-      ) : (
-        PROXIMITY_ORDER.map((proximity) => {
-          const group = groups.get(proximity);
-          if (!group) return null;
-          const meta = PROXIMITY_META[proximity];
-          return (
-            <View key={proximity} style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <View style={[styles.sectionDot, { backgroundColor: meta.accent }]} />
-                <Text style={[styles.sectionLabel, { color: meta.accent }]}>
-                  {meta.sectionLabel}
-                </Text>
-                <View style={styles.sectionLine} />
-              </View>
-              <View style={styles.sectionCards}>
-                {group.map((member) => (
-                  <Pressable
-                    key={member.id}
-                    onPress={() => router.push(`../relation/${member.id}`)}
-                    style={[
-                      styles.memberCard,
-                      { opacity: meta.cardOpacity, borderLeftColor: meta.accent + '55' },
-                    ]}
-                  >
-                    <View style={styles.avatarWrap}>
-                      <View
-                        style={[
-                          styles.avatar,
-                          {
-                            backgroundColor: meta.accent + '12',
-                            borderColor: meta.accent + '44',
-                            borderWidth: meta.avatarBorder,
-                          },
-                        ]}
-                      >
-                        <Text style={[styles.avatarLetter, { color: meta.accent }]}>
-                          {(member.avatarSeed || member.name.charAt(0) || '?').toUpperCase()}
-                        </Text>
-                      </View>
-                      {proximity === 'far' && <View style={styles.avatarFog} />}
-                    </View>
-                    <View style={styles.memberBody}>
-                      <Text
-                        style={[
-                          styles.memberName,
-                          proximity === 'far' && styles.memberNameFar,
-                        ]}
-                      >
-                        {maskName(member.name, member.proximity)}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.memberHandle,
-                          proximity === 'direct' && styles.memberHandleDirect,
-                        ]}
-                      >
-                        {member.handle} · {member.readingLabel}
-                      </Text>
-                    </View>
-                    <View style={[styles.proximityBadge, { borderColor: meta.accent + '33' }]}>
-                      <Text style={[styles.proximityLabel, { color: meta.accent }]}>
-                        {meta.label}
-                      </Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
+          {totalCount === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>No one yet</Text>
+              <Text style={styles.emptyText}>
+                Your circle will grow as you add people in your Garden.
+              </Text>
             </View>
-          );
-        })
-      )}
+          ) : (
+            PROXIMITY_ORDER.map((proximity) => {
+              const group = groups.get(proximity);
+              if (!group) return null;
+              const meta = PROXIMITY_META[proximity];
+              return (
+                <View key={proximity} style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <View style={[styles.sectionDot, { backgroundColor: meta.accent }]} />
+                    <Text style={[styles.sectionLabel, { color: meta.accent }]}>
+                      {meta.sectionLabel}
+                    </Text>
+                    <View style={styles.sectionLine} />
+                  </View>
+                  <View style={styles.sectionCards}>
+                    {group.map((member) => (
+                      <Pressable
+                        key={member.id}
+                        onPress={() => router.push(`../relation/${member.id}`)}
+                        style={[
+                          styles.memberCard,
+                          { opacity: meta.cardOpacity, borderLeftColor: meta.accent + '55' },
+                        ]}
+                      >
+                        <View style={styles.avatarWrap}>
+                          <View
+                            style={[
+                              styles.avatar,
+                              {
+                                backgroundColor: meta.accent + '12',
+                                borderColor: meta.accent + '44',
+                                borderWidth: meta.avatarBorder,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.avatarLetter, { color: meta.accent }]}>
+                              {(member.avatarSeed || member.name.charAt(0) || '?').toUpperCase()}
+                            </Text>
+                          </View>
+                          {proximity === 'far' && <View style={styles.avatarFog} />}
+                        </View>
+                        <View style={styles.memberBody}>
+                          <Text
+                            style={[
+                              styles.memberName,
+                              proximity === 'far' && styles.memberNameFar,
+                            ]}
+                          >
+                            {maskName(member.name, member.proximity)}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.memberHandle,
+                              proximity === 'direct' && styles.memberHandleDirect,
+                            ]}
+                          >
+                            {member.handle}
+                            {' · '}
+                            {member.archived
+                              ? 'Archived'
+                              : getCircleNodeStatusLabel(member.status)}
+                          </Text>
+                        </View>
+                        <View style={[styles.proximityBadge, { borderColor: meta.accent + '33' }]}>
+                          <Text style={[styles.proximityLabel, { color: meta.accent }]}>
+                            {meta.label}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              );
+            })
+          )}
 
-      <View style={styles.privacyCard}>
-        <View style={styles.privacyDot} />
-        <Text style={styles.privacyText}>
-          Only link types are visible — detailed notes stay private.
-        </Text>
-      </View>
-    </ScrollView>
+          <View style={styles.privacyCard}>
+            <View style={styles.privacyDot} />
+            <Text style={styles.privacyText}>
+              Only link types are visible — detailed notes stay private.
+            </Text>
+          </View>
+        </ScrollView>
+      )}
+    </View>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const RING = colors.accent.deepTeal;
 
@@ -236,9 +316,44 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
+
+  // Toggle
+  toggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingTop: 48,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: spacing.xs,
+    backgroundColor: colors.background.primary,
+  },
+  toggleBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+  },
+  toggleBtnActive: {
+    borderColor: colors.accent.deepTeal,
+    backgroundColor: colors.accent.deepTeal + '1A',
+  },
+  toggleBtnLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.secondary,
+  },
+  toggleBtnLabelActive: {
+    color: colors.accent.deepTeal,
+  },
+
+  // List
+  listScroll: {
+    flex: 1,
+  },
   content: {
     padding: spacing.lg,
-    paddingTop: 48,
+    paddingTop: spacing.md,
     paddingBottom: spacing.lg * 2,
     gap: spacing.lg,
   },
