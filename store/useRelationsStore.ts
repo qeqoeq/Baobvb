@@ -174,6 +174,7 @@ function buildEvaluation(
 }
 
 const SEED_RELATIONS: Relation[] = [
+  // id:1 — has own reading, sideB absent → status: waiting_other_side (label: Waiting)
   {
     id: '1',
     name: 'Olivier',
@@ -188,6 +189,7 @@ const SEED_RELATIONS: Relation[] = [
       revealSnapshot: { status: 'waiting_other_side', revealed: false, relationshipNameRevealed: false },
     },
   },
+  // id:2 — no own reading → status: unread (label: Unread), opacity 0.55 in Map
   {
     id: '2',
     name: 'Nora',
@@ -202,6 +204,7 @@ const SEED_RELATIONS: Relation[] = [
       revealSnapshot: { status: 'waiting_other_side', revealed: false, relationshipNameRevealed: false },
     },
   },
+  // id:3 — archived → far section in List, excluded from Map
   {
     id: '3',
     name: 'Jean',
@@ -216,9 +219,70 @@ const SEED_RELATIONS: Relation[] = [
       revealSnapshot: { status: 'waiting_other_side', revealed: false, relationshipNameRevealed: false },
     },
   },
+  // id:4 — cooking_reveal in progress → status: cooking (label: Preparing)
+  {
+    id: '4',
+    name: 'Sara',
+    archived: false,
+    createdAt: '2025-12-10T08:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: false,
+    source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e3' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'cooking_reveal', revealed: false, cookingStartedAt: '2026-01-20T10:00:00Z' },
+    },
+  },
+  // id:5 — both sides verified, reveal unlocked → status: ready (label: Ready)
+  {
+    id: '5',
+    name: 'Marc',
+    archived: false,
+    createdAt: '2025-12-15T11:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: false,
+    source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e4' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'reveal_ready', revealed: false, readyAt: '2026-01-22T10:00:00Z' },
+    },
+  },
+  // id:6 — revealed, high score (≥60) → status: revealed_stable (label: Stable), proximity: direct
+  {
+    id: '6',
+    name: 'Lena',
+    archived: false,
+    createdAt: '2025-11-20T09:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e5' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-10T14:00:00Z' },
+    },
+  },
+  // id:7 — revealed, low score (<60) → status: revealed_to_nurture (label: To nurture), proximity: near
+  {
+    id: '7',
+    name: 'Paul',
+    archived: false,
+    createdAt: '2025-11-25T15:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e6' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-12T10:00:00Z' },
+    },
+  },
 ];
 
 const SEED_EVALUATIONS: Evaluation[] = [
+  // Olivier — Anchor score (≥60) → toNurture=false
   buildEvaluation('e1', '1', {
     trust: 4,
     interactions: 4,
@@ -226,6 +290,7 @@ const SEED_EVALUATIONS: Evaluation[] = [
     support: 4,
     sharedNetwork: 3,
   }, '2026-01-15T12:00:00Z'),
+  // Jean (archived) — Ghost score
   buildEvaluation('e2', '3', {
     trust: 2,
     interactions: 1,
@@ -233,6 +298,38 @@ const SEED_EVALUATIONS: Evaluation[] = [
     support: 1,
     sharedNetwork: 1,
   }, '2025-12-20T09:00:00Z'),
+  // Sara — cooking, has reading → Anchor
+  buildEvaluation('e3', '4', {
+    trust: 4,
+    interactions: 4,
+    affinity: 3,
+    support: 4,
+    sharedNetwork: 3,
+  }, '2026-01-20T09:00:00Z'),
+  // Marc — reveal_ready, has reading → Anchor
+  buildEvaluation('e4', '5', {
+    trust: 4,
+    interactions: 4,
+    affinity: 3,
+    support: 4,
+    sharedNetwork: 3,
+  }, '2026-01-21T09:00:00Z'),
+  // Lena — revealed, high score (75) → toNurture=false → revealed_stable
+  buildEvaluation('e5', '6', {
+    trust: 4,
+    interactions: 4,
+    affinity: 4,
+    support: 4,
+    sharedNetwork: 4,
+  }, '2026-01-10T12:00:00Z'),
+  // Paul — revealed, score=0 → toNurture=true → revealed_to_nurture
+  buildEvaluation('e6', '7', {
+    trust: 1,
+    interactions: 1,
+    affinity: 1,
+    support: 1,
+    sharedNetwork: 1,
+  }, '2026-01-12T09:00:00Z'),
 ];
 
 const SEED_ME: MeProfile = {
