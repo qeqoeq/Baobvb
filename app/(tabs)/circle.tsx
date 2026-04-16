@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
@@ -9,10 +9,14 @@ import EgoGraph from '../../components/ui/EgoGraph';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
 import {
   deriveCircleProximity,
+  deriveGatewayAccessState,
+  deriveGatewayPowerBand,
+  deriveProximityBand,
+  deriveLinkQualityBand,
   getCircleNodeStatus,
   getCircleNodeStatusLabel,
   type CircleNodeStatus,
-  type EgoGraphMember,
+  type MapMember,
   type Proximity,
 } from '../../lib/circle-node-state';
 import { useRelationsStore } from '../../store/useRelationsStore';
@@ -84,6 +88,8 @@ const VIEW_MODE_KEY = 'circle:viewMode';
 
 export default function CircleScreen() {
   const { me, relations, evaluations } = useRelationsStore();
+  const { width: screenWidth } = useWindowDimensions();
+  const atlasSize = screenWidth - spacing.lg * 2;
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   // Restore persisted view preference
@@ -121,18 +127,60 @@ export default function CircleScreen() {
     [readings],
   );
 
-  // Graph view members — non-archived only
-  const graphMembers = useMemo<EgoGraphMember[]>(
+  // Graph view members — revealed only (mutual reveal complete)
+  const graphMembers = useMemo<MapMember[]>(
     () => readings
-      .filter((r) => !r.relation.archived)
-      .map((r) => ({
-        id: r.relation.id,
-        name: r.relation.name,
-        status: getCircleNodeStatus(r),
-        avatarSeed: r.relation.avatarSeed,
-      })),
+      .filter((r) => r.relation.localState.revealSnapshot.status === 'revealed')
+      .map((r) => {
+        const gatewayPowerBand = deriveGatewayPowerBand(r);
+        return {
+          id: r.relation.id,
+          name: r.relation.name,
+          status: getCircleNodeStatus(r),
+          avatarSeed: r.relation.avatarSeed,
+          proximityBand: deriveProximityBand(r),
+          gatewayPowerBand,
+          gatewayAccessState: deriveGatewayAccessState(r, gatewayPowerBand),
+          linkQualityBand: deriveLinkQualityBand(r),
+        };
+      }),
     [readings],
   );
+
+  const nonRevealedCount = useMemo(
+    () => readings.filter((r) =>
+      !r.relation.archived &&
+      r.relation.localState.revealSnapshot.status !== 'revealed',
+    ).length,
+    [readings],
+  );
+
+  // Insight bar metrics — derived from revealed-only graphMembers
+  const closeCount = useMemo(
+    () => graphMembers.filter((m) => m.proximityBand === 'core' || m.proximityBand === 'close').length,
+    [graphMembers],
+  );
+  const gatewayCount = useMemo(
+    () => graphMembers.filter((m) => m.gatewayPowerBand !== 'low').length,
+    [graphMembers],
+  );
+  const careCount = useMemo(
+    () => graphMembers.filter((m) => m.status === 'revealed_to_nurture' || m.linkQualityBand === 'faint').length,
+    [graphMembers],
+  );
+  const openGatewayMembers = useMemo(
+    () => graphMembers.filter((m) => m.gatewayAccessState === 'open'),
+    [graphMembers],
+  );
+
+  // Compact summary line for World Card header
+  const atlasSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (closeCount > 0) parts.push(`${closeCount} close`);
+    if (gatewayCount > 0) parts.push(`${gatewayCount} ${gatewayCount === 1 ? 'gateway' : 'gateways'}`);
+    if (careCount > 0) parts.push(`${careCount} care`);
+    return parts.join(' · ');
+  }, [closeCount, gatewayCount, careCount]);
 
   const groups = useMemo(() => {
     const map = new Map<Proximity, CircleMember[]>();
@@ -168,11 +216,69 @@ export default function CircleScreen() {
       </View>
 
       {viewMode === 'map' ? (
-        <EgoGraph
-          members={graphMembers}
-          me={me}
-          onOverflowTap={handleOverflowTap}
-        />
+        <View style={styles.atlasWrap}>
+
+          {/* WORLD CARD — header + canvas + hint, unified object */}
+          <View style={styles.worldCard}>
+            <View style={styles.worldCardHeader}>
+              <Text style={styles.worldCardTitle}>Your world</Text>
+              {atlasSummary ? (
+                <Text style={styles.worldCardSummary}>{atlasSummary}</Text>
+              ) : null}
+            </View>
+
+            <EgoGraph
+              members={graphMembers}
+              me={me}
+              size={atlasSize}
+              onOverflowTap={handleOverflowTap}
+            />
+
+            {nonRevealedCount > 0 && (
+              <Text style={styles.worldCardHint}>
+                +{nonRevealedCount} still forming
+              </Text>
+            )}
+          </View>
+
+          {/* ACTION RAIL */}
+          <View style={styles.actionRail}>
+            <Pressable
+              style={styles.actionChip}
+              onPress={() => {
+                if (openGatewayMembers.length === 1) {
+                  router.push(`../relation/${openGatewayMembers[0].id}`);
+                } else {
+                  handleToggle('list');
+                }
+              }}
+            >
+              <Text style={styles.actionChipText}>
+                {'Open worlds'}
+                {openGatewayMembers.length > 0 && (
+                  <Text style={styles.actionChipCount}>{` · ${openGatewayMembers.length}`}</Text>
+                )}
+              </Text>
+            </Pressable>
+            <Pressable style={styles.actionChip} onPress={() => handleToggle('list')}>
+              <Text style={styles.actionChipText}>
+                {'Closest'}
+                {closeCount > 0 && (
+                  <Text style={styles.actionChipCount}>{` · ${closeCount}`}</Text>
+                )}
+              </Text>
+            </Pressable>
+            <Pressable style={styles.actionChip} onPress={() => handleToggle('list')}>
+              <Text style={styles.actionChipText}>
+                {'Need care'}
+                {careCount > 0 && (
+                  <Text style={styles.actionChipCount}>{` · ${careCount}`}</Text>
+                )}
+              </Text>
+            </Pressable>
+          </View>
+
+        </View>
       ) : (
         <ScrollView style={styles.listScroll} contentContainerStyle={styles.content}>
           <View style={styles.hero}>
@@ -553,5 +659,78 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.muted,
     lineHeight: 18,
+  },
+
+  // Atlas wrap — contains World Card + action rail
+  atlasWrap: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
+    alignItems: 'stretch',
+  },
+
+  // World Card — unified object: header + canvas + hint
+  worldCard: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    overflow: 'hidden',
+  },
+  worldCardHeader: {
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: 3,
+  },
+  worldCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  worldCardSummary: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    lineHeight: 18,
+  },
+  worldCardHint: {
+    fontSize: 11,
+    color: colors.text.muted,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.md,
+  },
+
+  // Action rail
+  actionRail: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  actionChip: {
+    flex: 1,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  actionChipCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.text.primary,
   },
 });
