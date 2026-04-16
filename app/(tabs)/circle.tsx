@@ -8,16 +8,16 @@ import { radius, spacing } from '../../constants/spacing';
 import EgoGraph from '../../components/ui/EgoGraph';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
 import {
+  deriveCircleProximity,
   getCircleNodeStatus,
   getCircleNodeStatusLabel,
   type CircleNodeStatus,
   type EgoGraphMember,
+  type Proximity,
 } from '../../lib/circle-node-state';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type Proximity = 'direct' | 'near' | 'far';
 
 type CircleMember = {
   id: string;
@@ -109,28 +109,15 @@ export default function CircleScreen() {
 
   // List view members — all relations (archived appear in 'far' section)
   const members = useMemo<CircleMember[]>(
-    () => readings.map((reading) => {
-      const isRevealed =
-        reading.relation.localState.revealSnapshot.status === 'revealed' ||
-        (reading.relation.relationshipNameRevealed ?? false);
-      const proximity: Proximity = reading.relation.archived
-        ? 'far'
-        : !reading.hasFoundationalReading
-          ? 'far'
-          : isRevealed
-            ? reading.toNurture ? 'near' : 'direct'
-            : 'direct';
-
-      return {
-        id: reading.relation.id,
-        name: reading.relation.name,
-        handle: reading.relation.handle || deriveHandle(reading.relation.name, reading.relation.id),
-        proximity,
-        status: getCircleNodeStatus(reading),
-        archived: reading.relation.archived,
-        avatarSeed: reading.relation.avatarSeed,
-      };
-    }),
+    () => readings.map((reading) => ({
+      id: reading.relation.id,
+      name: reading.relation.name,
+      handle: reading.relation.handle || deriveHandle(reading.relation.name, reading.relation.id),
+      proximity: deriveCircleProximity(reading),
+      status: getCircleNodeStatus(reading),
+      archived: reading.relation.archived,
+      avatarSeed: reading.relation.avatarSeed,
+    })),
     [readings],
   );
 

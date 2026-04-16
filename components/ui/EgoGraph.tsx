@@ -9,8 +9,8 @@ import {
   CIRCLE_NODE_STATUS_COLOR,
   NODE_RADIUS,
   computeEgoLayout,
-  getCircleNodeSortWeight,
   getCircleNodeStatusLabel,
+  sortAndBucketEgoMembers,
   type CanvasSize,
   type EgoGraphMember,
   type EgoLayoutNode,
@@ -50,18 +50,10 @@ export default function EgoGraph({ members, me, onOverflowTap }: Props) {
   }, []);
 
   // Deterministic sort: status weight → name → id
-  const sorted = useMemo(() => {
-    return [...members].sort((a, b) => {
-      const dw = getCircleNodeSortWeight(a.status) - getCircleNodeSortWeight(b.status);
-      if (dw !== 0) return dw;
-      const dn = a.name.localeCompare(b.name);
-      if (dn !== 0) return dn;
-      return a.id.localeCompare(b.id);
-    });
-  }, [members]);
-
-  const overflowCount = Math.max(0, sorted.length - MAX_VISIBLE);
-  const visible = useMemo(() => sorted.slice(0, MAX_VISIBLE), [sorted]);
+  const { visible, overflowCount } = useMemo(
+    () => sortAndBucketEgoMembers(members, MAX_VISIBLE),
+    [members],
+  );
 
   // nodeIds fed to layout: visible nodes + overflow pseudo-node if needed
   const nodeIds = useMemo(() => {

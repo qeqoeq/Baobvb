@@ -81,6 +81,28 @@ export const CIRCLE_NODE_STATUS_COLOR: Record<CircleNodeStatus, string> = {
   unread:              colors.accent.warmGold,
 };
 
+// ─── Proximity ────────────────────────────────────────────────────────────────
+
+export type Proximity = 'direct' | 'near' | 'far';
+
+/**
+ * Derives the list-view proximity bucket for a relation.
+ * Rules (in order):
+ *   - archived                    → far
+ *   - no foundational reading     → far
+ *   - mutually revealed + nurture → near
+ *   - mutually revealed           → direct
+ *   - not yet revealed            → direct  (never 'near' — no quality leak)
+ */
+export function deriveCircleProximity(reading: FoundationalReadingDerived): Proximity {
+  if (reading.relation.archived) return 'far';
+  if (!reading.hasFoundationalReading) return 'far';
+  if (isRevealComplete(reading)) {
+    return reading.toNurture ? 'near' : 'direct';
+  }
+  return 'direct';
+}
+
 // ─── Graph member ─────────────────────────────────────────────────────────────
 
 /** Minimal shape required to render a node in the ego graph. */
@@ -90,6 +112,35 @@ export type EgoGraphMember = {
   status: CircleNodeStatus;
   avatarSeed?: string;
 };
+
+// ─── Sort + bucket ────────────────────────────────────────────────────────────
+
+export type SortedBucketResult = {
+  visible: EgoGraphMember[];
+  overflowCount: number;
+};
+
+/**
+ * Sorts members deterministically (status weight → name → id) and
+ * splits into visible + overflow count.
+ * Pure — no side effects, safe to test directly.
+ */
+export function sortAndBucketEgoMembers(
+  members: EgoGraphMember[],
+  maxVisible = 20,
+): SortedBucketResult {
+  const sorted = [...members].sort((a, b) => {
+    const dw = getCircleNodeSortWeight(a.status) - getCircleNodeSortWeight(b.status);
+    if (dw !== 0) return dw;
+    const dn = a.name.localeCompare(b.name);
+    if (dn !== 0) return dn;
+    return a.id.localeCompare(b.id);
+  });
+  return {
+    visible: sorted.slice(0, maxVisible),
+    overflowCount: Math.max(0, sorted.length - maxVisible),
+  };
+}
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
