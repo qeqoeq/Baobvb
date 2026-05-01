@@ -52,7 +52,7 @@ export default function EditRelationScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>Edit relation</Text>
         <Text style={styles.subtitle}>
-          Update the name used in your Garden.
+          Your private name for this person. Only you can see it.
         </Text>
 
         <View style={styles.fieldBlock}>

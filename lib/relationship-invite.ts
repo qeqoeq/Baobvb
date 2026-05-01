@@ -15,7 +15,11 @@ export function buildRelationshipInviteUrl(
 
   const encodedRelationId = encodeURIComponent(cleanRelationId);
   const encodedInviteToken = encodeURIComponent(cleanInviteToken);
-  return Linking.createURL(`invite/${encodedRelationId}?token=${encodedInviteToken}`);
+
+  if (__DEV__) {
+    return Linking.createURL(`invite/${encodedRelationId}?token=${encodedInviteToken}`);
+  }
+  return `https://getbaobab.app/invite/${encodedRelationId}?token=${encodedInviteToken}`;
 }
 
 export function getRelationshipInviteMessage(params: {
@@ -25,7 +29,7 @@ export function getRelationshipInviteMessage(params: {
   const url = buildRelationshipInviteUrl(params.relationId, params.inviteToken);
   return {
     message:
-      'I saved my side of our relationship on Baobab. Join me to reveal it together.',
+      'I added you on Baobab, a private app for trusted relationships. Tap to confirm from your side — it takes under a minute.',
     url,
   };
 }

@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
 import { colors } from '../../constants/colors';
@@ -27,30 +27,32 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Garden',
+          title: 'World',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="leaf-outline" size={size} color={color} />
+            <Ionicons name="globe-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="circle"
+        name="garden"
         options={{
-          title: 'Circle',
+          title: 'Garden',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),
         }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
-          ),
+        listeners={{
+          tabPress: (e) => {
+            // Prevent the default tab navigation (which preserves the current route state
+            // including any contextual filter params set by World). Always navigate to the
+            // Garden root without params so contextual filters don't become sticky defaults.
+            e.preventDefault();
+            router.navigate('/garden');
+          },
         }}
       />
+      {/* circle.tsx is a backward-compat redirect — hidden from tab bar */}
+      <Tabs.Screen name="circle" options={{ href: null }} />
     </Tabs>
   );
 }

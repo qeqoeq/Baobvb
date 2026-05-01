@@ -46,7 +46,7 @@ export default function AuthSignInScreen() {
           <Text style={styles.body}>
             {inviteRelationId
               ? 'Sign in to accept this invitation and add your side of the relationship.'
-              : 'Sign in to access your readings and reveals.'}
+              : 'Map the trust in your relationships. Everything stays private on your device.'}
           </Text>
         </View>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}

@@ -180,9 +180,9 @@ export default function InviteArrivalScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>Reveal your relationship together</Text>
+        <Text style={styles.title}>Join this relationship on Baobab</Text>
         <Text style={styles.body}>
-          Someone saved one side of this relationship on Baobab. Add your side to reveal it together.
+          Someone added you on Baobab. Add your side to continue — your reading stays private until both sides are complete.
         </Text>
 
         <View style={styles.reassuranceBlock}>

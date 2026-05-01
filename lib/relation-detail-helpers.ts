@@ -94,9 +94,9 @@ export function getVisibleTierLabel(
  * Pure — depends only on reveal state.
  */
 export function getReadingNoteText(nameRevealed: boolean, revealStatus: RevealStatus): string {
-  if (nameRevealed) return 'This reading helps define how this connection is understood.';
+  if (nameRevealed) return 'This is your shared reading, shaped by both sides.';
   if (revealStatus === 'reveal_ready') return 'Opening the reveal is a one-time action.';
-  return 'Your private side is saved and stays hidden until reveal.';
+  return 'Your reading is private until both sides are in.';
 }
 
 /**

@@ -105,6 +105,19 @@ export type Relation = {
    * Not used for any automatic merge today.
    */
   counterpartPublicProfileId?: string | null;
+  /**
+   * Via relation ID — the better path to this person.
+   *
+   * V1 CONSTRAINT: declarative only. Set explicitly by the user (or seed).
+   * No algorithmic inference: 2nd-degree trust graph data does not exist yet.
+   *
+   * When set and the referenced relation is active, this person is shown
+   * as a "via" node in the Atlas — present in your world but marked as mediated.
+   * UX: dashed border, reduced opacity, tooltip shows "via [Name]".
+   *
+   * REPLACE with auto-suggested computation when cross-user trust graph is available.
+   */
+  viaRelationId?: string;
 };
 
 export type PlaceCategory = 'restaurant' | 'cafe' | 'bar' | 'spot' | 'other';
@@ -127,7 +140,17 @@ export type MeProfile = {
   displayName: string;
   handle: string;
   avatarSeed: string;
-  trustPassportStatus: 'new' | 'growing' | 'steady';
+  /**
+   * Whether to display the Baobab short code on the profile and QR card.
+   * Local-first preference. Defaults to true. Only meaningful when publicProfileId is set.
+   */
+  showBaobabCode: boolean;
+  /**
+   * True once the user has explicitly configured their profile (name + handle).
+   * Used to redirect first-time users to /me/edit before entering the main app.
+   * Defaults to false on fresh installs; set to true by setMe.
+   */
+  isProfileSetup?: boolean;
   /**
    * The Supabase auth UUID (auth.uid()). Private, backend-internal.
    * Never expose in QR cards or public flows.
@@ -146,6 +169,7 @@ export type MeProfileUpdate = {
   displayName: string;
   handle: string;
   avatarSeed: string;
+  showBaobabCode?: boolean;
 };
 
 type StoreState = {
@@ -261,10 +285,10 @@ const SEED_RELATIONS: Relation[] = [
     localState: {
       sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e5' },
       sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
-      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-10T14:00:00Z' },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-10T14:00:00Z', mutualScore: 82 },
     },
   },
-  // id:7 — revealed, low score (<60) → status: revealed_to_nurture (label: To nurture), proximity: near
+  // id:7 — revealed, low score (28) → revealed_to_nurture; via Lena (id:6) — better reached through her
   {
     id: '7',
     name: 'Paul',
@@ -273,10 +297,268 @@ const SEED_RELATIONS: Relation[] = [
     identityStatus: 'verified',
     relationshipNameRevealed: true,
     source: 'manual',
+    viaRelationId: '6',
     localState: {
       sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e6' },
       sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
-      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-12T10:00:00Z' },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-12T10:00:00Z', mutualScore: 28 },
+    },
+  },
+  // id:8 — revealed, moderate score (62) → revealed_stable; sharedNetwork:4 = moderate gateway
+  {
+    id: '8',
+    name: 'Camille',
+    archived: false,
+    createdAt: '2025-12-01T10:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e7' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-18T11:00:00Z', mutualScore: 62 },
+    },
+  },
+  // id:9 — revealed, moderate-low score (44) → revealed_stable; sharedNetwork:2 = low gateway
+  {
+    id: '9',
+    name: 'Théo',
+    archived: false,
+    createdAt: '2025-12-10T14:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e8' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-20T09:00:00Z', mutualScore: 44 },
+    },
+  },
+  // id:10 — revealed, strong score (78) → core orbit, strong quality; sharedNetwork:5 = strong gateway
+  {
+    id: '10',
+    name: 'Sophie',
+    archived: false,
+    createdAt: '2025-11-15T09:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e9' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-08T10:00:00Z', mutualScore: 78 },
+    },
+  },
+  // id:11 — revealed, moderate score (60) → close orbit, moderate quality; sharedNetwork:4 = strong gateway
+  {
+    id: '11',
+    name: 'Max',
+    archived: false,
+    createdAt: '2025-12-05T11:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e10' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-14T15:00:00Z', mutualScore: 60 },
+    },
+  },
+  // id:12 — revealed, moderate score (48) → outer orbit, moderate quality; sharedNetwork:3 = moderate gateway
+  {
+    id: '12',
+    name: 'Élise',
+    archived: false,
+    createdAt: '2025-12-08T14:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e11' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-16T09:00:00Z', mutualScore: 48 },
+    },
+  },
+  // id:13 — revealed, strong score (72) → core orbit, strong quality; sharedNetwork:2 = low gateway (no halo)
+  {
+    id: '13',
+    name: 'Antoine',
+    archived: false,
+    createdAt: '2025-11-28T10:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e12' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-11T14:00:00Z', mutualScore: 72 },
+    },
+  },
+  // id:14 — revealed, faint score (25) via Camille (id:8) → primarily_via, excluded from canvas
+  {
+    id: '14',
+    name: 'Jade',
+    archived: false,
+    createdAt: '2025-12-20T09:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    viaRelationId: '8',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e13' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-22T11:00:00Z', mutualScore: 25 },
+    },
+  },
+  // id:15 — revealed, faint score (20) via Sophie (id:10) → primarily_via, excluded from canvas
+  {
+    id: '15',
+    name: 'Hugo',
+    archived: false,
+    createdAt: '2025-12-22T14:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    viaRelationId: '10',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e14' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-23T10:00:00Z', mutualScore: 20 },
+    },
+  },
+  // ── Through Lena world (id:6) ──────────────────────────────────────────
+  // id:16 — faint (22) via Lena → primarily_via; sharedNetwork:4 = moderate gateway
+  //         (Nadia herself opens a world — visible as a halo in Through Lena)
+  {
+    id: '16',
+    name: 'Nadia',
+    archived: false,
+    createdAt: '2025-12-15T09:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    viaRelationId: '6',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e15' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-13T10:00:00Z', mutualScore: 22 },
+    },
+  },
+  // id:17 — faint (18) via Lena → primarily_via
+  {
+    id: '17',
+    name: 'Rémi',
+    archived: false,
+    createdAt: '2025-12-18T11:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    viaRelationId: '6',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e16' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-15T09:00:00Z', mutualScore: 18 },
+    },
+  },
+  // id:18 — faint (30) via Lena → primarily_via
+  {
+    id: '18',
+    name: 'Fatou',
+    archived: false,
+    createdAt: '2025-12-20T14:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    viaRelationId: '6',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e17' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-17T11:00:00Z', mutualScore: 30 },
+    },
+  },
+  // ── Through Sophie world (id:10) ───────────────────────────────────────
+  // id:19 — faint (25) via Sophie → primarily_via
+  {
+    id: '19',
+    name: 'Karim',
+    archived: false,
+    createdAt: '2026-01-02T09:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    viaRelationId: '10',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e18' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-24T10:00:00Z', mutualScore: 25 },
+    },
+  },
+  // id:20 — faint (28) via Sophie → primarily_via
+  {
+    id: '20',
+    name: 'Inès',
+    archived: false,
+    createdAt: '2026-01-03T10:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    viaRelationId: '10',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e19' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-25T09:00:00Z', mutualScore: 28 },
+    },
+  },
+  // ── Through Camille world (id:8) ───────────────────────────────────────
+  // id:21 — faint (20) via Camille → primarily_via
+  {
+    id: '21',
+    name: 'Victor',
+    archived: false,
+    createdAt: '2026-01-05T11:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    viaRelationId: '8',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e20' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-26T10:00:00Z', mutualScore: 20 },
+    },
+  },
+  // ── Through Nadia world (id:16) — second-layer demo ───────────────────
+  // Nadia is a moderate gateway (sharedNetwork:4 in e15) — she opens her own world.
+  // Tapping Nadia in Through Lena shows her gateway halo; drilling opens Through Nadia.
+  // id:22 — faint (21) via Nadia → primarily_via (layer 2)
+  {
+    id: '22',
+    name: 'Amira',
+    archived: false,
+    createdAt: '2026-01-08T10:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    viaRelationId: '16',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e21' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-28T10:00:00Z', mutualScore: 21 },
+    },
+  },
+  // id:23 — faint (19) via Nadia → primarily_via (layer 2)
+  {
+    id: '23',
+    name: 'Ben',
+    archived: false,
+    createdAt: '2026-01-09T14:00:00Z',
+    identityStatus: 'verified',
+    relationshipNameRevealed: true,
+    source: 'manual',
+    viaRelationId: '16',
+    localState: {
+      sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e22' },
+      sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
+      revealSnapshot: { status: 'revealed', revealed: true, relationshipNameRevealed: true, revealedAt: '2026-01-29T09:00:00Z', mutualScore: 19 },
     },
   },
 ];
@@ -314,15 +596,15 @@ const SEED_EVALUATIONS: Evaluation[] = [
     support: 4,
     sharedNetwork: 3,
   }, '2026-01-21T09:00:00Z'),
-  // Lena — revealed, high score (75) → toNurture=false → revealed_stable
+  // Lena — revealed, high score → toNurture=false → revealed_stable; sharedNetwork:5 = strong gateway (demo)
   buildEvaluation('e5', '6', {
     trust: 4,
     interactions: 4,
     affinity: 4,
     support: 4,
-    sharedNetwork: 4,
+    sharedNetwork: 5,
   }, '2026-01-10T12:00:00Z'),
-  // Paul — revealed, score=0 → toNurture=true → revealed_to_nurture
+  // Paul — revealed, score=0 → toNurture=true → revealed_to_nurture; sharedNetwork:1 = low gateway
   buildEvaluation('e6', '7', {
     trust: 1,
     interactions: 1,
@@ -330,6 +612,135 @@ const SEED_EVALUATIONS: Evaluation[] = [
     support: 1,
     sharedNetwork: 1,
   }, '2026-01-12T09:00:00Z'),
+  // Camille — revealed, mutualScore:62 → moderate quality; sharedNetwork:4 = moderate gateway
+  buildEvaluation('e7', '8', {
+    trust: 4,
+    interactions: 3,
+    affinity: 4,
+    support: 3,
+    sharedNetwork: 4,
+  }, '2026-01-18T10:00:00Z'),
+  // Théo — revealed, mutualScore:44 → moderate quality; sharedNetwork:2 = low gateway
+  buildEvaluation('e8', '9', {
+    trust: 3,
+    interactions: 2,
+    affinity: 3,
+    support: 2,
+    sharedNetwork: 2,
+  }, '2026-01-20T08:00:00Z'),
+  // Sophie — revealed, mutualScore:78 → strong quality; sharedNetwork:5 = strong gateway
+  buildEvaluation('e9', '10', {
+    trust: 5,
+    interactions: 4,
+    affinity: 4,
+    support: 4,
+    sharedNetwork: 5,
+  }, '2026-01-08T09:00:00Z'),
+  // Max — revealed, mutualScore:60 → moderate quality; sharedNetwork:4 = strong gateway
+  buildEvaluation('e10', '11', {
+    trust: 4,
+    interactions: 3,
+    affinity: 4,
+    support: 3,
+    sharedNetwork: 4,
+  }, '2026-01-14T14:00:00Z'),
+  // Élise — revealed, mutualScore:48 → moderate quality; sharedNetwork:3 = moderate gateway
+  buildEvaluation('e11', '12', {
+    trust: 3,
+    interactions: 3,
+    affinity: 3,
+    support: 3,
+    sharedNetwork: 3,
+  }, '2026-01-16T08:00:00Z'),
+  // Antoine — revealed, mutualScore:72 → strong quality; sharedNetwork:2 = low gateway
+  buildEvaluation('e12', '13', {
+    trust: 4,
+    interactions: 4,
+    affinity: 4,
+    support: 3,
+    sharedNetwork: 2,
+  }, '2026-01-11T13:00:00Z'),
+  // Jade — primarily_via (via Camille), faint; sharedNetwork:1 = low gateway
+  buildEvaluation('e13', '14', {
+    trust: 2,
+    interactions: 1,
+    affinity: 2,
+    support: 1,
+    sharedNetwork: 1,
+  }, '2026-01-22T10:00:00Z'),
+  // Hugo — primarily_via (via Sophie), faint; sharedNetwork:1 = low gateway
+  buildEvaluation('e14', '15', {
+    trust: 1,
+    interactions: 2,
+    affinity: 2,
+    support: 1,
+    sharedNetwork: 1,
+  }, '2026-01-23T09:00:00Z'),
+  // Nadia — primarily_via (via Lena), faint direct link; sharedNetwork:4 = moderate gateway
+  // This makes her a world_opener in Through Lena (halo) and enables Through Nadia (layer 2)
+  buildEvaluation('e15', '16', {
+    trust: 2,
+    interactions: 2,
+    affinity: 2,
+    support: 1,
+    sharedNetwork: 4,
+  }, '2026-01-13T09:00:00Z'),
+  // Rémi — primarily_via (via Lena), faint
+  buildEvaluation('e16', '17', {
+    trust: 1,
+    interactions: 2,
+    affinity: 2,
+    support: 1,
+    sharedNetwork: 1,
+  }, '2026-01-15T08:00:00Z'),
+  // Fatou — primarily_via (via Lena), faint
+  buildEvaluation('e17', '18', {
+    trust: 2,
+    interactions: 2,
+    affinity: 2,
+    support: 2,
+    sharedNetwork: 1,
+  }, '2026-01-17T10:00:00Z'),
+  // Karim — primarily_via (via Sophie), faint
+  buildEvaluation('e18', '19', {
+    trust: 2,
+    interactions: 1,
+    affinity: 2,
+    support: 1,
+    sharedNetwork: 1,
+  }, '2026-01-24T09:00:00Z'),
+  // Inès — primarily_via (via Sophie), faint
+  buildEvaluation('e19', '20', {
+    trust: 2,
+    interactions: 2,
+    affinity: 2,
+    support: 1,
+    sharedNetwork: 1,
+  }, '2026-01-25T08:00:00Z'),
+  // Victor — primarily_via (via Camille), faint
+  buildEvaluation('e20', '21', {
+    trust: 1,
+    interactions: 2,
+    affinity: 2,
+    support: 1,
+    sharedNetwork: 1,
+  }, '2026-01-26T09:00:00Z'),
+  // Amira — primarily_via (via Nadia), faint — layer 2 demo
+  buildEvaluation('e21', '22', {
+    trust: 2,
+    interactions: 1,
+    affinity: 2,
+    support: 1,
+    sharedNetwork: 1,
+  }, '2026-01-28T09:00:00Z'),
+  // Ben — primarily_via (via Nadia), faint — layer 2 demo
+  buildEvaluation('e22', '23', {
+    trust: 1,
+    interactions: 2,
+    affinity: 2,
+    support: 1,
+    sharedNetwork: 1,
+  }, '2026-01-29T08:00:00Z'),
 ];
 
 const SEED_ME: MeProfile = {
@@ -337,7 +748,10 @@ const SEED_ME: MeProfile = {
   displayName: 'Yasmine',
   handle: '@yasmine.baobab',
   avatarSeed: 'Y',
-  trustPassportStatus: 'growing',
+  showBaobabCode: true,
+  // Dev seed is always "set up" so the edit redirect doesn't interrupt dev/demo workflows.
+  // Production first-run starts with false — forces the name setup step.
+  isProfileSetup: __DEV__,
   internalAuthUserId: null,
   publicProfileId: null,
 };
@@ -347,12 +761,22 @@ const PLACE_CATEGORIES: PlaceCategory[] = ['restaurant', 'cafe', 'bar', 'spot', 
 const TIER_VALUES: Tier[] = ['Ghost', 'Spark', 'Thrill', 'Vibrant', 'Anchor', 'Legend'];
 const REVEAL_UNLOCK_DELAY_MS = 90_000;
 
+/**
+ * Bump when SEED_RELATIONS or SEED_EVALUATIONS change meaningfully.
+ * On mismatch with persisted state, the store resets to fresh seed.
+ * This ensures dev/demo devices always get the latest data.
+ */
+const SEED_VERSION = 6;
+
+type PersistedState = StoreState & { seedVersion?: number };
+
 // ── state ──────────────────────────────────────────────────────────────
 
 const state: StoreState = {
   me: SEED_ME,
-  relations: SEED_RELATIONS,
-  evaluations: SEED_EVALUATIONS,
+  // Seed data is dev-only — production first-run must start with an empty world.
+  relations: __DEV__ ? SEED_RELATIONS : [],
+  evaluations: __DEV__ ? SEED_EVALUATIONS : [],
   places: SEED_PLACES,
 };
 
@@ -593,21 +1017,23 @@ function persist() {
   // publicProfileId will be provisioned from the backend, not from AsyncStorage.
   // Using undefined so JSON.stringify omits these keys entirely.
   const { internalAuthUserId: _a, publicProfileId: _b, ...persistableMe } = state.me;
-  persistState<StoreState>({
+  persistState<PersistedState>({
     me: persistableMe as MeProfile,
     relations: state.relations,
     evaluations: state.evaluations,
     places: state.places,
+    seedVersion: SEED_VERSION,
   });
 }
 
 // ── hydration (runs once at import time) ───────────────────────────────
 
-loadPersistedState<StoreState>().then((persisted) => {
+loadPersistedState<PersistedState>().then((persisted) => {
   if (
     persisted &&
     Array.isArray(persisted.relations) &&
-    Array.isArray(persisted.evaluations)
+    Array.isArray(persisted.evaluations) &&
+    persisted.seedVersion === SEED_VERSION
   ) {
     const persistedEvaluations = persisted.evaluations;
     if (persisted.me) {
@@ -615,6 +1041,11 @@ loadPersistedState<StoreState>().then((persisted) => {
         ...SEED_ME,
         ...persisted.me,
         id: persisted.me.id ?? SEED_ME.id,
+        // Back-compat: isProfileSetup was added in SEED_VERSION 6.
+        // If not persisted (older install), infer from having a non-seed identity.
+        isProfileSetup: persisted.me.isProfileSetup ??
+          (persisted.me.displayName !== SEED_ME.displayName ||
+           persisted.me.handle !== SEED_ME.handle),
         // Runtime fields are never read from AsyncStorage — always re-derived at runtime.
         // Preserve any value already set from onAuthStateChange firing before this
         // hydration completes (race condition: auth can resolve before AsyncStorage).
@@ -684,11 +1115,13 @@ loadPersistedState<StoreState>().then((persisted) => {
         }, [])
       : [];
   } else {
-    persistState<StoreState>({
+    // No persisted state, or stale seed version — reset to fresh seed.
+    persistState<PersistedState>({
       me: state.me,
       relations: state.relations,
       evaluations: state.evaluations,
       places: state.places,
+      seedVersion: SEED_VERSION,
     });
   }
   hydrated = true;
@@ -1207,10 +1640,19 @@ function setMe(update: MeProfileUpdate): boolean {
     displayName,
     handle,
     avatarSeed,
+    isProfileSetup: true,
+    ...(update.showBaobabCode !== undefined ? { showBaobabCode: update.showBaobabCode } : {}),
   };
   emitChange();
   persist();
   return true;
+}
+
+function setShowBaobabCode(show: boolean): void {
+  if (state.me.showBaobabCode === show) return;
+  state.me = { ...state.me, showBaobabCode: show };
+  emitChange();
+  persist();
 }
 
 function setRelation(id: string, update: RelationUpdate): boolean {
@@ -1403,11 +1845,12 @@ function resetDevStateToSeed() {
   hydrated = true;
   emitChange();
   void clearPersistedState().finally(() => {
-    persistState<StoreState>({
+    persistState<PersistedState>({
       me: state.me,
       relations: state.relations,
       evaluations: state.evaluations,
       places: state.places,
+      seedVersion: SEED_VERSION,
     });
   });
 }
@@ -1436,6 +1879,7 @@ export function useRelationsStore() {
     return pushRelationWithSource(name, meta);
   };
   const updateMe = (update: MeProfileUpdate) => setMe(update);
+  const updateShowBaobabCode = (show: boolean) => setShowBaobabCode(show);
   const updateRelation = (id: string, update: RelationUpdate) => setRelation(id, update);
   const addPlace = (input: PlaceCreateInput) => pushPlace(input);
   const updatePlace = (id: string, update: PlaceUpdateInput) => setPlace(id, update);
@@ -1477,6 +1921,7 @@ export function useRelationsStore() {
     revealMutualRelationship,
     resetDevState,
     updateMe,
+    updateShowBaobabCode,
     addPlace,
     isHydrated,
     setAuthIdentity,

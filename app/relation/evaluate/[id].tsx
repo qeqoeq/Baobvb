@@ -21,11 +21,11 @@ import type { RelationshipSideKey } from '../../../store/useRelationsStore';
 import { useRelationsStore } from '../../../store/useRelationsStore';
 
 const PILLARS: { key: PillarKey; label: string; hint: string }[] = [
-  { key: 'trust', label: 'Trust', hint: 'How much do you trust this person?' },
-  { key: 'interactions', label: 'Interactions', hint: 'How often and how well do you interact?' },
-  { key: 'affinity', label: 'Affinity', hint: 'How naturally do you connect?' },
-  { key: 'support', label: 'Support', hint: 'How much mutual support exists?' },
-  { key: 'sharedNetwork', label: 'Shared Network', hint: 'How much social context do you share?' },
+  { key: 'trust', label: 'Trust', hint: 'Think of the last time you told them something that mattered.' },
+  { key: 'interactions', label: 'Interactions', hint: 'Picture your last few exchanges — their texture, not just their frequency.' },
+  { key: 'affinity', label: 'Affinity', hint: 'Is there ease between you, or do you always have to work at it?' },
+  { key: 'support', label: 'Support', hint: 'When something goes wrong for you, do they come to mind?' },
+  { key: 'sharedNetwork', label: 'Shared Network', hint: 'How much of your world do they already know?' },
 ];
 
 const RATING_OPTIONS: PillarRating[] = [1, 2, 3, 4, 5];
@@ -140,7 +140,7 @@ export default function EvaluateScreen() {
       // Shared backend remains additive; local-first flow stays primary if shared call fails.
     }
 
-    router.replace('/(tabs)');
+    router.replace(`/relation/${id}`);
   }, [allRated, relation, isSubmitting, ratings, attachPrivateReadingToRelationshipSide, targetSide]);
 
   if (!relation || !canEvaluateSideB || sideAlreadyHasReading) {
@@ -173,8 +173,7 @@ export default function EvaluateScreen() {
           </View>
         </View>
         <Text style={styles.subtitle}>
-          Rate each pillar from 1 to 5 to capture your foundational reading of
-          this relationship.
+          Take a moment to read this relationship honestly.
         </Text>
         <View style={styles.progressWrap}>
           <View style={styles.progressHead}>
@@ -194,7 +193,6 @@ export default function EvaluateScreen() {
           const current = ratings[key];
           return (
             <View key={key} style={styles.pillarCard}>
-              <Text style={styles.pillarStep}>Pillar {idx + 1}</Text>
               <Text style={styles.pillarLabel}>{label}</Text>
               <Text style={styles.pillarHint}>{hint}</Text>
               <View style={styles.ratingRow}>

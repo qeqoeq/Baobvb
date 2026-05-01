@@ -2,6 +2,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { supabase } from '../../lib/supabase';
+
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { deriveAvatarSeed, normalizeHandleInput } from '../../lib/identity-format';
@@ -17,7 +19,9 @@ export default function EditMyCardScreen() {
   const params = useLocalSearchParams<{
     fromInvite?: string;
     invitedRelationId?: string;
+    setup?: string;
   }>();
+  const isSetupMode = params.setup === '1';
   const { me, updateMe } = useRelationsStore();
   const [displayName, setDisplayName] = useState(me.displayName);
   const [handle, setHandle] = useState(me.handle);
@@ -62,9 +66,13 @@ export default function EditMyCardScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>Edit my card</Text>
+        <Text style={styles.title}>
+          {isSetupMode ? 'Create your card' : 'Edit your card'}
+        </Text>
         <Text style={styles.subtitle}>
-          Personalize how people see you in Baobab.
+          {isSetupMode
+            ? 'Choose a name and username for your Baobab card. You can change them later.'
+            : 'Your name and username appear when you share your Baobab card.'}
         </Text>
 
         <View style={styles.previewAvatar}>
@@ -74,7 +82,7 @@ export default function EditMyCardScreen() {
         </View>
 
         <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Display name</Text>
+          <Text style={styles.fieldLabel}>Name</Text>
           <TextInput
             value={displayName}
             onChangeText={(value) => {
@@ -88,7 +96,7 @@ export default function EditMyCardScreen() {
         </View>
 
         <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Handle</Text>
+          <Text style={styles.fieldLabel}>Username</Text>
           <TextInput
             value={handle}
             onChangeText={(value) => {
@@ -104,7 +112,7 @@ export default function EditMyCardScreen() {
         </View>
 
         <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Avatar seed</Text>
+          <Text style={styles.fieldLabel}>Avatar initials</Text>
           <TextInput
             value={avatarSeed}
             onChangeText={(value) => {
@@ -122,11 +130,26 @@ export default function EditMyCardScreen() {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Pressable onPress={handleSave} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Save my card</Text>
+          <Text style={styles.primaryButtonText}>
+            {isSetupMode ? 'Start' : 'Save my card'}
+          </Text>
         </Pressable>
-        <Text style={styles.helperText}>Changes appear immediately across Garden, QR, and Profile.</Text>
-        <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Cancel</Text>
+        {!isSetupMode && (
+          <Text style={styles.helperText}>Changes appear immediately across Garden, QR, and Profile.</Text>
+        )}
+        <Pressable
+          onPress={() => {
+            if (isSetupMode) {
+              void supabase.auth.signOut();
+            } else {
+              router.back();
+            }
+          }}
+          style={styles.secondaryButton}
+        >
+          <Text style={styles.secondaryButtonText}>
+            {isSetupMode ? 'Back to sign-in' : 'Cancel'}
+          </Text>
         </Pressable>
       </View>
     </View>

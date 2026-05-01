@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Stack, router, useGlobalSearchParams, usePathname } from 'expo-router';
 
+import { colors } from '../constants/colors';
 import { devLogLinking, maskIdForLog } from '../lib/dev-linking-log';
 import { fetchMySharedRelationships } from '../lib/bootstrap-shared-relations';
 import {
@@ -21,7 +22,7 @@ export default function RootLayout() {
   const [authResolved, setAuthResolved] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const pushRegistrationRef = useRef(false);
-  const { me, setAuthIdentity, setPublicProfileId, bootstrapSharedRelations } = useRelationsStore();
+  const { me, isHydrated, setAuthIdentity, setPublicProfileId, bootstrapSharedRelations } = useRelationsStore();
   const provisionedForUserIdRef = useRef<string | null>(null);
   const bootstrappedForUserIdRef = useRef<string | null>(null);
 
@@ -136,6 +137,17 @@ export default function RootLayout() {
     }
   }, [authResolved, isAuthenticated, pathname, globalParams.redirectPath, globalParams.relationId, globalParams.token]);
 
+  // Profile setup gate — runs continuously so it catches both first-run and
+  // Cancel-back-to-tabs. Exits immediately for every authenticated+setup user.
+  useEffect(() => {
+    if (!isAuthenticated || !isHydrated || me.isProfileSetup) return;
+    // Don't interrupt invite/auth flows that handle identity themselves.
+    if (pathname === '/me/edit') return;
+    if (pathname.startsWith('/auth/') || pathname.startsWith('/invite/')) return;
+    devLogLinking('auth-gate → profile setup (first-run)', { pathname });
+    router.replace({ pathname: '/me/edit', params: { setup: '1' } });
+  }, [isAuthenticated, isHydrated, me.isProfileSetup, pathname]);
+
   useEffect(() => {
     const userId = me.internalAuthUserId ?? null;
     if (!userId) {
@@ -221,8 +233,21 @@ export default function RootLayout() {
         options={{ title: 'Scan card', presentation: 'modal' }}
       />
       <Stack.Screen
+        name="me/profile"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="me/edit"
-        options={{ title: 'Edit my card', presentation: 'modal' }}
+        options={{ title: 'Edit profile', presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="me/settings"
+        options={{
+          title: 'Settings',
+          headerBackTitle: '',
+          headerStyle: { backgroundColor: colors.background.primary },
+          headerTintColor: colors.text.primary,
+        }}
       />
       <Stack.Screen
         name="relation/add"
@@ -235,7 +260,7 @@ export default function RootLayout() {
       {/* Places routes are intentionally hidden from MVP navigation; files are kept parked for later. */}
       <Stack.Screen
         name="relation/[id]"
-        options={{ title: 'Relationship', headerBackTitle: 'Garden' }}
+        options={{ title: 'Relationship', headerBackTitle: '' }}
       />
       <Stack.Screen name="invite/[relationId]" options={{ title: 'Reveal together' }} />
       <Stack.Screen
@@ -245,6 +270,15 @@ export default function RootLayout() {
       <Stack.Screen name="relation/lexicon" options={{ title: 'Relationship lexicon' }} />
       <Stack.Screen name="relation/evaluate/[id]" options={{ title: 'Foundational reading' }} />
       <Stack.Screen name="relation/archived" options={{ title: 'Archived relationships' }} />
+      <Stack.Screen
+        name="through/[id]"
+        options={{
+          headerTransparent: true,
+          headerTitle: () => null,
+          headerBackTitle: '',
+          headerTintColor: colors.text.primary,
+        }}
+      />
     </Stack>
   );
 }

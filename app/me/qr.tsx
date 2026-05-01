@@ -4,17 +4,18 @@ import QRCode from 'react-native-qrcode-svg';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import { deriveBaobabCode } from '../../lib/identity-format';
 import { buildPersonCardPayload, encodePersonCardPayload } from '../../lib/person-card';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function MyCardQrScreen() {
   const { me } = useRelationsStore();
   const payload = encodePersonCardPayload(buildPersonCardPayload(me, { preferV2: true }));
+  const baobabCode = me.showBaobabCode ? deriveBaobabCode(me.publicProfileId) : null;
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.kicker}>Trust passport</Text>
         <Text style={styles.headerTitle}>Show QR</Text>
         <Text style={styles.headerText}>
           Let someone scan your card to add you in their Garden.
@@ -29,7 +30,12 @@ export default function MyCardQrScreen() {
           </View>
         </View>
         <Text style={styles.name}>{me.displayName}</Text>
-        <Text style={styles.handle}>{me.handle}</Text>
+        <View style={styles.handleRow}>
+          <Text style={styles.handle}>{me.handle}</Text>
+          {baobabCode !== null && (
+            <Text style={styles.baobabCode}>{`· ${baobabCode}`}</Text>
+          )}
+        </View>
 
         <View style={styles.qrPlaceholder}>
           <View style={styles.qrSurface}>
@@ -117,10 +123,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text.primary,
   },
+  handleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    justifyContent: 'center',
+  },
   handle: {
     fontSize: 14,
     color: colors.accent.warmGold,
     fontWeight: '600',
+  },
+  baobabCode: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.text.muted,
+    letterSpacing: 0.5,
   },
   qrPlaceholder: {
     marginTop: spacing.md,

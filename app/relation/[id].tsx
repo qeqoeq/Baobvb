@@ -52,6 +52,7 @@ export default function RelationDetailScreen() {
   const [sharedReveal, setSharedReveal] = useState<Awaited<
     ReturnType<typeof getSharedRevealRecordForCurrentUser>
   > | null>(null);
+  const [invitePromptDismissed, setInvitePromptDismissed] = useState(false);
 
   const relation = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
@@ -153,9 +154,17 @@ export default function RelationDetailScreen() {
     relationForDisplay.localState.revealSnapshot.status === 'revealed' &&
     isRelationshipNameRevealed(relationForDisplay);
   const evaluation = reading?.foundationalEvaluation ?? null;
-  const accent = nameRevealed && reading?.linkTier
-    ? getTierAccent(reading.linkTier)
-    : colors.text.muted;
+  // Frozen mutual values — set during cooking, preserved through reveal.
+  const frozenMutualScore = relationForDisplay.localState.revealSnapshot.mutualScore;
+  const frozenMutualTier  = relationForDisplay.localState.revealSnapshot.tier;
+  // Single revealed source of truth: mutual when available, private as fallback.
+  const revealedTier = nameRevealed
+    ? (frozenMutualTier ?? reading?.linkTier ?? null)
+    : (reading?.linkTier ?? null);
+  const revealedScore = nameRevealed
+    ? (frozenMutualScore ?? evaluation?.score ?? null)
+    : (evaluation?.score ?? null);
+  const accent = revealedTier ? getTierAccent(revealedTier) : colors.text.muted;
   const badgeLabel = reading?.badgeLabel ?? 'Unread';
   const { label: identityLabel, subtext: identitySubtext } = getRelationIdentityAnnotation(relation);
 
@@ -163,24 +172,29 @@ export default function RelationDetailScreen() {
   const shouldHighlightReadNext = justCreated === '1' && !evaluation;
   const strongestLabel = getPillarLabel(reading?.strongestPillar ?? null);
   const weakestLabel = getPillarLabel(reading?.weakestPillar ?? null);
-  const tierNarrative = getTierNarrative(reading?.linkTier ?? null, reading?.weakestPillar ?? null);
+  const tierNarrative = getTierNarrative(revealedTier, reading?.weakestPillar ?? null);
   const growthSuggestion = getGrowthSuggestion(
     reading?.weakestPillar ?? null,
     reading?.linkTier ?? null,
   );
-  const tierLexicon = nameRevealed && reading?.linkTier
-    ? getRelationshipLexiconEntry(reading.linkTier)
+  const tierLexicon = nameRevealed && revealedTier
+    ? getRelationshipLexiconEntry(revealedTier)
     : null;
   const visibleTierLabel = getVisibleTierLabel(nameRevealed, Boolean(evaluation), badgeLabel);
   const revealStatus = relationForDisplay.localState.revealSnapshot.status;
+  // Show invite prompt once, immediately after creation, if the relation has never been
+  // promoted to a shared relationship (no canonicalRelationId). Covers manual + scan sources.
+  // Not shown for claim/bootstrap (canonicalRelationId already set at those creation times).
+  // Also persists for scan-sourced relations in waiting_other_side — the prompt survives past
+  // evaluate so the user knows an invite is still needed to complete the connection.
+  const showInvitePrompt =
+    (justCreated === '1' && !relation.canonicalRelationId && !invitePromptDismissed) ||
+    (relation.source === 'scan' && revealStatus === 'waiting_other_side' && !relation.canonicalRelationId && !invitePromptDismissed);
   const readingVariant = getReadingCardVariant({ hasEvaluation: Boolean(evaluation), nameRevealed, revealStatus });
-  const frozenMutualScore = relationForDisplay.localState.revealSnapshot.mutualScore;
-  const frozenMutualTier = relationForDisplay.localState.revealSnapshot.tier;
-  const visibleScore = nameRevealed
-    ? (frozenMutualScore ?? evaluation?.score ?? null)
-    : null;
+  // visibleScore / visibleScoreTier are derived from the revealed source of truth.
+  const visibleScore = revealedScore;
   const visibleScoreTier = nameRevealed
-    ? (frozenMutualTier ?? evaluation?.tier ?? 'Private reading')
+    ? (revealedTier ?? 'Private reading')
     : 'Private reading';
   const safeRevealSummary = getSafeRelationshipRevealSummary(
     buildRelationshipRevealInput({
@@ -264,7 +278,7 @@ export default function RelationDetailScreen() {
         <View style={styles.tierRow}>
           <View style={[styles.tierBadge, { backgroundColor: accent + '16' }]}>
             <Text style={[styles.tierBadgeText, { color: accent }]}>
-              {evaluation && nameRevealed ? `${visibleTierLabel} · ${evaluation.score}` : visibleTierLabel}
+              {evaluation && nameRevealed ? `${revealedTier ?? visibleTierLabel} · ${revealedScore ?? evaluation.score}` : visibleTierLabel}
             </Text>
           </View>
           {tierLexicon ? (
@@ -296,11 +310,32 @@ export default function RelationDetailScreen() {
         ) : null}
       </View>
 
+      {showInvitePrompt && (
+        <View style={styles.invitePromptCard}>
+          <Text style={styles.invitePromptTitle}>{'Want to connect with them?'}</Text>
+          <Text style={styles.invitePromptBody}>
+            {'Send them an invite so they can join this relationship on Baobab.'}
+          </Text>
+          <Pressable
+            onPress={() => void handleInviteToReveal()}
+            style={styles.invitePromptButton}
+          >
+            <Text style={styles.invitePromptButtonText}>{'Send invite'}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setInvitePromptDismissed(true)}
+            style={styles.invitePromptDismiss}
+          >
+            <Text style={styles.invitePromptDismissText}>{'Not now'}</Text>
+          </Pressable>
+        </View>
+      )}
+
       {evaluation ? (
         <View style={styles.readingSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionLabel}>
-              {readingVariant === 'revealed' ? 'Foundational reading' : 'Private reading'}
+              Foundational reading
             </Text>
             <View style={styles.sectionLine} />
           </View>
@@ -347,17 +382,17 @@ export default function RelationDetailScreen() {
                 </View>
                 <View style={styles.narrativeCard}>
                   <Text style={styles.narrativeLine}>
-                    <Text style={styles.narrativeKey}>Strength:</Text> {strongestLabel}
+                    <Text style={styles.narrativeKey}>Where it's strong:</Text> {strongestLabel}
                   </Text>
                   <Text style={styles.narrativeLine}>
-                    <Text style={styles.narrativeKey}>Watch:</Text> {weakestLabel}
+                    <Text style={styles.narrativeKey}>Where it can grow:</Text> {weakestLabel}
                   </Text>
                   <Text style={styles.narrativeReading}>
-                    <Text style={styles.narrativeKey}>Reading:</Text> {tierNarrative}
+                    {tierNarrative}
                   </Text>
                 </View>
                 <View style={styles.nextActionCard}>
-                  <Text style={styles.nextActionLabel}>Next step</Text>
+                  <Text style={styles.nextActionLabel}>What to grow next</Text>
                   <Text style={styles.nextActionText}>{growthSuggestion}</Text>
                 </View>
               </>
@@ -384,19 +419,19 @@ export default function RelationDetailScreen() {
                 </Text>
                 {readingVariant === 'waiting_other_side' ? (
                   <>
-                    <Text style={styles.privateStateTitle}>Your reading is saved</Text>
+                    <Text style={styles.privateStateTitle}>Your side is in.</Text>
                     <Text style={styles.privateStateText}>
-                      The reveal will be available once the other person adds their side.
+                      Once they add their side, the reveal becomes available.
                     </Text>
-                    <Pressable onPress={() => void handleInviteToReveal()} style={styles.revealInviteCTA}>
-                      <Text style={styles.revealInviteCTALabel}>Invite to reveal</Text>
+                    <Pressable onPress={() => void handleInviteToReveal()} style={styles.revealInviteFullCTA}>
+                      <Text style={styles.revealInviteFullCTALabel}>Invite to reveal</Text>
                     </Pressable>
                   </>
                 ) : readingVariant === 'cooking' ? (
                   <>
-                    <Text style={styles.privateStateTitle}>Both sides are in</Text>
+                    <Text style={styles.privateStateTitle}>Both sides are in.</Text>
                     <Text style={styles.privateStateText}>
-                      Both readings are in. The reveal is being prepared.
+                      The reveal is being prepared.
                     </Text>
                   </>
                 ) : (
@@ -805,6 +840,18 @@ const styles = StyleSheet.create({
     color: colors.accent.deepTeal,
     fontWeight: '700',
   },
+  revealInviteFullCTA: {
+    marginTop: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.accent.deepTeal,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  revealInviteFullCTALabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
   secondaryInlineCTA: {
     alignSelf: 'flex-start',
     paddingVertical: spacing.xs,
@@ -924,5 +971,46 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text.muted,
     textDecorationLine: 'underline',
+  },
+
+  // ── Invite prompt — post-creation, non-blocking ────────────────────────────
+  invitePromptCard: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + '44',
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  invitePromptTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  invitePromptBody: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.text.secondary,
+  },
+  invitePromptButton: {
+    marginTop: spacing.xs,
+    backgroundColor: colors.accent.warmGold,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  invitePromptButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.background.primary,
+  },
+  invitePromptDismiss: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  invitePromptDismissText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text.muted,
   },
 });
