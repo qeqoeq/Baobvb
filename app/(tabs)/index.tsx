@@ -112,7 +112,7 @@ export default function CircleScreen() {
   const handleOverflowTap = useCallback(() => {
     if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({ pathname: '/garden' });
-  }, []);
+  }, [router]);
 
   // Center (me) tap: open Profile — the self-as-center-of-control gesture.
   const handleCenterTap = useCallback(() => {
