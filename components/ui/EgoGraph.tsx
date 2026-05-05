@@ -77,6 +77,9 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
     [members],
   );
 
+  // Sparse mode: 1–3 revealed people on canvas → tighter orbit, larger nodes, all labels shown.
+  const sparseMode = visible.length > 0 && visible.length <= 3;
+
   // Build layout input: visible members + overflow pseudo-node if needed
   const layoutMembers = useMemo<MapMember[]>(() => {
     if (overflowCount === 0) return visible;
@@ -101,11 +104,24 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
     [layoutMembers, canvas, allMembers],
   );
 
-  // Cloud spread: deterministic jitter + bounded repulsion — breaks the perfect circle
-  const cloudNodes = useMemo(
-    () => applyNodeSpread(layoutNodes, cx, cy),
-    [layoutNodes, cx, cy],
-  );
+  // Cloud spread / sparse layout.
+  // Sparse (1–3 nodes): clean circular placement at 46% of canvas half-width, no jitter,
+  // boosted node radius. Standard (4+): deterministic jitter + bounded repulsion.
+  const cloudNodes = useMemo(() => {
+    if (layoutNodes.length > 0 && layoutNodes.length <= 3) {
+      const targetR = Math.min(cx, cy) * 0.46;
+      return layoutNodes.map((n, i) => {
+        const angle = (2 * Math.PI * i) / layoutNodes.length - Math.PI / 2;
+        return {
+          ...n,
+          cx: cx + targetR * Math.cos(angle),
+          cy: cy + targetR * Math.sin(angle),
+          nodeRadius: Math.min(28, Math.round(n.nodeRadius * 1.35)),
+        };
+      });
+    }
+    return applyNodeSpread(layoutNodes, cx, cy);
+  }, [layoutNodes, cx, cy]);
 
   const orbitRadii = useMemo(() => computeOrbitRadii(canvas), [canvas]);
 
@@ -211,8 +227,8 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
         })}
 
         {/* Center — Me/Gateway — layered glow; radius + color driven by props */}
-        <SvgCircle cx={cx} cy={cy} r={effectiveCenterR + 12} fill={effectiveCenterFill} fillOpacity={0.05} />
-        <SvgCircle cx={cx} cy={cy} r={effectiveCenterR + 6}  fill={effectiveCenterFill} fillOpacity={0.10} />
+        <SvgCircle cx={cx} cy={cy} r={effectiveCenterR + 12} fill={effectiveCenterFill} fillOpacity={0.08} />
+        <SvgCircle cx={cx} cy={cy} r={effectiveCenterR + 6}  fill={effectiveCenterFill} fillOpacity={0.14} />
         <SvgCircle cx={cx} cy={cy} r={effectiveCenterR}      fill={effectiveCenterFill} fillOpacity={0.88} />
         {/* Tappable ring — fine stroke signals interactivity when onCenterTap is wired */}
         {onCenterTap && (
@@ -276,9 +292,10 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
           const initial    = (member.avatarSeed || member.name.charAt(0) || '?').toUpperCase();
           const dotColor   = CIRCLE_NODE_STATUS_COLOR[member.status];
           const isUnread   = member.status === 'unread';
-          const showLabel  = member.proximityBand === 'core' || member.proximityBand === 'close';
+          const showLabel  = sparseMode || member.proximityBand === 'core' || member.proximityBand === 'close';
           const rawLabel   = displayNames.get(member.id) ?? member.name;
-          const truncName  = rawLabel.length > 8 ? `${rawLabel.slice(0, 7)}\u2026` : rawLabel;
+          const truncLen   = sparseMode ? 10 : 8;
+          const truncName  = rawLabel.length > truncLen ? `${rawLabel.slice(0, truncLen - 1)}\u2026` : rawLabel;
           const dotR       = node.nodeRadius <= GATEWAY_NODE_RADIUS.low + 1 ? 3.5 : 4.5;
           const fontSize   = node.nodeRadius <= GATEWAY_NODE_RADIUS.low + 1 ? 10 : 13;
           const nodeColors = LINK_QUALITY_NODE_COLOR[member.linkQualityBand];

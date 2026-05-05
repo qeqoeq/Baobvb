@@ -109,8 +109,10 @@ export default function CircleScreen() {
     }
   }, []);
 
-  // Overflow: no-op at current scale (20-node cap won't be hit for typical users).
-  const handleOverflowTap = useCallback(() => {}, []);
+  const handleOverflowTap = useCallback(() => {
+    if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({ pathname: '/garden' });
+  }, []);
 
   // Center (me) tap: open Profile — the self-as-center-of-control gesture.
   const handleCenterTap = useCallback(() => {
@@ -125,7 +127,7 @@ export default function CircleScreen() {
       <View style={styles.header}>
         <View style={styles.headerTitleBlock}>
           <Text style={styles.headerKicker}>{'BAOBAB'}</Text>
-          <Text style={styles.headerTitle}>My world</Text>
+          <Text style={styles.headerTitle}>World</Text>
         </View>
         <View style={styles.headerRight}>
           {networkCount > 0 && (
@@ -168,9 +170,9 @@ export default function CircleScreen() {
                   router.push('../relation/add');
                 }}
               >
-                <Text style={styles.emptyPromptHeadline}>{'Your world starts with one person.'}</Text>
+                <Text style={styles.emptyPromptHeadline}>{'Your world begins with one person.'}</Text>
                 <Text style={styles.emptyPromptSupport}>{'Add someone you trust to begin.'}</Text>
-                <Text style={styles.emptyPromptAction}>{'Start a link →'}</Text>
+                <Text style={styles.emptyPromptAction}>{'Add someone →'}</Text>
               </Pressable>
             )}
             <Text style={styles.brandWatermark}>{'BAOBAB'}</Text>
@@ -297,11 +299,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: spacing.md,
     alignSelf: 'center',
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.text.muted,
     letterSpacing: 2.5,
-    opacity: 0.45,
+    opacity: 0.60,
   },
   worldCardHint: {
     flexDirection: 'row',
