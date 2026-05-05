@@ -186,7 +186,6 @@ export default function InviteArrivalScreen() {
         </Text>
 
         <View style={styles.reassuranceBlock}>
-          <Text style={styles.reassuranceText}>Your reading stays private until both sides are complete.</Text>
           <Text style={styles.reassuranceText}>There is no public score.</Text>
           <Text style={styles.reassuranceText}>You can answer in under a minute.</Text>
         </View>

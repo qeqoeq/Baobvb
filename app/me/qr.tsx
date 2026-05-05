@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
@@ -24,9 +25,13 @@ export default function MyCardQrScreen() {
       <View style={styles.card}>
         <View style={styles.avatarRing}>
           <View style={styles.avatarInner}>
-            <Text style={styles.avatarText}>
-              {(me.avatarSeed || me.displayName.charAt(0) || '?').toUpperCase()}
-            </Text>
+            {me.photoUri ? (
+              <Image source={{ uri: me.photoUri }} style={styles.avatarPhoto} contentFit="cover" />
+            ) : (
+              <Text style={styles.avatarText}>
+                {(me.avatarSeed || me.displayName.charAt(0) || '?').toUpperCase()}
+              </Text>
+            )}
           </View>
         </View>
         <Text style={styles.name}>{me.displayName}</Text>
@@ -112,11 +117,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border.strong,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   avatarText: {
     color: colors.text.primary,
     fontSize: 30,
     fontWeight: '700',
+  },
+  avatarPhoto: {
+    width: 76,
+    height: 76,
   },
   name: {
     fontSize: 24,

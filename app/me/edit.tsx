@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 
 import { supabase } from '../../lib/supabase';
 
@@ -9,12 +11,6 @@ import { radius, spacing } from '../../constants/spacing';
 import { deriveAvatarSeed, normalizeHandleInput } from '../../lib/identity-format';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
-function normalizeAvatarSeedInput(raw: string, displayName: string) {
-  const seed = raw.trim().toUpperCase().replace(/\s+/g, '').slice(0, 2);
-  if (seed) return seed;
-  return deriveAvatarSeed(displayName);
-}
-
 export default function EditMyCardScreen() {
   const params = useLocalSearchParams<{
     fromInvite?: string;
@@ -22,16 +18,36 @@ export default function EditMyCardScreen() {
     setup?: string;
   }>();
   const isSetupMode = params.setup === '1';
-  const { me, updateMe } = useRelationsStore();
+  const { me, updateMe, updatePhotoUri } = useRelationsStore();
   const [displayName, setDisplayName] = useState(me.displayName);
   const [handle, setHandle] = useState(me.handle);
-  const [avatarSeed, setAvatarSeed] = useState(me.avatarSeed);
+  const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(me.photoUri ?? null);
   const [error, setError] = useState<string | null>(null);
+  const handleInputRef = useRef<TextInput>(null);
+
+  const handlePickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Photos needed', 'Allow photo access in Settings to set a profile photo.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      const uri = result.assets[0].uri;
+      setLocalPhotoUri(uri);
+      updatePhotoUri(uri);
+    }
+  };
 
   const handleSave = () => {
     const cleanDisplayName = displayName.trim();
     const cleanHandle = normalizeHandleInput(handle);
-    const cleanAvatarSeed = normalizeAvatarSeedInput(avatarSeed, cleanDisplayName);
+    const cleanAvatarSeed = deriveAvatarSeed(cleanDisplayName);
 
     if (!cleanDisplayName) {
       setError('Display name cannot be empty.');
@@ -64,25 +80,42 @@ export default function EditMyCardScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.card}>
         <Text style={styles.title}>
           {isSetupMode ? 'Create your card' : 'Edit your card'}
         </Text>
         <Text style={styles.subtitle}>
           {isSetupMode
-            ? 'Choose a name and username for your Baobab card. You can change them later.'
-            : 'Your name and username appear when you share your Baobab card.'}
+            ? 'Pick a name and username for your card.'
+            : 'Shown on your card and QR.'}
         </Text>
 
-        <View style={styles.previewAvatar}>
-          <Text style={styles.previewAvatarText}>
-            {normalizeAvatarSeedInput(avatarSeed, displayName)}
+        <Pressable style={styles.previewAvatar} onPress={() => void handlePickPhoto()}>
+          {localPhotoUri ? (
+            <Image source={{ uri: localPhotoUri }} style={styles.previewAvatarImage} contentFit="cover" />
+          ) : (
+            <Text style={styles.previewAvatarText}>
+              {deriveAvatarSeed(displayName)}
+            </Text>
+          )}
+        </Pressable>
+        <Pressable onPress={() => void handlePickPhoto()} style={styles.photoBtn}>
+          <Text style={styles.photoBtnText}>
+            {localPhotoUri ? 'Change photo' : 'Add photo'}
           </Text>
-        </View>
+        </Pressable>
 
         <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Name</Text>
+          <Text style={styles.fieldLabel}>{'Name'}</Text>
           <TextInput
             value={displayName}
             onChangeText={(value) => {
@@ -92,12 +125,16 @@ export default function EditMyCardScreen() {
             placeholder="Your name"
             placeholderTextColor={colors.text.muted}
             style={styles.input}
+            returnKeyType="next"
+            onSubmitEditing={() => handleInputRef.current?.focus()}
+            blurOnSubmit={false}
           />
         </View>
 
         <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Username</Text>
+          <Text style={styles.fieldLabel}>{'Username'}</Text>
           <TextInput
+            ref={handleInputRef}
             value={handle}
             onChangeText={(value) => {
               setHandle(value);
@@ -105,25 +142,11 @@ export default function EditMyCardScreen() {
             }}
             placeholder="@your.handle"
             placeholderTextColor={colors.text.muted}
-            style={styles.input}
+            style={[styles.input, styles.inputSecondary]}
             autoCapitalize="none"
             autoCorrect={false}
-          />
-        </View>
-
-        <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Avatar initials</Text>
-          <TextInput
-            value={avatarSeed}
-            onChangeText={(value) => {
-              setAvatarSeed(value);
-              if (error) setError(null);
-            }}
-            placeholder="2 letters max"
-            placeholderTextColor={colors.text.muted}
-            style={styles.input}
-            autoCapitalize="characters"
-            maxLength={2}
+            returnKeyType="done"
+            onSubmitEditing={handleSave}
           />
         </View>
 
@@ -134,9 +157,6 @@ export default function EditMyCardScreen() {
             {isSetupMode ? 'Start' : 'Save my card'}
           </Text>
         </Pressable>
-        {!isSetupMode && (
-          <Text style={styles.helperText}>Changes appear immediately across Garden, QR, and Profile.</Text>
-        )}
         <Pressable
           onPress={() => {
             if (isSetupMode) {
@@ -152,7 +172,8 @@ export default function EditMyCardScreen() {
           </Text>
         </Pressable>
       </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -160,8 +181,11 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background.primary,
-    padding: spacing.lg,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    padding: spacing.lg,
   },
   card: {
     backgroundColor: colors.background.secondary,
@@ -191,11 +215,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
+    overflow: 'hidden',
   },
   previewAvatarText: {
     fontSize: 24,
     fontWeight: '700',
     color: colors.text.primary,
+  },
+  previewAvatarImage: {
+    width: 64,
+    height: 64,
+  },
+  photoBtn: {
+    alignSelf: 'center',
+    marginTop: -spacing.xs,
+    paddingVertical: 4,
+  },
+  photoBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.accent.warmGold,
   },
   fieldBlock: {
     gap: spacing.xs,
@@ -217,6 +256,10 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontSize: 15,
   },
+  inputSecondary: {
+    opacity: 0.7,
+    fontSize: 14,
+  },
   errorText: {
     fontSize: 12,
     color: colors.semantic.alert,
@@ -232,13 +275,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text.primary,
-  },
-  helperText: {
-    marginTop: -spacing.xs,
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.text.muted,
-    textAlign: 'center',
   },
   secondaryButton: {
     alignItems: 'center',

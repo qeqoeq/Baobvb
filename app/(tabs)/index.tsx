@@ -170,7 +170,7 @@ export default function CircleScreen() {
               >
                 <Text style={styles.emptyPromptHeadline}>{'Your world starts with one person.'}</Text>
                 <Text style={styles.emptyPromptSupport}>{'Add someone you trust to begin.'}</Text>
-                <Text style={styles.emptyPromptAction}>{'Add someone →'}</Text>
+                <Text style={styles.emptyPromptAction}>{'Start a link →'}</Text>
               </Pressable>
             )}
             <Text style={styles.brandWatermark}>{'BAOBAB'}</Text>
@@ -232,9 +232,9 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   headerKicker: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
-    color: colors.text.muted,
+    color: colors.text.secondary,
     letterSpacing: 2.5,
     textTransform: 'uppercase',
   },

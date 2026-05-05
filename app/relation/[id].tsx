@@ -9,7 +9,6 @@ import { radius, spacing } from '../../constants/spacing';
 import { getTierAccent, type PillarKey } from '../../lib/evaluation';
 import {
   getFoundationalReadingForRelation,
-  getGrowthSuggestion,
   getPillarLabel,
   getTierNarrative,
 } from '../../lib/foundational-reading';
@@ -32,9 +31,8 @@ import {
 import {
   getReadingCardVariant,
   getReadingNoteText,
-  getRelationContextCard,
-  getRelationIdentityAnnotation,
-  getVisibleTierLabel,
+  getRelationNextAction,
+  getRelationSheetIdentity,
 } from '../../lib/relation-detail-helpers';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
@@ -52,7 +50,6 @@ export default function RelationDetailScreen() {
   const [sharedReveal, setSharedReveal] = useState<Awaited<
     ReturnType<typeof getSharedRevealRecordForCurrentUser>
   > | null>(null);
-  const [invitePromptDismissed, setInvitePromptDismissed] = useState(false);
 
   const relation = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
@@ -70,7 +67,8 @@ export default function RelationDetailScreen() {
       return;
     }
     try {
-      const record = await getSharedRevealRecordForCurrentUser(relation.id);
+      const relationshipId = relation.canonicalRelationId ?? relation.id;
+      const record = await getSharedRevealRecordForCurrentUser(relationshipId);
       setSharedReveal(record);
     } catch {
       setSharedReveal(null);
@@ -123,7 +121,8 @@ export default function RelationDetailScreen() {
         }
         void (async () => {
           try {
-            await markSharedRevealReadyIfUnlocked(relation.id);
+            const relationshipId = relation.canonicalRelationId ?? relation.id;
+            await markSharedRevealReadyIfUnlocked(relationshipId);
             await refreshSharedReveal();
           } catch {
             // Local fallback stays available when shared access is unavailable.
@@ -164,33 +163,28 @@ export default function RelationDetailScreen() {
   const revealedScore = nameRevealed
     ? (frozenMutualScore ?? evaluation?.score ?? null)
     : (evaluation?.score ?? null);
-  const accent = revealedTier ? getTierAccent(revealedTier) : colors.text.muted;
-  const badgeLabel = reading?.badgeLabel ?? 'Unread';
-  const { label: identityLabel, subtext: identitySubtext } = getRelationIdentityAnnotation(relation);
-
-  const relationContextCard = getRelationContextCard(relation);
-  const shouldHighlightReadNext = justCreated === '1' && !evaluation;
+  const headerAccent = relation.archived ? colors.text.muted : colors.accent.deepTeal;
+  const readingAccent = revealedTier ? getTierAccent(revealedTier) : colors.accent.deepTeal;
   const strongestLabel = getPillarLabel(reading?.strongestPillar ?? null);
   const weakestLabel = getPillarLabel(reading?.weakestPillar ?? null);
   const tierNarrative = getTierNarrative(revealedTier, reading?.weakestPillar ?? null);
-  const growthSuggestion = getGrowthSuggestion(
-    reading?.weakestPillar ?? null,
-    reading?.linkTier ?? null,
-  );
   const tierLexicon = nameRevealed && revealedTier
     ? getRelationshipLexiconEntry(revealedTier)
     : null;
-  const visibleTierLabel = getVisibleTierLabel(nameRevealed, Boolean(evaluation), badgeLabel);
   const revealStatus = relationForDisplay.localState.revealSnapshot.status;
-  // Show invite prompt once, immediately after creation, if the relation has never been
-  // promoted to a shared relationship (no canonicalRelationId). Covers manual + scan sources.
-  // Not shown for claim/bootstrap (canonicalRelationId already set at those creation times).
-  // Also persists for scan-sourced relations in waiting_other_side — the prompt survives past
-  // evaluate so the user knows an invite is still needed to complete the connection.
-  const showInvitePrompt =
-    (justCreated === '1' && !relation.canonicalRelationId && !invitePromptDismissed) ||
-    (relation.source === 'scan' && revealStatus === 'waiting_other_side' && !relation.canonicalRelationId && !invitePromptDismissed);
   const readingVariant = getReadingCardVariant({ hasEvaluation: Boolean(evaluation), nameRevealed, revealStatus });
+  const relationIdentity = getRelationSheetIdentity({
+    relation,
+  });
+  const isSharedIdentity = relationIdentity.titleEyebrow === 'Shared identity';
+  const isScannedIdentity = relationIdentity.titleEyebrow === 'Scanned contact';
+  const nextAction = getRelationNextAction({
+    relation,
+    hasEvaluation: Boolean(evaluation),
+    revealStatus,
+    nameRevealed,
+  });
+  const readingSectionLabel = nameRevealed ? 'Shared reading' : 'Private reading';
   // visibleScore / visibleScoreTier are derived from the revealed source of truth.
   const visibleScore = revealedScore;
   const visibleScoreTier = nameRevealed
@@ -206,7 +200,8 @@ export default function RelationDetailScreen() {
   const handleOpenReveal = async () => {
     if (sharedReveal) {
       try {
-        const updated = await openSharedReveal(relation.id);
+        const relationshipId = relation.canonicalRelationId ?? relation.id;
+        const updated = await openSharedReveal(relationshipId);
         setSharedReveal(updated);
         if (!updated || updated.status !== 'revealed') {
           Alert.alert('Reveal not ready', 'Baobab is still preparing this reveal.');
@@ -261,82 +256,98 @@ export default function RelationDetailScreen() {
     }
   };
 
-  const handleBackToGarden = () => {
-    router.replace('/(tabs)');
+  const handlePrimaryAction = () => {
+    if (nextAction.ctaKind === 'evaluate') {
+      router.push(`./evaluate/${relation.id}`);
+      return;
+    }
+    if (nextAction.ctaKind === 'invite') {
+      void handleInviteToReveal();
+      return;
+    }
+    if (nextAction.ctaKind === 'reveal') {
+      void handleOpenReveal();
+    }
   };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <View style={[styles.avatar, { backgroundColor: accent + '14', borderColor: accent + '44' }]}>
-          <Text style={[styles.avatarText, { color: accent }]}>
-            {(relation.avatarSeed || relation.name.charAt(0) || '?').toUpperCase()}
+        <View style={[styles.avatar, { backgroundColor: headerAccent + '14', borderColor: headerAccent + '44' }]}>
+          <Text style={[styles.avatarText, { color: headerAccent }]}>
+            {(relation.avatarSeed || relationIdentity.privateLabel.charAt(0) || '?').toUpperCase()}
           </Text>
         </View>
-        <Text style={styles.name}>{relation.name}</Text>
-        {relation.handle ? <Text style={styles.handle}>{relation.handle}</Text> : null}
-        <View style={styles.tierRow}>
-          <View style={[styles.tierBadge, { backgroundColor: accent + '16' }]}>
-            <Text style={[styles.tierBadgeText, { color: accent }]}>
-              {evaluation && nameRevealed ? `${revealedTier ?? visibleTierLabel} · ${revealedScore ?? evaluation.score}` : visibleTierLabel}
+        <View style={styles.identityBlock}>
+          <View
+            style={[
+              styles.identityEyebrowBadge,
+              isSharedIdentity
+                ? styles.identityEyebrowBadgeShared
+                : isScannedIdentity
+                  ? styles.identityEyebrowBadgeScanned
+                  : styles.identityEyebrowBadgePrivate,
+            ]}
+          >
+            <Text
+              style={[
+                styles.identityEyebrow,
+                isSharedIdentity
+                  ? styles.identityEyebrowShared
+                  : isScannedIdentity
+                    ? styles.identityEyebrowScanned
+                    : styles.identityEyebrowPrivate,
+              ]}
+            >
+              {relationIdentity.titleEyebrow}
             </Text>
           </View>
-          {tierLexicon ? (
-            <Pressable onPress={openTierInfo} style={styles.infoButton}>
-              <Text style={styles.infoButtonText}>i</Text>
-            </Pressable>
+          <Text style={styles.name}>{relationIdentity.primaryTitle}</Text>
+          {relationIdentity.supportingText ? (
+            <Text style={styles.identitySupport}>{relationIdentity.supportingText}</Text>
           ) : null}
         </View>
       </View>
 
       <View style={styles.metaZone}>
-        <View style={styles.originRow}>
-          <View style={styles.originCard}>
-            <Text style={styles.originLabel}>{identityLabel}</Text>
-            {identitySubtext ? (
-              <Text style={styles.originSubtext}>{identitySubtext}</Text>
-            ) : null}
+        <View style={styles.stateRow}>
+          <View style={styles.statusChip}>
+            <Text style={styles.statusChipText}>{relationIdentity.stateLabel}</Text>
           </View>
           <Pressable onPress={() => router.push(`./edit/${relation.id}`)} style={styles.editLink}>
             <Text style={styles.editLinkText}>Edit relation</Text>
           </Pressable>
         </View>
 
-        {relationContextCard ? (
-          <View style={styles.privateStateCard}>
-            <Text style={styles.privateStateTitle}>{relationContextCard.title}</Text>
-            <Text style={styles.privateStateText}>{relationContextCard.body}</Text>
-          </View>
-        ) : null}
+        <View style={styles.anchorCard}>
+          <Text style={styles.anchorCardLabel}>{relationIdentity.anchorLabel}</Text>
+          <Text style={styles.anchorCardValue}>{relationIdentity.anchorValue}</Text>
+          {relationIdentity.anchorHint ? (
+            <Text style={styles.anchorCardHint}>{relationIdentity.anchorHint}</Text>
+          ) : null}
+        </View>
+
+        <View style={styles.depthRow}>
+          <Text style={styles.depthLabel}>Depth</Text>
+          <Text style={styles.depthValue}>{relationIdentity.relationDepthLabel}</Text>
+        </View>
       </View>
 
-      {showInvitePrompt && (
-        <View style={styles.invitePromptCard}>
-          <Text style={styles.invitePromptTitle}>{'Want to connect with them?'}</Text>
-          <Text style={styles.invitePromptBody}>
-            {'Send them an invite so they can join this relationship on Baobab.'}
-          </Text>
-          <Pressable
-            onPress={() => void handleInviteToReveal()}
-            style={styles.invitePromptButton}
-          >
-            <Text style={styles.invitePromptButtonText}>{'Send invite'}</Text>
+      <View style={[styles.primaryActionCard, justCreated === '1' && !evaluation && styles.primaryActionCardHighlight]}>
+        <Text style={styles.primaryActionEyebrow}>{'Next'}</Text>
+        <Text style={styles.primaryActionTitle}>{nextAction.title}</Text>
+        <Text style={styles.primaryActionBody}>{nextAction.body}</Text>
+        {nextAction.ctaLabel ? (
+          <Pressable onPress={handlePrimaryAction} style={styles.ctaButton}>
+            <Text style={styles.ctaButtonText}>{nextAction.ctaLabel}</Text>
           </Pressable>
-          <Pressable
-            onPress={() => setInvitePromptDismissed(true)}
-            style={styles.invitePromptDismiss}
-          >
-            <Text style={styles.invitePromptDismissText}>{'Not now'}</Text>
-          </Pressable>
-        </View>
-      )}
+        ) : null}
+      </View>
 
       {evaluation ? (
         <View style={styles.readingSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>
-              Foundational reading
-            </Text>
+            <Text style={styles.sectionLabel}>{readingSectionLabel}</Text>
             <View style={styles.sectionLine} />
           </View>
 
@@ -344,13 +355,20 @@ export default function RelationDetailScreen() {
             {readingVariant === 'revealed' ? (
               <>
                 <View style={styles.scoreRow}>
-                  <Text style={[styles.scoreValue, { color: accent }]}>
+                  <Text style={[styles.scoreValue, { color: readingAccent }]}>
                     {visibleScore ?? '--'}
                   </Text>
                   <View style={styles.scoreMeta}>
-                    <Text style={[styles.scoreTier, { color: accent }]}>
-                      {visibleScoreTier}
-                    </Text>
+                    <View style={styles.scoreMetaRow}>
+                      <Text style={[styles.scoreTier, { color: readingAccent }]}>
+                        {visibleScoreTier}
+                      </Text>
+                      {tierLexicon ? (
+                        <Pressable onPress={openTierInfo} style={styles.infoButton}>
+                          <Text style={styles.infoButtonText}>i</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
                     <Text style={styles.scoreDate}>
                       {new Date(evaluation.createdAt).toLocaleDateString()}
                     </Text>
@@ -370,7 +388,7 @@ export default function RelationDetailScreen() {
                               style={[
                                 styles.pillarDot,
                                 isFilled
-                                  ? { backgroundColor: accent }
+                                  ? { backgroundColor: readingAccent }
                                   : { backgroundColor: colors.border.soft },
                               ]}
                             />
@@ -391,26 +409,16 @@ export default function RelationDetailScreen() {
                     {tierNarrative}
                   </Text>
                 </View>
-                <View style={styles.nextActionCard}>
-                  <Text style={styles.nextActionLabel}>What to grow next</Text>
-                  <Text style={styles.nextActionText}>{growthSuggestion}</Text>
-                </View>
               </>
             ) : readingVariant === 'reveal_ready' ? (
               <View style={styles.revealReadyCard}>
                 <Text style={styles.privateStateDate}>
                   Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
                 </Text>
-                <Text style={styles.revealReadyTitle}>The reveal is ready</Text>
-                <Text style={styles.revealReadyBody}>
-                  Both readings are in. You can open the reveal now.
+                <Text style={styles.revealReadyTitle}>Shared reading ready</Text>
+                <Text style={styles.privateStateText}>
+                  Open it above.
                 </Text>
-                <Pressable onPress={() => void handleOpenReveal()} style={styles.revealPrimaryButton}>
-                  <Text style={styles.revealPrimaryButtonText}>Reveal now</Text>
-                </Pressable>
-                <Pressable onPress={handleBackToGarden} style={styles.secondaryInlineCTA}>
-                  <Text style={styles.secondaryInlineCTALabel}>Back to network</Text>
-                </Pressable>
               </View>
             ) : (
               <View style={styles.privateStateCard}>
@@ -419,19 +427,16 @@ export default function RelationDetailScreen() {
                 </Text>
                 {readingVariant === 'waiting_other_side' ? (
                   <>
-                    <Text style={styles.privateStateTitle}>Your side is in.</Text>
+                    <Text style={styles.privateStateTitle}>Private reading saved</Text>
                     <Text style={styles.privateStateText}>
-                      Once they add their side, the reveal becomes available.
+                      Waiting on their side.
                     </Text>
-                    <Pressable onPress={() => void handleInviteToReveal()} style={styles.revealInviteFullCTA}>
-                      <Text style={styles.revealInviteFullCTALabel}>Invite to reveal</Text>
-                    </Pressable>
                   </>
                 ) : readingVariant === 'cooking' ? (
                   <>
-                    <Text style={styles.privateStateTitle}>Both sides are in.</Text>
+                    <Text style={styles.privateStateTitle}>Private reading saved</Text>
                     <Text style={styles.privateStateText}>
-                      The reveal is being prepared.
+                      Both sides in. Preparing.
                     </Text>
                   </>
                 ) : (
@@ -440,9 +445,6 @@ export default function RelationDetailScreen() {
                     <Text style={styles.privateStateText}>{safeRevealSummary?.shortDescription}</Text>
                   </>
                 )}
-                <Pressable onPress={handleBackToGarden} style={styles.secondaryInlineCTA}>
-                  <Text style={styles.secondaryInlineCTALabel}>Back to network</Text>
-                </Pressable>
               </View>
             )}
           </View>
@@ -456,30 +458,15 @@ export default function RelationDetailScreen() {
       ) : (
         <View style={styles.unreadSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>Foundational reading</Text>
+            <Text style={styles.sectionLabel}>{readingSectionLabel}</Text>
             <View style={styles.sectionLine} />
           </View>
-          {shouldHighlightReadNext ? (
-            <View style={styles.nextStepCard}>
-              <Text style={styles.nextStepText}>
-                This relationship was added. You can now read it.
-              </Text>
-            </View>
-          ) : null}
-
-          <View style={[styles.unreadCard, shouldHighlightReadNext && styles.unreadCardEmphasis]}>
-            <Text style={styles.unreadTitle}>No trust reading yet</Text>
+          <View style={styles.unreadCard}>
+            <Text style={styles.unreadTitle}>No reading yet</Text>
             <Text style={styles.unreadText}>
-              Once read, this connection carries clearer trust context.
+              Stays private until both sides are in.
             </Text>
           </View>
-
-          <Pressable
-            onPress={() => router.push(`./evaluate/${relation.id}`)}
-            style={[styles.ctaButton, shouldHighlightReadNext && styles.ctaButtonEmphasis]}
-          >
-            <Text style={styles.ctaButtonText}>Read this relationship</Text>
-          </Pressable>
         </View>
       )}
 
@@ -568,6 +555,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingTop: spacing.md,
   },
+  identityBlock: {
+    alignItems: 'center',
+    gap: spacing.xs,
+    maxWidth: 320,
+  },
   avatar: {
     width: 64,
     height: 64,
@@ -584,27 +576,46 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: colors.text.primary,
+    textAlign: 'center',
   },
-  handle: {
-    fontSize: 13,
-    color: colors.text.secondary,
-    fontWeight: '600',
-  },
-  tierBadge: {
-    borderRadius: radius.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-  },
-  tierRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  tierBadgeText: {
-    fontSize: 13,
+  identityEyebrow: {
+    fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.8,
+  },
+  identityEyebrowBadge: {
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs - 1,
+    borderWidth: 1,
+  },
+  identityEyebrowBadgePrivate: {
+    backgroundColor: colors.background.secondary,
+    borderColor: colors.border.soft,
+  },
+  identityEyebrowBadgeScanned: {
+    backgroundColor: colors.accent.deepTeal + '10',
+    borderColor: colors.accent.deepTeal + '22',
+  },
+  identityEyebrowBadgeShared: {
+    backgroundColor: colors.accent.warmGold + '12',
+    borderColor: colors.accent.warmGold + '33',
+  },
+  identityEyebrowPrivate: {
+    color: colors.text.muted,
+  },
+  identityEyebrowScanned: {
+    color: colors.accent.deepTeal,
+  },
+  identityEyebrowShared: {
+    color: colors.accent.warmGold,
+  },
+  identitySupport: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   infoButton: {
     width: 22,
@@ -623,39 +634,112 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   metaZone: {
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
-  originRow: {
+  stateRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.xs,
   },
-  originCard: {
+  statusChip: {
     alignSelf: 'flex-start',
-    alignItems: 'center',
     backgroundColor: colors.background.secondary,
     borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    gap: 2,
   },
-  originLabel: {
+  statusChipText: {
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     color: colors.text.secondary,
-    fontWeight: '500',
+    fontWeight: '700',
   },
-  originSubtext: {
-    fontSize: 12,
+  anchorCard: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  anchorCardLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
     color: colors.text.muted,
+    fontWeight: '700',
   },
-  editLink: {},
+  anchorCardValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  anchorCardHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.secondary,
+  },
+  editLink: {
+    alignSelf: 'auto',
+    paddingVertical: spacing.xs,
+  },
   editLinkText: {
     fontSize: 12,
     color: colors.text.secondary,
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  depthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.xs,
+  },
+  depthLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    color: colors.text.muted,
+  },
+  depthValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.accent.deepTeal,
+  },
+  primaryActionCard: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accent.deepTeal + '44',
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  primaryActionCardHighlight: {
+    borderColor: colors.accent.warmGold + '55',
+    backgroundColor: colors.accent.warmGold + '10',
+  },
+  primaryActionEyebrow: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    color: colors.accent.deepTeal,
+    fontWeight: '700',
+  },
+  primaryActionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  primaryActionBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.text.secondary,
   },
 
   sectionHeader: {
@@ -699,6 +783,11 @@ const styles = StyleSheet.create({
   },
   scoreMeta: {
     gap: 2,
+  },
+  scoreMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   scoreTier: {
     fontSize: 16,
@@ -752,26 +841,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text.primary,
   },
-  nextActionCard: {
-    backgroundColor: colors.accent.deepTeal + '14',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.accent.deepTeal + '44',
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  nextActionLabel: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    color: colors.accent.deepTeal,
-    fontWeight: '700',
-  },
-  nextActionText: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: colors.text.primary,
-  },
   privateStateCard: {
     backgroundColor: colors.background.tertiary,
     borderRadius: radius.md,
@@ -808,60 +877,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: spacing.xs,
   },
-  revealReadyBody: {
-    fontSize: 13,
-    color: colors.text.secondary,
-    lineHeight: 19,
-  },
-  revealPrimaryButton: {
-    marginTop: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent.deepTeal,
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
-  revealPrimaryButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  revealInviteCTA: {
-    marginTop: spacing.xs,
-    alignSelf: 'flex-start',
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.accent.deepTeal + '55',
-    backgroundColor: colors.accent.deepTeal + '14',
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 2,
-  },
-  revealInviteCTALabel: {
-    fontSize: 12,
-    color: colors.accent.deepTeal,
-    fontWeight: '700',
-  },
-  revealInviteFullCTA: {
-    marginTop: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent.deepTeal,
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
-  revealInviteFullCTALabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  secondaryInlineCTA: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
-  },
-  secondaryInlineCTALabel: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
   readingNote: {
     paddingHorizontal: spacing.sm,
   },
@@ -877,20 +892,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.md,
   },
-  nextStepCard: {
-    backgroundColor: colors.accent.warmGold + '16',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.accent.warmGold + '44',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-  },
-  nextStepText: {
-    fontSize: 13,
-    color: colors.text.primary,
-    lineHeight: 19,
-    fontWeight: '500',
-  },
   unreadCard: {
     backgroundColor: colors.background.secondary,
     borderRadius: radius.lg,
@@ -898,9 +899,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border.soft,
     padding: spacing.lg,
     gap: spacing.sm,
-  },
-  unreadCardEmphasis: {
-    borderColor: colors.accent.warmGold + '55',
   },
   unreadTitle: {
     fontSize: 16,
@@ -917,13 +915,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
-  },
-  ctaButtonEmphasis: {
-    shadowColor: colors.accent.deepTeal,
-    shadowOpacity: 0.28,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
   },
   ctaButtonText: {
     color: colors.text.primary,
@@ -971,46 +962,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text.muted,
     textDecorationLine: 'underline',
-  },
-
-  // ── Invite prompt — post-creation, non-blocking ────────────────────────────
-  invitePromptCard: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.accent.warmGold + '44',
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  invitePromptTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  invitePromptBody: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: colors.text.secondary,
-  },
-  invitePromptButton: {
-    marginTop: spacing.xs,
-    backgroundColor: colors.accent.warmGold,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
-  invitePromptButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.background.primary,
-  },
-  invitePromptDismiss: {
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  invitePromptDismissText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text.muted,
   },
 });

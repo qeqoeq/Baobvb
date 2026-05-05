@@ -63,12 +63,6 @@ export default function SettingsScreen() {
             <Text style={styles.infoKey}>{'Authentication'}</Text>
             <Text style={styles.infoValue}>{'Apple Sign In'}</Text>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.descriptionRow}>
-            <Text style={styles.descriptionCaption}>
-              {'Multi-factor authentication and session management are coming in a future update.'}
-            </Text>
-          </View>
         </View>
       </View>
 
@@ -173,13 +167,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.text.secondary,
   },
-  descriptionCaption: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.text.muted,
-    fontStyle: 'italic',
-  },
-
   signOutRow: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md + 2,

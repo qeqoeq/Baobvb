@@ -9,6 +9,11 @@ import {
   type PillarRating,
   type Tier,
 } from '../lib/evaluation';
+import {
+  normalizeRelationModelFields,
+  type RelationAnchorMode,
+  type RelationDepth,
+} from '../lib/relation-model';
 import { clearPersistedState, loadPersistedState, persistState } from '../lib/storage';
 import {
   findAssistedReconciliationSuggestionForRelation,
@@ -53,6 +58,10 @@ export type Relation = {
    * See: lib/identity.ts — LocalDraftId
    */
   id: string;
+  /**
+   * Legacy local label field kept for compatibility.
+   * New code should prefer privateLabel when the intent is "how I label this person".
+   */
   name: string;
   archived: boolean;
   createdAt: string;
@@ -60,6 +69,8 @@ export type Relation = {
   relationshipNameRevealed?: boolean;
   handle?: string;
   avatarSeed?: string;
+  privateLabel?: string;
+  anchorMode?: RelationAnchorMode;
   /**
    * 'manual'    — created by hand
    * 'scan'      — seeded from a scanned QR card
@@ -68,8 +79,9 @@ export type Relation = {
    * 'bootstrap' — recovered from backend at app start (shared continuity bootstrap).
    *               Both sides known to exist. canonicalRelationId always set.
    *               Name is a placeholder until the user renames it.
+   * 'invite_number' — created via phone-number invite flow. Local label only, invite sent.
    */
-  source: 'manual' | 'scan' | 'claim' | 'bootstrap';
+  source: 'manual' | 'scan' | 'claim' | 'bootstrap' | 'invite_number';
   /**
    * The scanned card's meId field.
    * v1 QR: opaque legacy local alias — not backend-queryable.
@@ -84,6 +96,14 @@ export type Relation = {
    */
   sourcePublicProfileId?: string;
   sourceHandle?: string;
+  /**
+   * Private anchor value kept on-device for relation detail display.
+   * Current bounded use: phone-number invites keep the entered number here
+   * so relation/[id] can show a masked anchor instead of treating the label
+   * like the person's identity.
+   */
+  anchorValue?: string | null;
+  relationDepth?: RelationDepth;
   localState: RelationshipLocalState;
   /**
    * Canonical relation UUID. Null for purely local relations.
@@ -163,6 +183,11 @@ export type MeProfile = {
    * Null until explicitly provisioned — do not substitute internalAuthUserId.
    */
   publicProfileId?: string | null;
+  /**
+   * Local photo URI — set from the device photo library via expo-image-picker.
+   * Persisted in AsyncStorage. Not synced to the backend.
+   */
+  photoUri?: string | null;
 };
 
 export type MeProfileUpdate = {
@@ -186,6 +211,13 @@ export type RelationUpdate = {
   handle?: string;
   avatarSeed?: string;
 };
+
+function applyNormalizedRelationModel(relation: Relation): Relation {
+  return {
+    ...relation,
+    ...normalizeRelationModelFields(relation),
+  };
+}
 
 function buildEvaluation(
   id: string,
@@ -754,6 +786,7 @@ const SEED_ME: MeProfile = {
   isProfileSetup: __DEV__,
   internalAuthUserId: null,
   publicProfileId: null,
+  photoUri: null,
 };
 
 const SEED_PLACES: Place[] = [];
@@ -775,7 +808,7 @@ type PersistedState = StoreState & { seedVersion?: number };
 const state: StoreState = {
   me: SEED_ME,
   // Seed data is dev-only — production first-run must start with an empty world.
-  relations: __DEV__ ? SEED_RELATIONS : [],
+  relations: __DEV__ ? SEED_RELATIONS.map(applyNormalizedRelationModel) : [],
   evaluations: __DEV__ ? SEED_EVALUATIONS : [],
   places: SEED_PLACES,
 };
@@ -1053,27 +1086,19 @@ loadPersistedState<PersistedState>().then((persisted) => {
         publicProfileId: state.me.publicProfileId ?? null,
       };
     }
-    state.relations = persisted.relations.map((relation) => ({
-      ...relation,
-      avatarSeed:
-        relation.avatarSeed ||
-        relation.name?.trim().charAt(0).toUpperCase() ||
-        '?',
-      source:
-        relation.source === 'scan' ? 'scan' :
-        relation.source === 'claim' ? 'claim' :
-        relation.source === 'bootstrap' ? 'bootstrap' :
-        'manual',
-      identityStatus:
-        relation.identityStatus === 'verified' ||
-        relation.source === 'scan' ||
-        relation.source === 'claim' ||
-        relation.source === 'bootstrap'
-          ? 'verified'
-          : 'draft',
-      relationshipNameRevealed: relation.relationshipNameRevealed === true,
-      localState: normalizeRelationshipLocalState({
-        id: relation.id,
+    state.relations = persisted.relations.map((relation) =>
+      applyNormalizedRelationModel({
+        ...relation,
+        avatarSeed:
+          relation.avatarSeed ||
+          relation.name?.trim().charAt(0).toUpperCase() ||
+          '?',
+        source:
+          relation.source === 'scan' ? 'scan' :
+          relation.source === 'claim' ? 'claim' :
+          relation.source === 'bootstrap' ? 'bootstrap' :
+          relation.source === 'invite_number' ? 'invite_number' :
+          'manual',
         identityStatus:
           relation.identityStatus === 'verified' ||
           relation.source === 'scan' ||
@@ -1082,9 +1107,20 @@ loadPersistedState<PersistedState>().then((persisted) => {
             ? 'verified'
             : 'draft',
         relationshipNameRevealed: relation.relationshipNameRevealed === true,
-        localState: relation.localState,
-      }, persistedEvaluations),
-    }));
+        localState: normalizeRelationshipLocalState({
+          id: relation.id,
+          identityStatus:
+            relation.identityStatus === 'verified' ||
+            relation.source === 'scan' ||
+            relation.source === 'claim' ||
+            relation.source === 'bootstrap'
+              ? 'verified'
+              : 'draft',
+          relationshipNameRevealed: relation.relationshipNameRevealed === true,
+          localState: relation.localState,
+        }, persistedEvaluations),
+      }),
+    );
     state.evaluations = persistedEvaluations;
     state.places = Array.isArray(persisted.places)
       ? persisted.places.reduce<Place[]>((acc, rawPlace) => {
@@ -1182,7 +1218,7 @@ function setPrivateReadingOnSide(
   const localState = relation.localState ?? buildDefaultRelationshipLocalState(relation, state.evaluations);
 
   if (side === 'sideA') {
-    return {
+    return applyNormalizedRelationModel({
       ...relation,
       localState: {
         ...localState,
@@ -1194,14 +1230,14 @@ function setPrivateReadingOnSide(
           privateReadingId: evaluationId,
         },
       },
-    };
+    });
   }
 
   if (!localState.sideB.exists) {
     return relation;
   }
 
-  return {
+  return applyNormalizedRelationModel({
     ...relation,
     localState: {
       ...localState,
@@ -1211,7 +1247,7 @@ function setPrivateReadingOnSide(
         privateReadingId: evaluationId,
       },
     },
-  };
+  });
 }
 
 function finalizeCookingStartInState(relationId: string): boolean {
@@ -1241,7 +1277,7 @@ function finalizeCookingStartInState(relationId: string): boolean {
   state.relations = state.relations.map((item) => {
     if (item.id !== relationId) return item;
     const current = item.localState ?? buildDefaultRelationshipLocalState(item, state.evaluations);
-    return {
+    return applyNormalizedRelationModel({
       ...item,
       relationshipNameRevealed: false,
       localState: {
@@ -1261,7 +1297,7 @@ function finalizeCookingStartInState(relationId: string): boolean {
           finalizedVersion: (current.revealSnapshot.finalizedVersion ?? 0) + 1,
         },
       },
-    };
+    });
   });
 
   return true;
@@ -1281,7 +1317,7 @@ function markRevealReadyIfUnlockedInState(relationId: string): boolean {
   const now = new Date().toISOString();
   state.relations = state.relations.map((item) => {
     if (item.id !== relationId) return item;
-    return {
+    return applyNormalizedRelationModel({
       ...item,
       localState: {
         ...item.localState,
@@ -1293,7 +1329,7 @@ function markRevealReadyIfUnlockedInState(relationId: string): boolean {
           relationshipNameRevealed: false,
         },
       },
-    };
+    });
   });
 
   return true;
@@ -1311,7 +1347,7 @@ function openMutualRevealInState(relationId: string): boolean {
   const now = new Date().toISOString();
   state.relations = state.relations.map((item) => {
     if (item.id !== relationId) return item;
-    return {
+    return applyNormalizedRelationModel({
       ...item,
       relationshipNameRevealed: true,
       localState: {
@@ -1325,7 +1361,7 @@ function openMutualRevealInState(relationId: string): boolean {
           revealedAt: now,
         },
       },
-    };
+    });
   });
 
   return true;
@@ -1376,7 +1412,7 @@ function resolveInviteSideB(relationId: string): boolean {
         : 'draft';
 
     didResolve = true;
-    return {
+    return applyNormalizedRelationModel({
       ...relation,
       localState: {
         ...localState,
@@ -1389,7 +1425,7 @@ function resolveInviteSideB(relationId: string): boolean {
           resolvedAt: localState.sideB.resolvedAt ?? new Date().toISOString(),
         },
       },
-    };
+    });
   });
 
   if (!didResolve) return false;
@@ -1488,7 +1524,7 @@ function pushRelation(name: string): Relation | null {
   const cleanName = name.trim();
   if (!cleanName) return null;
 
-  const relation: Relation = {
+  const relation = applyNormalizedRelationModel({
     id: `r-${Date.now()}`,
     name: cleanName,
     archived: false,
@@ -1496,6 +1532,10 @@ function pushRelation(name: string): Relation | null {
     identityStatus: 'draft',
     relationshipNameRevealed: false,
     avatarSeed: cleanName.charAt(0).toUpperCase() || '?',
+    privateLabel: cleanName,
+    anchorMode: 'manual',
+    anchorValue: null,
+    relationDepth: 'encounter',
     source: 'manual',
     localState: {
       sideA: {
@@ -1514,7 +1554,7 @@ function pushRelation(name: string): Relation | null {
         relationshipNameRevealed: false,
       },
     },
-  };
+  });
   state.relations = [relation, ...state.relations];
   emitChange();
   persist();
@@ -1522,12 +1562,16 @@ function pushRelation(name: string): Relation | null {
 }
 
 type RelationSourceMeta = {
-  source: 'manual' | 'scan' | 'claim';
+  source: 'manual' | 'scan' | 'claim' | 'invite_number';
+  privateLabel?: string;
+  anchorMode?: RelationAnchorMode;
   handle?: string;
   avatarSeed?: string;
   sourceCardMeId?: string;
   sourcePublicProfileId?: string;
   sourceHandle?: string;
+  anchorValue?: string | null;
+  relationDepth?: RelationDepth;
   /**
    * For 'claim' source only.
    * The canonical relation UUID from the claim response (claim.relationship_id).
@@ -1552,7 +1596,7 @@ function pushRelationWithSource(
   const isClaim = meta.source === 'claim';
   const isVerified = meta.source === 'scan' || isClaim;
 
-  const relation: Relation = {
+  const relation = applyNormalizedRelationModel({
     id: `r-${Date.now()}`,
     name: cleanName,
     archived: false,
@@ -1561,10 +1605,14 @@ function pushRelationWithSource(
     relationshipNameRevealed: false,
     handle: meta.handle,
     avatarSeed: meta.avatarSeed || cleanName.charAt(0).toUpperCase() || '?',
+    privateLabel: meta.privateLabel ?? cleanName,
+    anchorMode: meta.anchorMode,
     source: meta.source,
     sourceCardMeId: meta.sourceCardMeId,
     sourcePublicProfileId: meta.sourcePublicProfileId,
     sourceHandle: meta.sourceHandle,
+    anchorValue: meta.anchorValue ?? null,
+    relationDepth: meta.relationDepth,
     // For claim source: canonicalRelationId is known at creation time.
     // For other sources: null (set later via setCanonicalRelationId at invite creation).
     canonicalRelationId: meta.canonicalRelationId ?? null,
@@ -1601,7 +1649,7 @@ function pushRelationWithSource(
             relationshipNameRevealed: false,
           },
         },
-  };
+  });
   state.relations = [relation, ...state.relations];
   emitChange();
   persist();
@@ -1655,6 +1703,13 @@ function setShowBaobabCode(show: boolean): void {
   persist();
 }
 
+function setPhotoUri(uri: string | null): void {
+  if (state.me.photoUri === uri) return;
+  state.me = { ...state.me, photoUri: uri };
+  emitChange();
+  persist();
+}
+
 function setRelation(id: string, update: RelationUpdate): boolean {
   const cleanName = update.name.trim();
   if (!cleanName) return false;
@@ -1669,12 +1724,13 @@ function setRelation(id: string, update: RelationUpdate): boolean {
       ? relation.avatarSeed ?? normalizeAvatarSeed('', cleanName)
       : normalizeAvatarSeed(update.avatarSeed, cleanName);
     didUpdate = true;
-    return {
+    return applyNormalizedRelationModel({
       ...relation,
       name: cleanName,
+      privateLabel: cleanName,
       handle: normalizedHandle,
       avatarSeed: normalizedAvatarSeed,
-    };
+    });
   });
 
   if (!didUpdate) return false;
@@ -1690,7 +1746,10 @@ function attachCanonicalRelationId(localId: string, canonicalId: string): boolea
     // Never overwrite an existing canonicalRelationId — it is immutable once set.
     if (relation.canonicalRelationId) return relation;
     didUpdate = true;
-    return { ...relation, canonicalRelationId: canonicalId };
+    return applyNormalizedRelationModel({
+      ...relation,
+      canonicalRelationId: canonicalId,
+    });
   });
   if (!didUpdate) return false;
   emitChange();
@@ -1810,22 +1869,26 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     const localState = buildSharedRevealLocalState(row);
     const revealed = localState.revealSnapshot.revealed;
 
-    const relation: Relation = {
+    const relation = applyNormalizedRelationModel({
       // Suffix ensures uniqueness when multiple rows are bootstrapped in the same tick.
       id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       // Placeholder: name is not available from the shared record.
       // The user can rename via the relation edit screen.
       name: '(shared)',
+      privateLabel: '(shared)',
       archived: false,
       createdAt: new Date().toISOString(),
       identityStatus: 'verified',
       relationshipNameRevealed: revealed,
       avatarSeed: '?',
+      anchorMode: 'bootstrap',
+      anchorValue: null,
+      relationDepth: 'known',
       source: 'bootstrap',
       canonicalRelationId: canonicalId,
       counterpartPublicProfileId: row.counterpart_public_profile_id ?? null,
       localState,
-    };
+    });
 
     state.relations = [relation, ...state.relations];
     didChange = true;
@@ -1839,7 +1902,7 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
 
 function resetDevStateToSeed() {
   state.me = { ...SEED_ME };
-  state.relations = [...SEED_RELATIONS];
+  state.relations = SEED_RELATIONS.map(applyNormalizedRelationModel);
   state.evaluations = [...SEED_EVALUATIONS];
   state.places = [...SEED_PLACES];
   hydrated = true;
@@ -1880,6 +1943,7 @@ export function useRelationsStore() {
   };
   const updateMe = (update: MeProfileUpdate) => setMe(update);
   const updateShowBaobabCode = (show: boolean) => setShowBaobabCode(show);
+  const updatePhotoUri = (uri: string | null) => setPhotoUri(uri);
   const updateRelation = (id: string, update: RelationUpdate) => setRelation(id, update);
   const addPlace = (input: PlaceCreateInput) => pushPlace(input);
   const updatePlace = (id: string, update: PlaceUpdateInput) => setPlace(id, update);
@@ -1922,6 +1986,7 @@ export function useRelationsStore() {
     resetDevState,
     updateMe,
     updateShowBaobabCode,
+    updatePhotoUri,
     addPlace,
     isHydrated,
     setAuthIdentity,

@@ -16,7 +16,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: null,
       source: 'manual',
     });
-    expect(result?.title).toBe('Archived relation');
+    expect(result?.title).toBe('Archived');
   });
 
   it('returns shared-backed when canonicalRelationId is set', () => {
@@ -25,7 +25,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: 'some-uuid',
       source: 'manual',
     });
-    expect(result?.title).toBe('Shared-backed relation');
+    expect(result?.title).toBe('Shared connection');
   });
 
   it('returns shared-backed when source is bootstrap', () => {
@@ -34,7 +34,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: null,
       source: 'bootstrap',
     });
-    expect(result?.title).toBe('Shared-backed relation');
+    expect(result?.title).toBe('Shared connection');
   });
 
   it('returns shared-backed when source is claim', () => {
@@ -43,7 +43,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: null,
       source: 'claim',
     });
-    expect(result?.title).toBe('Shared-backed relation');
+    expect(result?.title).toBe('Shared connection');
   });
 
   it('returns scan draft when source is scan', () => {
@@ -52,7 +52,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: null,
       source: 'scan',
     });
-    expect(result?.title).toBe('Local scan draft');
+    expect(result?.title).toBe('Added from scan');
   });
 
   it('returns local draft when source is manual', () => {
@@ -61,7 +61,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: null,
       source: 'manual',
     });
-    expect(result?.title).toBe('Local draft');
+    expect(result?.title).toBe('Private draft');
   });
 
   it('archived takes priority over shared-backed source', () => {
@@ -70,7 +70,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: 'some-uuid',
       source: 'bootstrap',
     });
-    expect(result?.title).toBe('Archived relation');
+    expect(result?.title).toBe('Archived');
   });
 });
 
@@ -96,32 +96,32 @@ describe('getVisibleTierLabel', () => {
 describe('getReadingNoteText', () => {
   it('returns revealed note when nameRevealed is true', () => {
     expect(getReadingNoteText(true, 'revealed')).toBe(
-      'This reading helps define how this connection is understood.',
+      'Reading is one layer of this link.',
     );
   });
 
   it('returns one-time action note when reveal_ready and not yet revealed', () => {
     expect(getReadingNoteText(false, 'reveal_ready')).toBe(
-      'Opening the reveal is a one-time action.',
+      'The reveal is a one-time action.',
     );
   });
 
   it('returns private note for waiting_other_side', () => {
     expect(getReadingNoteText(false, 'waiting_other_side')).toBe(
-      'Your private side is saved and stays hidden until reveal.',
+      'Private until both sides are in.',
     );
   });
 
   it('returns private note for cooking_reveal', () => {
     expect(getReadingNoteText(false, 'cooking_reveal')).toBe(
-      'Your private side is saved and stays hidden until reveal.',
+      'Private until both sides are in.',
     );
   });
 
   it('nameRevealed takes priority over reveal_ready status', () => {
     // Status is reveal_ready but name is already revealed → revealed note wins
     expect(getReadingNoteText(true, 'reveal_ready')).toBe(
-      'This reading helps define how this connection is understood.',
+      'Reading is one layer of this link.',
     );
   });
 });

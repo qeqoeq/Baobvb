@@ -1,28 +1,23 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { deriveBaobabCode } from '../../lib/identity-format';
-import { getFoundationalReadings } from '../../lib/foundational-reading';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function ProfileScreen() {
-  const { me, evaluations, activeRelations } = useRelationsStore();
-
-  const activeReadings = useMemo(
-    () => getFoundationalReadings(activeRelations, evaluations),
-    [activeRelations, evaluations],
-  );
-
-  const toNurtureCount = useMemo(
-    () => activeReadings.filter((r) => r.toNurture).length,
-    [activeReadings],
-  );
+  const { me, updateShowBaobabCode } = useRelationsStore();
 
   const baobabCode = deriveBaobabCode(me.publicProfileId);
+
+  const handleToggleCode = () => {
+    if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    updateShowBaobabCode(!me.showBaobabCode);
+  };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -38,9 +33,13 @@ export default function ProfileScreen() {
         <Pressable style={styles.avatarContainer} onPress={() => router.push('/me/edit')}>
           <View style={styles.avatarRing}>
             <View style={styles.avatarInner}>
-              <Text style={styles.avatarText}>
-                {(me.avatarSeed || me.displayName.charAt(0) || '?').toUpperCase()}
-              </Text>
+              {me.photoUri ? (
+                <Image source={{ uri: me.photoUri }} style={styles.avatarPhoto} contentFit="cover" />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {(me.avatarSeed || me.displayName.charAt(0) || '?').toUpperCase()}
+                </Text>
+              )}
             </View>
           </View>
           <View style={styles.avatarEditBadge}>
@@ -49,27 +48,21 @@ export default function ProfileScreen() {
         </Pressable>
 
         <Text style={styles.displayName}>{me.displayName}</Text>
+        <Text style={styles.handle}>{me.handle}</Text>
 
-        <View style={styles.handleRow}>
-          <Text style={styles.handle}>{me.handle}</Text>
-          {me.showBaobabCode && baobabCode !== null && (
-            <Text style={styles.baobabCode}>{`· ${baobabCode}`}</Text>
-          )}
-        </View>
-      </View>
-
-      {/* ── My network ───────────────────────────────────────────────────────── */}
-      <View style={styles.networkRow}>
-        <Pressable style={styles.statCard} onPress={() => router.push('/garden')}>
-          <Text style={styles.statValue}>{activeRelations.length}</Text>
-          <View style={[styles.statAccent, { backgroundColor: colors.accent.deepTeal }]} />
-          <Text style={styles.statLabel}>{'Active'}</Text>
-        </Pressable>
-        <Pressable style={styles.statCard} onPress={() => router.push('/garden')}>
-          <Text style={styles.statValue}>{toNurtureCount}</Text>
-          <View style={[styles.statAccent, { backgroundColor: colors.accent.dustyRose }]} />
-          <Text style={styles.statLabel}>{'To nurture'}</Text>
-        </Pressable>
+        {baobabCode !== null && (
+          <Pressable onPress={handleToggleCode} style={styles.codePill}>
+            <Text style={styles.codeLabel}>{'CODE'}</Text>
+            <Text style={styles.codeValue}>
+              {me.showBaobabCode ? baobabCode : '——————'}
+            </Text>
+            <Ionicons
+              name={me.showBaobabCode ? 'eye-outline' : 'eye-off-outline'}
+              size={11}
+              color={colors.text.muted}
+            />
+          </Pressable>
+        )}
       </View>
 
       {/* ── Share ────────────────────────────────────────────────────────────── */}
@@ -96,19 +89,12 @@ export default function ProfileScreen() {
           activeOpacity={0.7}
         >
           <Ionicons name="person-add-outline" size={24} color={colors.accent.warmGold} />
-          <Text style={styles.shareBtnLabel}>{'Add'}</Text>
+          <Text style={styles.shareBtnLabel}>{'Link'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* ── Account ──────────────────────────────────────────────────────────── */}
       <View style={styles.accountCard}>
-        <Pressable style={styles.actionRow} onPress={() => router.push('/me/edit')}>
-          <Text style={styles.actionLabel}>{'Edit your card'}</Text>
-          <Text style={styles.chevron}>{'›'}</Text>
-        </Pressable>
-
-        <View style={styles.actionDivider} />
-
         <Pressable style={styles.actionRow} onPress={() => router.push('/me/settings')}>
           <Text style={styles.actionLabel}>{'Settings'}</Text>
           <Text style={styles.chevron}>{'›'}</Text>
@@ -117,13 +103,9 @@ export default function ProfileScreen() {
         <View style={styles.actionDivider} />
 
         <Pressable style={styles.actionRow} onPress={() => router.push('/relation/archived')}>
-          <Text style={styles.actionLabel}>{'Archived relationships'}</Text>
+          <Text style={styles.actionLabel}>{'Archived'}</Text>
           <Text style={styles.chevron}>{'›'}</Text>
         </Pressable>
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>{'Baobab — local-first, private by design.'}</Text>
       </View>
 
     </ScrollView>
@@ -188,11 +170,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border.strong,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   avatarText: {
     fontSize: 30,
     fontWeight: '600',
     color: colors.text.primary,
+  },
+  avatarPhoto: {
+    width: 76,
+    height: 76,
   },
   avatarEditBadge: {
     position: 'absolute',
@@ -214,57 +201,36 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     textAlign: 'center',
   },
-  handleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
   handle: {
     fontSize: 15,
     fontWeight: '600',
     color: colors.accent.warmGold,
     letterSpacing: 0.3,
   },
-  baobabCode: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.text.muted,
-    letterSpacing: 0.5,
-  },
-
-  // ── Network row ────────────────────────────────────────────────────────────
-
-  networkRow: {
+  codePill: {
     flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-    borderRadius: radius.md,
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border.soft,
-    padding: spacing.md,
-    alignItems: 'center',
-    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    marginTop: 2,
   },
-  statValue: {
-    fontSize: 28,
+  codeLabel: {
+    fontSize: 10,
     fontWeight: '700',
-    color: colors.text.primary,
-  },
-  statAccent: {
-    width: 20,
-    height: 3,
-    borderRadius: 2,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
     color: colors.text.muted,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
+  },
+  codeValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text.secondary,
+    letterSpacing: 1.5,
   },
 
   // ── Share row ──────────────────────────────────────────────────────────────
@@ -322,15 +288,4 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
   },
 
-  // ── Footer ─────────────────────────────────────────────────────────────────
-
-  footer: {
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  footerText: {
-    fontSize: 12,
-    color: colors.text.muted,
-    fontStyle: 'italic',
-  },
 });

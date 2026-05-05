@@ -1,4 +1,10 @@
 import type { Relation, RelationshipRevealSnapshot } from '../store/useRelationsStore';
+import {
+  deriveRelationAnchorMode,
+  deriveRelationDepth,
+  getNormalizedPrivateLabel,
+  type RelationDepth,
+} from './relation-model';
 
 export type RelationIdentityAnnotation = {
   label: string;
@@ -10,7 +16,45 @@ export type RelationContextCard = {
   body: string;
 };
 
+export type RelationSheetIdentity = {
+  privateLabel: string;
+  primaryTitle: string;
+  titleEyebrow: string;
+  supportingText: string | null;
+  stateLabel: string;
+  relationDepth: RelationDepth;
+  relationDepthLabel: string;
+  anchorLabel: string;
+  anchorValue: string;
+  anchorHint: string | null;
+};
+
+export type RelationNextAction = {
+  title: string;
+  body: string;
+  ctaLabel: string | null;
+  ctaKind: 'evaluate' | 'invite' | 'reveal' | null;
+};
+
 type RevealStatus = RelationshipRevealSnapshot['status'];
+
+function isSharedBackedRelation(
+  relation: Pick<Relation, 'canonicalRelationId' | 'source'>,
+): boolean {
+  return (
+    !!relation.canonicalRelationId ||
+    relation.source === 'bootstrap' ||
+    relation.source === 'claim'
+  );
+}
+
+function maskPhoneAnchor(anchorValue?: string | null): string | null {
+  if (!anchorValue) return null;
+  const digits = anchorValue.replace(/\D/g, '');
+  if (digits.length >= 4) return `Ends in ${digits.slice(-4)}`;
+  if (digits.length > 0) return 'Number saved on this device';
+  return null;
+}
 
 /**
  * Returns the identity annotation for a relation: how the person's identity was established.
@@ -38,34 +82,38 @@ export function getRelationContextCard(
 ): RelationContextCard | null {
   if (relation.archived) {
     return {
-      title: 'Archived relation',
-      body: 'This relation is archived locally and no longer appears in your active trust network.',
+      title: 'Archived',
+      body: 'No longer in your active network.',
     };
   }
 
-  const isSharedBacked =
-    !!relation.canonicalRelationId ||
-    relation.source === 'bootstrap' ||
-    relation.source === 'claim';
+  if (relation.source === 'invite_number') {
+    return {
+      title: 'Invite sent',
+      body: 'Waiting for them to join.',
+    };
+  }
+
+  const isSharedBacked = isSharedBackedRelation(relation);
 
   if (isSharedBacked) {
     return {
-      title: 'Shared-backed relation',
-      body: 'This relation is backed by a shared record. Shared status does not imply a merged local history.',
+      title: 'Shared connection',
+      body: 'Both sides are connected.',
     };
   }
 
   if (relation.source === 'scan') {
     return {
-      title: 'Local scan draft',
-      body: 'This is a local draft created from a scanned public profile. It is not a shared relation.',
+      title: 'Added from scan',
+      body: 'Not yet a shared relationship.',
     };
   }
 
   if (relation.source === 'manual') {
     return {
-      title: 'Local draft',
-      body: 'This relation currently exists only on this device and is not shared.',
+      title: 'Private draft',
+      body: 'Only on this device — not shared yet.',
     };
   }
 
@@ -94,9 +142,179 @@ export function getVisibleTierLabel(
  * Pure — depends only on reveal state.
  */
 export function getReadingNoteText(nameRevealed: boolean, revealStatus: RevealStatus): string {
-  if (nameRevealed) return 'This is your shared reading, shaped by both sides.';
-  if (revealStatus === 'reveal_ready') return 'Opening the reveal is a one-time action.';
-  return 'Your reading is private until both sides are in.';
+  if (nameRevealed) return 'Reading is one layer of this link.';
+  if (revealStatus === 'reveal_ready') return 'The reveal is a one-time action.';
+  return 'Private until both sides are in.';
+}
+
+export function getTemporaryRelationDepth(input: {
+  relation: Pick<Relation, 'anchorMode' | 'canonicalRelationId' | 'localState' | 'source'>;
+}): RelationDepth {
+  return deriveRelationDepth(input.relation);
+}
+
+export function getRelationSheetIdentity(input: {
+  relation: Pick<
+    Relation,
+    | 'name'
+    | 'privateLabel'
+    | 'archived'
+    | 'source'
+    | 'anchorMode'
+    | 'handle'
+    | 'sourceHandle'
+    | 'anchorValue'
+    | 'canonicalRelationId'
+    | 'relationDepth'
+    | 'localState'
+  >;
+}): RelationSheetIdentity {
+  const { relation } = input;
+  const relationDepth = relation.relationDepth ?? getTemporaryRelationDepth({ relation });
+  const relationDepthLabel =
+    relationDepth === 'encounter'
+      ? 'Encounter'
+      : relationDepth === 'known'
+        ? 'Known'
+        : 'Deep';
+  const privateLabel = getNormalizedPrivateLabel(relation);
+  const anchorMode = deriveRelationAnchorMode(relation);
+
+  if (anchorMode === 'invite_number') {
+    return {
+      privateLabel,
+      primaryTitle: privateLabel,
+      titleEyebrow: 'Private label',
+      supportingText: null,
+      stateLabel: relation.archived ? 'Archived' : 'Invited by number',
+      relationDepth,
+      relationDepthLabel,
+      anchorLabel: 'Anchored by',
+      anchorValue: 'Phone number',
+      anchorHint: maskPhoneAnchor(relation.anchorValue) ?? null,
+    };
+  }
+
+  if (anchorMode === 'claim' || anchorMode === 'bootstrap' || anchorMode === 'shared') {
+    const sharedTitle = relation.handle ?? privateLabel;
+    const supportingText =
+      relation.handle && relation.handle !== privateLabel
+        ? `Label: ${privateLabel}`
+        : null;
+    return {
+      privateLabel,
+      primaryTitle: sharedTitle,
+      titleEyebrow: 'Shared identity',
+      supportingText,
+      stateLabel: relation.archived ? 'Archived' : 'Shared connection',
+      relationDepth,
+      relationDepthLabel,
+      anchorLabel: 'Anchored by',
+      anchorValue: relation.handle ?? 'Shared Baobab connection',
+      anchorHint: 'Active on Baobab.',
+    };
+  }
+
+  if (anchorMode === 'scan') {
+    return {
+      privateLabel,
+      primaryTitle: privateLabel,
+      titleEyebrow: 'Scanned contact',
+      supportingText: relation.sourceHandle ? `From ${relation.sourceHandle}` : null,
+      stateLabel: relation.archived ? 'Archived' : 'Scanned',
+      relationDepth,
+      relationDepthLabel,
+      anchorLabel: 'Anchored by',
+      anchorValue: 'Scan',
+      anchorHint: null,
+    };
+  }
+
+  return {
+    privateLabel,
+    primaryTitle: privateLabel,
+    titleEyebrow: 'Private label',
+    supportingText: null,
+    stateLabel: relation.archived ? 'Archived' : 'Private only',
+    relationDepth,
+    relationDepthLabel,
+    anchorLabel: 'Anchored by',
+    anchorValue: 'Local label',
+    anchorHint: null,
+  };
+}
+
+export function getRelationNextAction(input: {
+  relation: Pick<Relation, 'archived' | 'source' | 'canonicalRelationId' | 'anchorMode'>;
+  hasEvaluation: boolean;
+  revealStatus: RevealStatus;
+  nameRevealed: boolean;
+}): RelationNextAction {
+  if (input.relation.archived) {
+    return {
+      title: 'Archived',
+      body: 'Not in your active network.',
+      ctaLabel: null,
+      ctaKind: null,
+    };
+  }
+
+  if (!input.hasEvaluation) {
+    return {
+      title: 'Start with a private reading',
+      body: 'Stays private until both sides are in.',
+      ctaLabel: 'Read this relationship',
+      ctaKind: 'evaluate',
+    };
+  }
+
+  if (input.nameRevealed) {
+    return {
+      title: 'Shared reading open',
+      body: 'See it below.',
+      ctaLabel: null,
+      ctaKind: null,
+    };
+  }
+
+  if (input.revealStatus === 'reveal_ready') {
+    return {
+      title: 'Reveal is ready',
+      body: 'Both sides are in.',
+      ctaLabel: 'Reveal now',
+      ctaKind: 'reveal',
+    };
+  }
+
+  if (input.revealStatus === 'cooking_reveal') {
+    return {
+      title: 'Preparing',
+      body: 'Both sides are in.',
+      ctaLabel: null,
+      ctaKind: null,
+    };
+  }
+
+  if (input.revealStatus === 'waiting_other_side') {
+    return {
+      title:
+        deriveRelationAnchorMode(input.relation) === 'invite_number'
+          ? 'Invite sent. Waiting for their side'
+          : 'Waiting for the other side',
+      body: isSharedBackedRelation(input.relation)
+        ? 'Waiting on their side.'
+        : 'Ready when they join.',
+      ctaLabel: 'Invite them',
+      ctaKind: 'invite',
+    };
+  }
+
+  return {
+    title: 'Private reading saved',
+    body: 'No shared step yet.',
+    ctaLabel: null,
+    ctaKind: null,
+  };
 }
 
 /**

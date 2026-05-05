@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../../constants/colors';
 import { radius, spacing } from '../../../constants/spacing';
+import { getNormalizedPrivateLabel } from '../../../lib/relation-model';
 import { useRelationsStore } from '../../../store/useRelationsStore';
 
 export default function EditRelationScreen() {
@@ -15,7 +16,7 @@ export default function EditRelationScreen() {
     [relations, id],
   );
 
-  const [name, setName] = useState(relation?.name ?? '');
+  const [name, setName] = useState(relation ? getNormalizedPrivateLabel(relation) : '');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function EditRelationScreen() {
     const cleanName = name.trim();
 
     if (!cleanName) {
-      setError('Name cannot be empty.');
+      setError('Label cannot be empty.');
       return;
     }
 
@@ -52,18 +53,18 @@ export default function EditRelationScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>Edit relation</Text>
         <Text style={styles.subtitle}>
-          Your private name for this person. Only you can see it.
+          Your private label for this person. Only visible to you.
         </Text>
 
         <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Name</Text>
+          <Text style={styles.fieldLabel}>Private label</Text>
           <TextInput
             value={name}
             onChangeText={(value) => {
               setName(value);
               if (error) setError(null);
             }}
-            placeholder="Person name"
+            placeholder="Your label for this person"
             placeholderTextColor={colors.text.muted}
             style={styles.input}
             autoFocus

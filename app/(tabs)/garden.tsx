@@ -73,20 +73,25 @@ export default function GardenScreen() {
         });
       case 'active':
       default:
-        return sortedActive;
+        // reveal_ready floats to the top — highest urgency signal
+        return [...sortedActive].sort((a, b) => {
+          const pa = a.relation.localState.revealSnapshot.status === 'reveal_ready' ? 0 : 1;
+          const pb = b.relation.localState.revealSnapshot.status === 'reveal_ready' ? 0 : 1;
+          return pa - pb;
+        });
     }
   }, [entries, archivedEntries, selectedFilter]);
 
   const filterLabel = useMemo(() => {
     switch (selectedFilter) {
-      case 'read':        return 'Read';
-      case 'unread':      return 'Unread';
-      case 'toNurture':   return 'To nurture';
-      case 'archived':    return 'Archived';
-      case 'ready':       return 'Ready to reveal';
-      case 'forming':     return 'Forming';
+      case 'read':        return 'read';
+      case 'unread':      return 'unread';
+      case 'toNurture':   return 'to nurture';
+      case 'archived':    return 'archived';
+      case 'ready':       return 'ready';
+      case 'forming':     return 'forming';
       case 'active':
-      default:            return 'Active';
+      default:            return 'links';
     }
   }, [selectedFilter]);
 
@@ -153,15 +158,19 @@ export default function GardenScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionLabel}>
-            {entries.length === 0
-              ? 'Your trust network'
-              : selectedFilter === 'archived'
-                ? 'Archived'
-                : selectedFilter === 'ready'
-                  ? 'Ready to reveal'
-                  : selectedFilter === 'forming'
-                    ? 'Forming'
-                    : 'Trusted people'}
+            {selectedFilter === 'archived'
+              ? 'Archived'
+              : selectedFilter === 'ready'
+                ? 'Ready'
+                : selectedFilter === 'forming'
+                  ? 'Forming'
+                  : selectedFilter === 'unread'
+                    ? 'Unread'
+                    : selectedFilter === 'read'
+                      ? 'Read'
+                      : selectedFilter === 'toNurture'
+                        ? 'Nurture'
+                        : 'Links'}
           </Text>
           <View style={styles.sectionLine} />
           {filteredEntries.length > 0 ? (
@@ -173,12 +182,12 @@ export default function GardenScreen() {
           <View style={styles.emptyCard}>
             {entries.length === 0 ? (
               <>
-                <Text style={styles.emptyTitle}>Your trust network is empty</Text>
+                <Text style={styles.emptyTitle}>No links yet</Text>
                 <Text style={styles.emptyText}>
-                  Add people you trust to start building context around your network.
+                  Start a link to build your network.
                 </Text>
                 <Pressable onPress={() => router.push('/relation/add')} style={styles.emptyAction}>
-                  <Text style={styles.emptyActionText}>Add a person</Text>
+                  <Text style={styles.emptyActionText}>Start a link</Text>
                 </Pressable>
               </>
             ) : selectedFilter === 'archived' ? (
@@ -204,10 +213,8 @@ export default function GardenScreen() {
                       ? colors.accent.warmGold
                       : colors.text.muted;
               const mappingLine = entry.readingStatus === 'Read'
-                ? (isRevealed
-                  ? `${entry.badgeLabel} · Score ${entry.foundationalScore}`
-                  : 'Private reading saved')
-                : 'Unread · Start private reading';
+                ? (isRevealed ? entry.badgeLabel : 'Private reading saved')
+                : 'No reading yet';
               const signalText = isRevealed
                 ? signal?.text ?? 'Stable'
                 : (
@@ -264,14 +271,13 @@ export default function GardenScreen() {
         )}
       </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Baobab — local-first, private by design.</Text>
-        {__DEV__ ? (
+      {__DEV__ ? (
+        <View style={styles.footer}>
           <Pressable onPress={resetDevState} style={styles.devResetButton}>
             <Text style={styles.devResetButtonText}>Reset local dev state</Text>
           </Pressable>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
 
     </ScrollView>
   );
@@ -303,9 +309,9 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   headerKicker: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
-    color: colors.text.muted,
+    color: colors.text.secondary,
     letterSpacing: 2.5,
     textTransform: 'uppercase',
   },

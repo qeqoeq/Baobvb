@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
@@ -30,6 +30,10 @@ function isValidRelationName(name: string) {
   if (!allowedCharsPattern.test(name)) return false;
   const usefulCharCount = (name.match(/[\p{L}\p{M}]/gu) ?? []).length;
   return usefulCharCount >= 2;
+}
+
+function getPrivateLabelValue(input: { privateLabel?: string; name: string }) {
+  return (input.privateLabel ?? input.name).trim();
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -146,9 +150,13 @@ export default function AddRelationScreen() {
         : undefined;
       const created = addRelation(cleanName, {
         source: 'claim',
+        privateLabel: cleanName,
+        anchorMode: 'claim',
         avatarSeed: cleanName.charAt(0).toUpperCase(),
         canonicalRelationId: claimedCanonicalRelationId,
         claimSharedRecord,
+        anchorValue: null,
+        relationDepth: 'known',
       });
       if (!created) return;
       router.replace({
@@ -194,7 +202,7 @@ export default function AddRelationScreen() {
       }
 
       const existingByName = relations.find(
-        (r) => r.name.trim().toLowerCase() === cleanName.toLowerCase(),
+        (r) => getPrivateLabelValue(r).toLowerCase() === cleanName.toLowerCase(),
       );
       if (existingByName) {
         Alert.alert('Private draft already exists', 'A private relationship with this name already exists. Names are not unique.', [
@@ -204,11 +212,15 @@ export default function AddRelationScreen() {
             onPress: () => {
               const created = addRelation(cleanName, {
                 source: 'scan',
+                privateLabel: cleanName,
+                anchorMode: 'scan',
                 handle: normalizedHandle || undefined,
                 avatarSeed: scannedAvatarSeed || cleanName.charAt(0).toUpperCase(),
                 sourceCardMeId: scannedCardMeId || undefined,
                 sourcePublicProfileId: scannedPublicProfileId,
                 sourceHandle: normalizedScannedHandle || undefined,
+                anchorValue: (scannedPublicProfileId ?? normalizedScannedHandle) || undefined,
+                relationDepth: 'encounter',
               });
               if (created) {
                 router.replace({ pathname: '/relation/[id]', params: { id: created.id, justCreated: '1' } });
@@ -222,11 +234,15 @@ export default function AddRelationScreen() {
 
       const created = addRelation(cleanName, {
         source: 'scan',
+        privateLabel: cleanName,
+        anchorMode: 'scan',
         handle: normalizedHandle || undefined,
         avatarSeed: scannedAvatarSeed || cleanName.charAt(0).toUpperCase(),
         sourceCardMeId: scannedCardMeId || undefined,
         sourcePublicProfileId: scannedPublicProfileId,
         sourceHandle: normalizedScannedHandle || undefined,
+        anchorValue: (scannedPublicProfileId ?? normalizedScannedHandle) || undefined,
+        relationDepth: 'encounter',
       });
       if (!created) return;
       router.replace({ pathname: '/relation/[id]', params: { id: created.id, justCreated: '1' } });
@@ -235,7 +251,7 @@ export default function AddRelationScreen() {
 
     // ── Manual (private) path ─────────────────────────────────────────────
     const existingByName = relations.find(
-      (r) => r.name.trim().toLowerCase() === cleanName.toLowerCase(),
+      (r) => getPrivateLabelValue(r).toLowerCase() === cleanName.toLowerCase(),
     );
     if (existingByName) {
       Alert.alert('Private draft already exists', 'A private relationship with this name already exists. Names are not unique.', [
@@ -245,7 +261,11 @@ export default function AddRelationScreen() {
           onPress: () => {
             const created = addRelation(cleanName, {
               source: 'manual',
+              privateLabel: cleanName,
+              anchorMode: 'manual',
               avatarSeed: cleanName.charAt(0).toUpperCase(),
+              anchorValue: null,
+              relationDepth: 'encounter',
             });
             if (created) {
               router.replace({ pathname: '/relation/[id]', params: { id: created.id, justCreated: '1' } });
@@ -259,7 +279,11 @@ export default function AddRelationScreen() {
 
     const created = addRelation(cleanName, {
       source: 'manual',
+      privateLabel: cleanName,
+      anchorMode: 'manual',
       avatarSeed: cleanName.charAt(0).toUpperCase(),
+      anchorValue: null,
+      relationDepth: 'encounter',
     });
     if (!created) return;
     router.replace({ pathname: '/relation/[id]', params: { id: created.id, justCreated: '1' } });
@@ -271,27 +295,29 @@ export default function AddRelationScreen() {
       <View style={styles.screen}>
         <View style={styles.card}>
           <Text style={styles.title}>{'Add someone'}</Text>
-          <Text style={styles.subtitle}>{'How do you know this person?'}</Text>
 
           <View style={styles.actionList}>
-            <Pressable style={styles.actionRow} onPress={() => router.push('/me/scan')}>
+            <Pressable
+              style={styles.actionRow}
+              onPress={() => router.push('/me/invite-by-number' as never)}
+            >
               <View style={styles.actionBody}>
-                <Text style={styles.actionLabel}>{'Scan their QR'}</Text>
-                <Text style={styles.actionCaption}>{'Add in person, instantly'}</Text>
-              </View>
-              <Text style={styles.actionChevron}>{'›'}</Text>
-            </Pressable>
-
-            <View style={styles.actionDivider} />
-
-            <Pressable style={styles.actionRow} onPress={() => setMode('private')}>
-              <View style={styles.actionBody}>
-                <Text style={styles.actionLabel}>{'Add privately'}</Text>
-                <Text style={styles.actionCaption}>{'No QR needed'}</Text>
+                <Text style={styles.actionLabel}>{'Invite with their number'}</Text>
+                <Text style={styles.actionCaption}>{'Type a number to send an invite'}</Text>
               </View>
               <Text style={styles.actionChevron}>{'›'}</Text>
             </Pressable>
           </View>
+
+          <View style={styles.orDivider}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>{'or'}</Text>
+            <View style={styles.orLine} />
+          </View>
+
+          <Pressable style={styles.addPrivatelyBtn} onPress={() => setMode('private')}>
+            <Text style={styles.addPrivatelyText}>{'Add privately'}</Text>
+          </Pressable>
 
           <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{'Cancel'}</Text>
@@ -304,16 +330,23 @@ export default function AddRelationScreen() {
   // ── Scan pre-fill form (fromScan bypass) ──────────────────────────────────
   if (fromScan) {
     return (
-      <View style={styles.screen}>
+      <KeyboardAvoidingView
+        style={styles.screen}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.card}>
           <Text style={styles.title}>{'Add a person'}</Text>
-          <Text style={styles.subtitle}>{"Give them a name. It's your private label — only you see it."}</Text>
+          <Text style={styles.subtitle}>{'What do you call this person?'}</Text>
 
           <View style={styles.scanHintCard}>
-            <Text style={styles.scanHintTitle}>{'Scanned card detected'}</Text>
+            <Text style={styles.scanHintTitle}>{'Scanned card'}</Text>
             <Text style={styles.scanHintText}>
               {params.prefillHandle ?? 'No handle on this card'}
-              {params.prefillAvatarSeed ? ` · seed ${params.prefillAvatarSeed}` : ''}
             </Text>
             {scanLookup.status === 'found' && (
               <Text style={styles.scanHintVerified}>{'Baobab account confirmed'}</Text>
@@ -323,10 +356,12 @@ export default function AddRelationScreen() {
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="Person name"
+            placeholder="Private label"
             placeholderTextColor={colors.text.muted}
             style={styles.input}
             autoFocus
+            returnKeyType="next"
+            blurOnSubmit={false}
           />
           <TextInput
             value={handle}
@@ -336,6 +371,8 @@ export default function AddRelationScreen() {
             style={styles.input}
             autoCapitalize="none"
             autoCorrect={false}
+            returnKeyType="done"
+            onSubmitEditing={handleCreate}
           />
 
           <Pressable
@@ -345,29 +382,34 @@ export default function AddRelationScreen() {
           >
             <Text style={styles.buttonText}>{'Add person'}</Text>
           </Pressable>
-          <Text style={styles.helperText}>
-            {'After saving, you can invite them to add their side.'}
-          </Text>
-
           <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{'Cancel'}</Text>
           </Pressable>
         </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   }
 
   // ── Private form (manual + claim bypass) ──────────────────────────────────
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.card}>
         <Text style={styles.title}>
           {fromClaim ? 'Name this person' : 'Add privately'}
         </Text>
         <Text style={styles.subtitle}>
           {fromClaim
-            ? 'Your participation has been recorded. Give this person a name for your Garden — it stays private.'
-            : 'Your private label — only you see this name.'}
+            ? 'Give this person a name — it stays private.'
+            : 'Just a name. Only you see it.'}
         </Text>
 
         <TextInput
@@ -377,6 +419,8 @@ export default function AddRelationScreen() {
           placeholderTextColor={colors.text.muted}
           style={styles.input}
           autoFocus
+          returnKeyType="done"
+          onSubmitEditing={handleCreate}
         />
 
         <Pressable
@@ -388,17 +432,14 @@ export default function AddRelationScreen() {
             {fromClaim ? 'Save and continue' : 'Add person'}
           </Text>
         </Pressable>
-        <Text style={styles.helperText}>
-          {'After saving, you will open this relationship directly.'}
-        </Text>
-
         <Pressable onPress={handleBack} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>
             {fromClaim ? 'Cancel' : 'Back'}
           </Text>
         </Pressable>
       </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -409,6 +450,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
     padding: spacing.lg,
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
   },
   card: {
@@ -468,7 +513,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border.soft,
     marginLeft: spacing.md,
   },
-
+  orDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  orLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border.soft,
+  },
+  orText: {
+    fontSize: 12,
+    color: colors.text.muted,
+    fontWeight: '500',
+  },
+  addPrivatelyBtn: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  addPrivatelyText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text.secondary,
+  },
   // ── Scan hint ──────────────────────────────────────────────────────────────
 
   scanHintCard: {

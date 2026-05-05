@@ -250,6 +250,10 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
+        name="me/invite-by-number"
+        options={{ title: 'Invite by number', presentation: 'modal' }}
+      />
+      <Stack.Screen
         name="relation/add"
         options={{ title: 'Add a person', presentation: 'modal' }}
       />

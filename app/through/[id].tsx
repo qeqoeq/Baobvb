@@ -129,7 +129,7 @@ export default function ThroughScreen() {
         {memberCount > 0 && (
           <View style={styles.opensRow}>
             <Text style={styles.opensCount}>{memberCount}</Text>
-            <Text style={styles.opensLabel}>{' opens'}</Text>
+            <Text style={styles.opensLabel}>{memberCount === 1 ? ' link' : ' links'}</Text>
           </View>
         )}
       </View>
@@ -148,7 +148,7 @@ export default function ThroughScreen() {
           onCenterTap={handleCenterTap}
           centerRadius={30}
           centerColor={colors.accent.warmGold}
-          emptyText={`No one in ${gateway?.name ?? '…'}'s world yet.`}
+          emptyText={`No connections through ${gateway?.name ?? '…'} yet.`}
         />
         <Text style={styles.brandWatermark}>{'BAOBAB'}</Text>
       </View>
