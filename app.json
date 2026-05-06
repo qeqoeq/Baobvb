@@ -12,10 +12,13 @@
       "supportsTablet": true,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.samo.baobab",
-      "associatedDomains": ["applinks:getbaobab.app"],
+      "associatedDomains": [
+        "applinks:getbaobab.app"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "24"
     },
     "android": {
       "adaptiveIcon": {
