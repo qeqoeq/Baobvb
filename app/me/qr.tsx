@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -7,19 +8,51 @@ import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { deriveBaobabCode } from '../../lib/identity-format';
 import { buildPersonCardPayload, encodePersonCardPayload } from '../../lib/person-card';
+import { getOrCreatePublicProfileId } from '../../lib/public-profile';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function MyCardQrScreen() {
-  const { me } = useRelationsStore();
-  const payload = encodePersonCardPayload(buildPersonCardPayload(me, { preferV2: true }));
+  const { me, setPublicProfileId } = useRelationsStore();
+  const [provisionFailed, setProvisionFailed] = useState(false);
+  const provisioningRef = useRef(false);
+
+  const isCardReady = Boolean(me.publicProfileId);
+  const payload = me.publicProfileId
+    ? encodePersonCardPayload(buildPersonCardPayload(me, { preferV2: true }))
+    : null;
   const baobabCode = me.showBaobabCode ? deriveBaobabCode(me.publicProfileId) : null;
+
+  // On mount: if publicProfileId is still null (slow network or layout failure),
+  // attempt provisioning in-session without waiting for next app launch.
+  useEffect(() => {
+    if (me.publicProfileId || provisioningRef.current) return;
+    provisioningRef.current = true;
+    setProvisionFailed(false);
+    void getOrCreatePublicProfileId()
+      .then((id) => { setPublicProfileId(id); })
+      .catch(() => { setProvisionFailed(true); })
+      .finally(() => { provisioningRef.current = false; });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleRetry = () => {
+    if (me.publicProfileId || provisioningRef.current) return;
+    provisioningRef.current = true;
+    setProvisionFailed(false);
+    void getOrCreatePublicProfileId()
+      .then((id) => { setPublicProfileId(id); })
+      .catch(() => { setProvisionFailed(true); })
+      .finally(() => { provisioningRef.current = false; });
+  };
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Your Baobab card</Text>
         <Text style={styles.headerText}>
-          Anyone with Baobab can scan this to add you.
+          {isCardReady
+            ? 'Anyone with Baobab can scan this to add you.'
+            : 'Setting up your card…'}
         </Text>
       </View>
       <View style={styles.card}>
@@ -45,14 +78,30 @@ export default function MyCardQrScreen() {
           )}
         </View>
 
-        <View style={styles.qrPlaceholder}>
-          <View style={styles.qrSurface}>
-            <QRCode value={payload} size={220} color="#111111" backgroundColor="#F7F1EA" />
+        {isCardReady ? (
+          <View style={styles.qrPlaceholder}>
+            <View style={styles.qrSurface}>
+              <QRCode value={payload!} size={220} color="#111111" backgroundColor="#F7F1EA" />
+            </View>
+            <Text style={styles.qrSubtext}>
+              Ask someone to scan your Baobab card.
+            </Text>
           </View>
-          <Text style={styles.qrSubtext}>
-            Ask someone to scan your Baobab card.
-          </Text>
-        </View>
+        ) : (
+          <View style={styles.qrPlaceholder}>
+            <View style={styles.setupContent}>
+              <Text style={styles.setupTitle}>{'Setting up your card…'}</Text>
+              <Text style={styles.setupBody}>
+                {'Your Baobab code will be ready in a moment.'}
+              </Text>
+              {provisionFailed && (
+                <Pressable onPress={handleRetry} style={styles.retryAction}>
+                  <Text style={styles.retryActionText}>{'Retry'}</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
         <Pressable onPress={() => router.push('../me/edit')} style={styles.editButton}>
           <Text style={styles.editButtonText}>Edit my card</Text>
         </Pressable>
@@ -181,6 +230,36 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  setupContent: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  setupTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  setupBody: {
+    fontSize: 12,
+    color: colors.text.muted,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  retryAction: {
+    marginTop: spacing.xs,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+  },
+  retryActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.secondary,
   },
   editButton: {
     marginTop: spacing.xs,
