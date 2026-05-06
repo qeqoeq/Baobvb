@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { deriveAvatarSeed, normalizeHandleInput } from '../../lib/identity-format';
+import { upsertUserHandle } from '../../lib/public-profile';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function EditMyCardScreen() {
@@ -23,6 +24,7 @@ export default function EditMyCardScreen() {
   const [handle, setHandle] = useState(me.handle);
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(me.photoUri ?? null);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const handleInputRef = useRef<TextInput>(null);
 
   const handlePickPhoto = async () => {
@@ -44,7 +46,9 @@ export default function EditMyCardScreen() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return;
+
     const cleanDisplayName = displayName.trim();
     const cleanHandle = normalizeHandleInput(handle);
     const cleanAvatarSeed = deriveAvatarSeed(cleanDisplayName);
@@ -56,6 +60,25 @@ export default function EditMyCardScreen() {
     if (!cleanHandle) {
       setError('Handle is invalid. Use letters, numbers, dots, dashes or underscores.');
       return;
+    }
+
+    // Sync handle to the backend registry on every save.
+    // upsert_user_handle is idempotent — unchanged handles are a no-op on the backend.
+    // Calling unconditionally ensures new handles are claimed, changed handles are
+    // re-claimed, and existing users are lazily migrated on their next edit.
+    setIsSaving(true);
+    setError(null);
+    try {
+      const result = await upsertUserHandle(cleanHandle);
+      if (result.taken) {
+        setError('This handle is already taken. Choose another.');
+        return;
+      }
+    } catch {
+      setError('Could not secure this handle. Try again.');
+      return;
+    } finally {
+      setIsSaving(false);
     }
 
     const ok = updateMe({
@@ -146,15 +169,19 @@ export default function EditMyCardScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="done"
-            onSubmitEditing={handleSave}
+            onSubmitEditing={() => void handleSave()}
           />
         </View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <Pressable onPress={handleSave} style={styles.primaryButton}>
+        <Pressable
+          onPress={() => void handleSave()}
+          disabled={isSaving}
+          style={[styles.primaryButton, isSaving && styles.primaryButtonDisabled]}
+        >
           <Text style={styles.primaryButtonText}>
-            {isSetupMode ? 'Start' : 'Save my card'}
+            {isSaving ? 'Saving…' : isSetupMode ? 'Start' : 'Save my card'}
           </Text>
         </Pressable>
         <Pressable
@@ -270,6 +297,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: 'center',
     paddingVertical: spacing.md,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     fontSize: 15,

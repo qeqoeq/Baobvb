@@ -21,3 +21,27 @@ export async function getOrCreatePublicProfileId(): Promise<string> {
   }
   return data;
 }
+
+export type UpsertHandleResult = { success: boolean; taken: boolean };
+
+/**
+ * Claims or updates the caller's Baobab handle in the backend registry.
+ *
+ * Idempotent: calling with the caller's current handle is a no-op.
+ * Returns { success: true, taken: false } on claim or no-op.
+ * Returns { success: false, taken: true } if the handle belongs to another user.
+ *
+ * Throws on auth error, invalid format, or network failure.
+ * The caller is responsible for surfacing the 'taken' case as a user-facing error.
+ *
+ * Handle must be pre-normalised by the caller (normalizeHandleInput from lib/identity-format).
+ */
+export async function upsertUserHandle(handle: string): Promise<UpsertHandleResult> {
+  const { data, error } = await supabase.rpc('upsert_user_handle', { p_handle: handle });
+  if (error) throw error;
+  const result = data as { success: boolean; reason?: string };
+  if (!result.success && result.reason === 'taken') {
+    return { success: false, taken: true };
+  }
+  return { success: true, taken: false };
+}
