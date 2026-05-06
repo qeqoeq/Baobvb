@@ -25,11 +25,12 @@ export function buildRelationshipInviteUrl(
 export function getRelationshipInviteMessage(params: {
   relationId: string;
   inviteToken: string;
+  senderName?: string;
 }): RelationshipInvitePayload {
   const url = buildRelationshipInviteUrl(params.relationId, params.inviteToken);
+  const sender = params.senderName?.trim() || 'Someone';
   return {
-    message:
-      'I added you on Baobab, a private app for trusted relationships. Tap to confirm from your side — it takes under a minute.',
+    message: `${sender} added you on Baobab. Tap to confirm from your side — it takes under a minute.`,
     url,
   };
 }

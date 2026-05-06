@@ -17,9 +17,9 @@ export default function MyCardQrScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Show QR</Text>
+        <Text style={styles.headerTitle}>Your Baobab card</Text>
         <Text style={styles.headerText}>
-          Let someone scan your card to add you in their Garden.
+          Anyone with Baobab can scan this to add you.
         </Text>
       </View>
       <View style={styles.card}>
@@ -40,6 +40,9 @@ export default function MyCardQrScreen() {
           {baobabCode !== null && (
             <Text style={styles.baobabCode}>{`· ${baobabCode}`}</Text>
           )}
+          {me.showBaobabCode && baobabCode === null && (
+            <Text style={styles.syncingNote}>{'Code syncing…'}</Text>
+          )}
         </View>
 
         <View style={styles.qrPlaceholder}>
@@ -47,7 +50,7 @@ export default function MyCardQrScreen() {
             <QRCode value={payload} size={220} color="#111111" backgroundColor="#F7F1EA" />
           </View>
           <Text style={styles.qrSubtext}>
-            Ask someone to scan this QR with Baobab.
+            Ask someone to scan your Baobab card.
           </Text>
         </View>
         <Pressable onPress={() => router.push('../me/edit')} style={styles.editButton}>
@@ -149,6 +152,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.text.muted,
     letterSpacing: 0.5,
+  },
+  syncingNote: {
+    fontSize: 11,
+    color: colors.text.muted,
+    fontStyle: 'italic',
   },
   qrPlaceholder: {
     marginTop: spacing.md,

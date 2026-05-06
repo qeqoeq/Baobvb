@@ -294,25 +294,30 @@ export default function AddRelationScreen() {
     return (
       <View style={styles.screen}>
         <View style={styles.card}>
+          <Text style={styles.hubKicker}>{'BAOBAB'}</Text>
           <Text style={styles.title}>{'Add someone'}</Text>
 
           <View style={styles.actionList}>
+            <Pressable
+              style={[styles.actionRow, styles.actionRowPrimary]}
+              onPress={() => router.replace('/me/scan')}
+            >
+              <View style={styles.actionBody}>
+                <Text style={[styles.actionLabel, styles.actionLabelPrimary]}>{'Scan their code'}</Text>
+              </View>
+              <Text style={[styles.actionChevron, styles.actionChevronPrimary]}>{'›'}</Text>
+            </Pressable>
+            <View style={styles.actionDivider} />
             <Pressable
               style={styles.actionRow}
               onPress={() => router.push('/me/invite-by-number' as never)}
             >
               <View style={styles.actionBody}>
-                <Text style={styles.actionLabel}>{'Invite with their number'}</Text>
-                <Text style={styles.actionCaption}>{'Type a number to send an invite'}</Text>
+                <Text style={styles.actionLabel}>{'Send invite'}</Text>
+                <Text style={styles.actionCaption}>{'Use their phone number.'}</Text>
               </View>
               <Text style={styles.actionChevron}>{'›'}</Text>
             </Pressable>
-          </View>
-
-          <View style={styles.orDivider}>
-            <View style={styles.orLine} />
-            <Text style={styles.orText}>{'or'}</Text>
-            <View style={styles.orLine} />
           </View>
 
           <Pressable style={styles.addPrivatelyBtn} onPress={() => setMode('private')}>
@@ -340,7 +345,7 @@ export default function AddRelationScreen() {
           showsVerticalScrollIndicator={false}
         >
         <View style={styles.card}>
-          <Text style={styles.title}>{'Add a person'}</Text>
+          <Text style={styles.title}>{'Add someone'}</Text>
           <Text style={styles.subtitle}>{'What do you call this person?'}</Text>
 
           <View style={styles.scanHintCard}>
@@ -464,6 +469,13 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
+  hubKicker: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.text.secondary,
+    letterSpacing: 2.5,
+    textTransform: 'uppercase',
+  },
   title: {
     fontSize: 22,
     fontWeight: '700',
@@ -508,6 +520,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.text.muted,
   },
+  actionRowPrimary: {
+    backgroundColor: colors.accent.deepTeal + '0E',
+  },
+  actionLabelPrimary: {
+    color: colors.accent.deepTeal,
+  },
+  actionChevronPrimary: {
+    color: colors.accent.deepTeal,
+  },
   actionDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border.soft,
@@ -533,9 +554,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   addPrivatelyText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
-    color: colors.text.secondary,
+    color: colors.text.muted,
   },
   // ── Scan hint ──────────────────────────────────────────────────────────────
 

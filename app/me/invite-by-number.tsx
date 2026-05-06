@@ -21,7 +21,7 @@ import { createRelationshipInviteForCurrentUser } from '../../lib/reveal-shared-
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function InviteByNumberScreen() {
-  const { addRelation, setCanonicalRelationId } = useRelationsStore();
+  const { me, addRelation, setCanonicalRelationId } = useRelationsStore();
   const [phone, setPhone] = useState('');
   const [label, setLabel] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,6 +62,7 @@ export default function InviteByNumberScreen() {
         const { message, url } = getRelationshipInviteMessage({
           relationId: canonicalId,
           inviteToken: invite.invite_token,
+          senderName: me.displayName,
         });
         await Share.share({ message: url ? `${message}\n${url}` : message });
       } catch {

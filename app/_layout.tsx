@@ -255,7 +255,7 @@ export default function RootLayout() {
       />
       <Stack.Screen
         name="relation/add"
-        options={{ title: 'Add a person', presentation: 'modal' }}
+        options={{ title: 'Add someone', presentation: 'modal' }}
       />
       <Stack.Screen
         name="relation/edit/[id]"

@@ -46,7 +46,7 @@ const PILLAR_ORDER: PillarKey[] = [
 
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
-  const { relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation } = useRelationsStore();
+  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation } = useRelationsStore();
   const [sharedReveal, setSharedReveal] = useState<Awaited<
     ReturnType<typeof getSharedRevealRecordForCurrentUser>
   > | null>(null);
@@ -244,6 +244,7 @@ export default function RelationDetailScreen() {
       const { message, url } = getRelationshipInviteMessage({
         relationId: canonicalId,
         inviteToken: invite.invite_token,
+        senderName: me.displayName,
       });
       await Share.share({ message: url ? `${message}\n${url}` : message });
     } catch (error) {

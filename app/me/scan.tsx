@@ -69,9 +69,9 @@ export default function ScanCardScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Scan</Text>
+        <Text style={styles.headerTitle}>Scan their Baobab card</Text>
         <Text style={styles.headerText}>
-          Scan a Baobab person card to add someone quickly.
+          Point your camera at their Baobab card.
         </Text>
       </View>
       <View style={styles.cameraWrap}>
