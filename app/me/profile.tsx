@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Svg, { G, Path } from 'react-native-svg';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
@@ -25,11 +26,12 @@ export default function ProfileScreen() {
       {/* ── Back ─────────────────────────────────────────────────────────────── */}
       <Pressable style={styles.backRow} onPress={() => router.back()}>
         <Ionicons name="chevron-back" size={17} color={colors.text.muted} />
-        <Text style={styles.backLabel}>{'World'}</Text>
+        <Text style={styles.backLabel}>{'Bao'}</Text>
       </Pressable>
 
       {/* ── Identity ─────────────────────────────────────────────────────────── */}
       <View style={styles.identityZone}>
+        <Text style={styles.identityKicker}>{'BAOBAB'}</Text>
         <Pressable style={styles.avatarContainer} onPress={() => router.push('/me/edit')}>
           <View style={styles.avatarRing}>
             <View style={styles.avatarInner}>
@@ -66,42 +68,92 @@ export default function ProfileScreen() {
       </View>
 
       {/* ── Share ────────────────────────────────────────────────────────────── */}
-      <View style={styles.shareRow}>
+      <View style={styles.shareSection}>
+        <View style={styles.shareRow}>
+          <TouchableOpacity
+            style={[styles.shareBtn, styles.shareBtnPrimary]}
+            onPress={() => router.push('/me/scan')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="scan-outline" size={24} color={colors.accent.warmGold} />
+            <Text style={styles.shareBtnLabel}>{'Scan'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.shareBtn, styles.shareBtnPrimary]}
+            onPress={() => router.push('/me/qr')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="qr-code-outline" size={24} color={colors.accent.warmGold} />
+            <Text style={styles.shareBtnLabel}>{'My Bao'}</Text>
+          </TouchableOpacity>
+        </View>
         <TouchableOpacity
-          style={styles.shareBtn}
-          onPress={() => router.push('/me/scan')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="scan-outline" size={24} color={colors.accent.warmGold} />
-          <Text style={styles.shareBtnLabel}>{'Scan'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.shareBtn}
-          onPress={() => router.push('/me/qr')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="qr-code-outline" size={24} color={colors.accent.warmGold} />
-          <Text style={styles.shareBtnLabel}>{'My QR'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.shareBtn}
+          style={styles.shareBtnSecondary}
           onPress={() => router.push('/relation/add')}
           activeOpacity={0.7}
         >
-          <Ionicons name="person-add-outline" size={24} color={colors.accent.warmGold} />
-          <Text style={styles.shareBtnLabel}>{'Add'}</Text>
+          <Ionicons name="person-add-outline" size={18} color={colors.text.secondary} />
+          <Text style={styles.shareBtnSecondaryLabel}>{'Add someone'}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* ── Account ──────────────────────────────────────────────────────────── */}
-      <View style={styles.accountCard}>
-        <Pressable style={styles.actionRow} onPress={() => router.push('/me/settings')}>
-          <Text style={styles.actionLabel}>{'Settings'}</Text>
-          <Text style={styles.chevron}>{'›'}</Text>
+      <View style={styles.utilitySection}>
+        <Pressable style={styles.settingsLink} onPress={() => router.push('/me/settings')}>
+          <Text style={styles.settingsLinkText}>{'Settings'}</Text>
         </Pressable>
       </View>
 
+      <View pointerEvents="none" style={styles.treeZone}>
+        <View style={styles.treeGlow} />
+        <BaoTreeMark />
+      </View>
+
     </ScrollView>
+  );
+}
+
+function BaoTreeMark() {
+  return (
+    <Svg width={210} height={164} viewBox="0 0 180 140">
+      <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <Path
+          d="M24 78C34 55 56 44 90 44C124 44 146 55 156 78"
+          stroke={colors.accent.leafGreen}
+          strokeOpacity={0.30}
+          strokeWidth={1.8}
+        />
+        <Path
+          d="M36 86C48 66 66 58 90 58C114 58 132 66 144 86"
+          stroke={colors.accent.warmGold}
+          strokeOpacity={0.28}
+          strokeWidth={1.5}
+        />
+        <Path
+          d="M90 72C90 86 89 95 89 107"
+          stroke={colors.accent.warmGold}
+          strokeOpacity={0.36}
+          strokeWidth={2}
+        />
+        <Path
+          d="M82 112C86 107 88 103 89 99"
+          stroke={colors.accent.softCoral}
+          strokeOpacity={0.26}
+          strokeWidth={1.5}
+        />
+        <Path
+          d="M96 112C92 107 90 103 89 99"
+          stroke={colors.accent.softCoral}
+          strokeOpacity={0.26}
+          strokeWidth={1.5}
+        />
+        <Path
+          d="M66 72C72 62 79 57 90 55C101 57 108 62 114 72"
+          stroke={colors.accent.leafGreen}
+          strokeOpacity={0.22}
+          strokeWidth={1.2}
+        />
+      </G>
+    </Svg>
   );
 }
 
@@ -117,6 +169,7 @@ const styles = StyleSheet.create({
     paddingTop: 48,
     paddingBottom: spacing.lg * 2,
     gap: spacing.lg,
+    flexGrow: 1,
   },
 
   // ── Back ───────────────────────────────────────────────────────────────────
@@ -138,8 +191,16 @@ const styles = StyleSheet.create({
   identityZone: {
     alignItems: 'center',
     paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
     gap: spacing.xs,
+  },
+  identityKicker: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.accent.warmGold,
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
   },
   avatarContainer: {
     position: 'relative',
@@ -204,13 +265,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.background.tertiary,
-    borderRadius: radius.sm,
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.border.soft,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 5,
-    marginTop: 2,
+    borderColor: colors.accent.warmGold + '24',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 1,
+    marginTop: spacing.xs,
   },
   codeLabel: {
     fontSize: 10,
@@ -228,6 +289,9 @@ const styles = StyleSheet.create({
 
   // ── Share row ──────────────────────────────────────────────────────────────
 
+  shareSection: {
+    gap: spacing.sm,
+  },
   shareRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -235,50 +299,60 @@ const styles = StyleSheet.create({
   shareBtn: {
     flex: 1,
     backgroundColor: colors.background.secondary,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border.soft,
-    paddingVertical: spacing.md,
+    borderColor: colors.accent.warmGold + '28',
+    paddingVertical: spacing.md + 2,
     alignItems: 'center',
     gap: 6,
+  },
+  shareBtnPrimary: {
+    backgroundColor: colors.background.secondary,
   },
   shareBtnLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.text.muted,
+    color: colors.text.secondary,
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    letterSpacing: 0.6,
   },
-
-  // ── Account card ───────────────────────────────────────────────────────────
-
-  accountCard: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    overflow: 'hidden',
-  },
-  actionRow: {
+  shareBtnSecondary: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md + 2,
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm + 2,
   },
-  actionLabel: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.text.primary,
-    fontWeight: '500',
+  shareBtnSecondaryLabel: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    fontWeight: '600',
   },
-  actionDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border.soft,
-    marginLeft: spacing.lg,
+  utilitySection: {
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingTop: spacing.sm,
   },
-  chevron: {
-    fontSize: 18,
+  settingsLink: {
+    alignItems: 'center',
+  },
+  settingsLinkText: {
+    fontSize: 12,
     color: colors.text.muted,
+    fontWeight: '600',
   },
-
+  treeZone: {
+    flex: 1,
+    minHeight: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: spacing.md,
+  },
+  treeGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 90,
+    borderRadius: 80,
+    backgroundColor: colors.accent.leafGreen + '1A',
+  },
 });

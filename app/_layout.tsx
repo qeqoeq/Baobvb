@@ -226,11 +226,11 @@ export default function RootLayout() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
         name="me/qr"
-        options={{ title: 'My card', presentation: 'modal' }}
+        options={{ headerShown: false, presentation: 'modal' }}
       />
       <Stack.Screen
         name="me/scan"
-        options={{ title: 'Scan card', presentation: 'modal' }}
+        options={{ headerShown: false, presentation: 'modal' }}
       />
       <Stack.Screen
         name="me/profile"
@@ -255,7 +255,7 @@ export default function RootLayout() {
       />
       <Stack.Screen
         name="relation/add"
-        options={{ title: 'Add someone', presentation: 'modal' }}
+        options={{ headerShown: false, presentation: 'modal' }}
       />
       <Stack.Screen
         name="relation/edit/[id]"

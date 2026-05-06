@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle as SvgCircle, Defs, G, Line, RadialGradient, Rect, Stop, Text as SvgText } from 'react-native-svg';
+import { Image } from 'expo-image';
 
 import { colors } from '../../constants/colors';
 import { radius as radiusConst, spacing } from '../../constants/spacing';
@@ -35,12 +36,14 @@ type TooltipState = {
 
 type Props = {
   members: MapMember[];
-  me: { displayName: string; avatarSeed: string };
+  me: { displayName: string; avatarSeed: string; photoUri?: string | null };
   size: number;
   onOverflowTap: () => void;
   onNodeTap: (member: MapMember) => void;
   /** Optional: tap on the center (me) node. Used by Circle home as the construction entry. */
   onCenterTap?: () => void;
+  /** Optional: long press on the center node. Used for direct card access from Bao. */
+  onCenterLongPress?: () => void;
   /**
    * Full graph member set (direct + primarily_via) for territorial angular sort.
    * When provided, world-openers cluster toward 12 o'clock.
@@ -61,8 +64,9 @@ type Props = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, onCenterTap, allMembers, centerRadius, centerColor, emptyText }: Props) {
+export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, onCenterTap, onCenterLongPress, allMembers, centerRadius, centerColor, emptyText }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [centerLongPressActive, setCenterLongPressActive] = useState(false);
 
   // Dismiss stale tooltip whenever the member set changes (filter switch)
   useEffect(() => { setTooltip(null); }, [members]);
@@ -229,7 +233,10 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
         {/* Center — Me/Gateway — layered glow; radius + color driven by props */}
         <SvgCircle cx={cx} cy={cy} r={effectiveCenterR + 12} fill={effectiveCenterFill} fillOpacity={0.08} />
         <SvgCircle cx={cx} cy={cy} r={effectiveCenterR + 6}  fill={effectiveCenterFill} fillOpacity={0.14} />
-        <SvgCircle cx={cx} cy={cy} r={effectiveCenterR}      fill={effectiveCenterFill} fillOpacity={0.88} />
+        {/* Fill circle — only when no photo; photo is rendered in a View layer above SVG */}
+        {!me.photoUri && (
+          <SvgCircle cx={cx} cy={cy} r={effectiveCenterR} fill={effectiveCenterFill} fillOpacity={0.88} />
+        )}
         {/* Tappable ring — fine stroke signals interactivity when onCenterTap is wired */}
         {onCenterTap && (
           <SvgCircle
@@ -241,14 +248,17 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
             strokeOpacity={0.35}
           />
         )}
-        <SvgText
-          x={cx} y={cy + (effectiveCenterR < 26 ? 5 : 6)}
-          fontSize={effectiveCenterR < 26 ? 14 : 18} fontWeight="700"
-          fill={colors.text.primary}
-          textAnchor="middle"
-        >
-          {meInitial}
-        </SvgText>
+        {/* Initial — only when no photo */}
+        {!me.photoUri && (
+          <SvgText
+            x={cx} y={cy + (effectiveCenterR < 26 ? 5 : 6)}
+            fontSize={effectiveCenterR < 26 ? 14 : 18} fontWeight="700"
+            fill={colors.text.primary}
+            textAnchor="middle"
+          >
+            {meInitial}
+          </SvgText>
+        )}
         {/* Name label — always visible; mirrors orbit label pattern */}
         <SvgText
           x={cx} y={cy + effectiveCenterR + 14}
@@ -363,6 +373,33 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
         })}
       </Svg>
 
+      {/* Center photo — rendered above SVG using expo-image for reliable cover fill.
+          SVG Image preserveAspectRatio is unreliable on native; RN + expo-image is not. */}
+      {me.photoUri && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: cx - effectiveCenterR,
+            top:  cy - effectiveCenterR,
+            width:  effectiveCenterR * 2,
+            height: effectiveCenterR * 2,
+            borderRadius: effectiveCenterR,
+            overflow: 'hidden',
+            borderWidth: 1.5,
+            borderColor: effectiveCenterFill + '8C',
+          }}
+        >
+          <Image
+            source={{ uri: me.photoUri }}
+            style={{ width: effectiveCenterR * 2, height: effectiveCenterR * 2 }}
+            contentFit="cover"
+          />
+          {/* Dark veil — pulls photo toward the graph's dark palette */}
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.18)' }]} />
+        </View>
+      )}
+
       {/* Hit targets — Pressable layer over SVG for reliable iOS touch */}
       <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
         {cloudNodes.map((node) => {
@@ -410,7 +447,18 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
       {onCenterTap && (
         <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
           <Pressable
-            onPress={onCenterTap}
+            onPress={() => {
+              if (centerLongPressActive) {
+                setCenterLongPressActive(false);
+                return;
+              }
+              onCenterTap();
+            }}
+            onLongPress={() => {
+              if (!onCenterLongPress) return;
+              setCenterLongPressActive(true);
+              onCenterLongPress();
+            }}
             style={{
               position: 'absolute',
               left: cx - (effectiveCenterR + 4),

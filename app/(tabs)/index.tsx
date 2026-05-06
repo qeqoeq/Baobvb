@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
@@ -25,7 +26,8 @@ import { useRelationsStore } from '../../store/useRelationsStore';
 export default function CircleScreen() {
   const { me, relations, evaluations } = useRelationsStore();
   const { width: screenWidth } = useWindowDimensions();
-  const atlasSize = screenWidth - spacing.lg * 2;
+  const { bottom: bottomInset } = useSafeAreaInsets();
+  const atlasSize = screenWidth - spacing.sm * 2;
 
   const readings = useMemo(
     () => getFoundationalReadings(relations, evaluations),
@@ -120,20 +122,25 @@ export default function CircleScreen() {
     router.push('/me/profile');
   }, []);
 
+  const handleCenterLongPress = useCallback(() => {
+    if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/me/qr');
+  }, []);
+
   return (
     <View style={styles.screen}>
+      <View pointerEvents="none" style={styles.glowAccent} />
 
-      {/* Header — world identity + network count + add person */}
       <View style={styles.header}>
         <View style={styles.headerTitleBlock}>
           <Text style={styles.headerKicker}>{'BAOBAB'}</Text>
-          <Text style={styles.headerTitle}>World</Text>
+          <Text style={styles.headerTitle}>Your Bao</Text>
         </View>
         <View style={styles.headerRight}>
           {networkCount > 0 && (
             <View style={styles.networkBadge}>
-              <Text style={styles.networkLabel}>{'Network'}</Text>
               <Text style={styles.networkCount}>{networkCount}</Text>
+              <Text style={styles.networkLabel}>{'in Bao'}</Text>
             </View>
           )}
           <Pressable
@@ -149,7 +156,7 @@ export default function CircleScreen() {
       </View>
 
       {/* Atlas — fills the remaining space; graph floats vertically centered */}
-      <View style={styles.atlasWrap}>
+      <View style={[styles.atlasWrap, { paddingBottom: Math.max(spacing.md, bottomInset) }]}>
         <View style={styles.worldCard}>
           <View style={styles.worldCardCanvas}>
             <EgoGraph
@@ -159,6 +166,7 @@ export default function CircleScreen() {
               onOverflowTap={handleOverflowTap}
               onNodeTap={handleNodeTap}
               onCenterTap={handleCenterTap}
+              onCenterLongPress={handleCenterLongPress}
               allMembers={graphMembers}
               emptyText={null}
             />
@@ -170,12 +178,12 @@ export default function CircleScreen() {
                   router.push('../relation/add');
                 }}
               >
-                <Text style={styles.emptyPromptHeadline}>{'Your world begins with one person.'}</Text>
-                <Text style={styles.emptyPromptSupport}>{'Add someone you trust to begin.'}</Text>
-                <Text style={styles.emptyPromptAction}>{'Add someone →'}</Text>
+                <Text style={styles.emptyPromptHeadline}>{'Begin with one person.'}</Text>
+                <Text style={styles.emptyPromptSupport}>{'Let Bao begin with someone you trust.'}</Text>
+                <Text style={styles.emptyPromptAction}>{'Add someone'}</Text>
               </Pressable>
             )}
-            <Text style={styles.brandWatermark}>{'BAOBAB'}</Text>
+
           </View>
           {nonRevealedCount > 0 && (
             <View style={styles.worldCardHint}>
@@ -220,31 +228,39 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
+  glowAccent: {
+    position: 'absolute',
+    top: 24,
+    right: -40,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: colors.accent.warmGold + '0C',
+  },
 
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 48,
+    paddingTop: 40,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
   },
   headerTitleBlock: {
-    gap: 1,
+    gap: 2,
   },
   headerKicker: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '700',
-    color: colors.text.secondary,
-    letterSpacing: 2.5,
+    color: colors.accent.warmGold,
+    letterSpacing: 3,
     textTransform: 'uppercase',
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text.primary,
-    letterSpacing: -0.3,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text.secondary,
+    letterSpacing: -0.1,
   },
   headerRight: {
     flexDirection: 'row',
@@ -256,14 +272,18 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 18,
+    backgroundColor: colors.background.secondary,
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + '1E',
   },
   networkBadge: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 5,
+    gap: 4,
   },
   networkCount: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: colors.text.primary,
   },
@@ -271,39 +291,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     color: colors.text.muted,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
 
-  // Atlas wrap — fills remaining height after header
   atlasWrap: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.sm,
   },
 
-  // World card — the atlas container; graph floats centered within it
   worldCard: {
     flex: 1,
     backgroundColor: colors.background.secondary,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border.soft,
+    borderColor: colors.accent.warmGold + '20',
     overflow: 'hidden',
   },
   worldCardCanvas: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  brandWatermark: {
-    position: 'absolute',
-    bottom: spacing.md,
-    alignSelf: 'center',
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.text.muted,
-    letterSpacing: 2.5,
-    opacity: 0.60,
+    paddingBottom: 16,
   },
   worldCardHint: {
     flexDirection: 'row',
@@ -311,8 +319,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.sm + 2,
     paddingBottom: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.accent.warmGold + '12',
   },
   formingDot: {
     width: 6,
@@ -347,19 +357,23 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
   },
 
-  // Empty state — shown when zero relations and nothing forming
-  // top: 65% keeps the block below the center node label (cy ≈ 50%, label bottom ≈ 57%)
   emptyPrompt: {
     position: 'absolute',
     alignSelf: 'center',
     alignItems: 'center',
-    gap: 6,
-    top: '65%',
+    gap: spacing.xs,
+    top: '63%',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.background.primary + 'B8',
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + '18',
   },
   emptyPromptHeadline: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text.secondary,
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text.primary,
     textAlign: 'center',
   },
   emptyPromptSupport: {
@@ -368,10 +382,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   emptyPromptAction: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.accent.warmGold,
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
 });

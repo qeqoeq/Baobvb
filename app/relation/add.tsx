@@ -293,6 +293,7 @@ export default function AddRelationScreen() {
   if (mode === 'hub' && !isBypass) {
     return (
       <View style={styles.screen}>
+        <View pointerEvents="none" style={styles.glowAccent} />
         <View style={styles.card}>
           <Text style={styles.hubKicker}>{'BAOBAB'}</Text>
           <Text style={styles.title}>{'Add someone'}</Text>
@@ -303,7 +304,7 @@ export default function AddRelationScreen() {
               onPress={() => router.replace('/me/scan')}
             >
               <View style={styles.actionBody}>
-                <Text style={[styles.actionLabel, styles.actionLabelPrimary]}>{'Scan their code'}</Text>
+                <Text style={[styles.actionLabel, styles.actionLabelPrimary]}>{'Scan their Bao'}</Text>
               </View>
               <Text style={[styles.actionChevron, styles.actionChevronPrimary]}>{'›'}</Text>
             </Pressable>
@@ -313,7 +314,7 @@ export default function AddRelationScreen() {
               onPress={() => router.push('/me/invite-by-number' as never)}
             >
               <View style={styles.actionBody}>
-                <Text style={styles.actionLabel}>{'Send invite'}</Text>
+                <Text style={styles.actionLabel}>{'Invite by number'}</Text>
                 <Text style={styles.actionCaption}>{'Use their phone number.'}</Text>
               </View>
               <Text style={styles.actionChevron}>{'›'}</Text>
@@ -345,16 +346,17 @@ export default function AddRelationScreen() {
           showsVerticalScrollIndicator={false}
         >
         <View style={styles.card}>
+          <Text style={styles.hubKicker}>{'BAOBAB'}</Text>
           <Text style={styles.title}>{'Add someone'}</Text>
-          <Text style={styles.subtitle}>{'What do you call this person?'}</Text>
+          <Text style={styles.subtitle}>{'Name this person for yourself.'}</Text>
 
           <View style={styles.scanHintCard}>
-            <Text style={styles.scanHintTitle}>{'Scanned card'}</Text>
+            <Text style={styles.scanHintTitle}>{'Bao card'}</Text>
             <Text style={styles.scanHintText}>
               {params.prefillHandle ?? 'No handle on this card'}
             </Text>
             {scanLookup.status === 'found' && (
-              <Text style={styles.scanHintVerified}>{'Baobab account confirmed'}</Text>
+              <Text style={styles.scanHintVerified}>{'Confirmed on Baobab'}</Text>
             )}
           </View>
 
@@ -408,13 +410,14 @@ export default function AddRelationScreen() {
         showsVerticalScrollIndicator={false}
       >
       <View style={styles.card}>
+        {!fromClaim && <Text style={styles.hubKicker}>{'BAOBAB'}</Text>}
         <Text style={styles.title}>
           {fromClaim ? 'Name this person' : 'Add privately'}
         </Text>
         <Text style={styles.subtitle}>
           {fromClaim
             ? 'Give this person a name — it stays private.'
-            : 'Just a name. Only you see it.'}
+            : 'Only you will see this.'}
         </Text>
 
         <TextInput
@@ -457,6 +460,15 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     justifyContent: 'center',
   },
+  glowAccent: {
+    position: 'absolute',
+    top: 40,
+    right: -20,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: colors.accent.warmGold + '0D',
+  },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -465,41 +477,42 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border.soft,
+    borderColor: colors.accent.warmGold + '20',
     padding: spacing.lg,
     gap: spacing.md,
   },
   hubKicker: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    color: colors.text.secondary,
-    letterSpacing: 2.5,
+    color: colors.accent.warmGold,
+    letterSpacing: 3,
     textTransform: 'uppercase',
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
     color: colors.text.primary,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 18,
     color: colors.text.secondary,
   },
 
   // ── Hub action list ────────────────────────────────────────────────────────
 
   actionList: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border.soft,
+    borderColor: colors.accent.warmGold + '20',
     overflow: 'hidden',
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.md + 2,
     gap: spacing.sm,
   },
   actionBody: {
@@ -521,13 +534,13 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
   },
   actionRowPrimary: {
-    backgroundColor: colors.accent.deepTeal + '0E',
+    backgroundColor: colors.accent.warmGold + '12',
   },
   actionLabelPrimary: {
-    color: colors.accent.deepTeal,
+    color: colors.text.primary,
   },
   actionChevronPrimary: {
-    color: colors.accent.deepTeal,
+    color: colors.accent.warmGold,
   },
   actionDivider: {
     height: StyleSheet.hairlineWidth,
@@ -558,13 +571,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.text.muted,
   },
-  // ── Scan hint ──────────────────────────────────────────────────────────────
-
   scanHintCard: {
     backgroundColor: colors.background.tertiary,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border.soft,
+    borderColor: colors.accent.warmGold + '18',
     padding: spacing.sm + 2,
     gap: 2,
   },

@@ -9,6 +9,7 @@ export const colors = {
       warmGold: '#C8956C',
       softAmber: '#E8B87A',
       deepTeal: '#2A7C7C',
+      leafGreen: '#88AB72',
       mutedSage: '#7A9E7E',
       dustyRose: '#B07282',
       softCoral: '#D4816B',
