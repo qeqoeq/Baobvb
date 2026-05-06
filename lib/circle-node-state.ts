@@ -378,9 +378,9 @@ export function deriveGatewayAccessState(
 // 4 conceptual bands → 3 visual orbits.
 // core + close → orbit 0 (inner), outer → orbit 1 (mid), edge → orbit 2 (outer).
 function proximityToOrbitIndex(band: ProximityBand): 0 | 1 | 2 {
-  if (band === 'core' || band === 'close') return 0;
-  if (band === 'outer') return 1;
-  return 2;
+  if (band === 'core') return 0;
+  if (band === 'close') return 1;
+  return 2;  // outer + edge
 }
 
 // Orbit fractions of maxR (from center). Minimums guarantee center clearance.
@@ -752,7 +752,7 @@ export function applyNodeSpread(
     const dy = n.cy - canvasCy;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
     const angle = Math.atan2(dy, dx);
-    const newDist = dist * (1 + (rh - 0.5) * 0.22);
+    const newDist = dist * (1 + (rh - 0.5) * 0.26);
     const newAngle = angle + (ah - 0.5) * 0.28;
     return {
       ...n,
@@ -763,7 +763,7 @@ export function applyNodeSpread(
 
   // Phase 2: pair repulsion
   const pos = jittered.map((n) => ({ cx: n.cx, cy: n.cy }));
-  const MAX_PUSH = 7;
+  const MAX_PUSH = 10;
   for (let pass = 0; pass < 3; pass++) {
     for (let i = 0; i < pos.length; i++) {
       for (let j = i + 1; j < pos.length; j++) {

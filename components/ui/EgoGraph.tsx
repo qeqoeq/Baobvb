@@ -278,16 +278,16 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
               <G key={OVERFLOW_ID}>
                 <SvgCircle
                   cx={node.cx} cy={node.cy}
-                  r={GATEWAY_NODE_RADIUS.low}
-                  fill={colors.background.tertiary}
-                  stroke={colors.border.strong}
-                  strokeWidth={1}
-                  strokeOpacity={0.6}
+                  r={GATEWAY_NODE_RADIUS.low + 2}
+                  fill={colors.background.secondary}
+                  stroke={colors.accent.warmGold}
+                  strokeWidth={1.2}
+                  strokeOpacity={0.65}
                 />
                 <SvgText
                   x={node.cx} y={node.cy + 4}
                   fontSize={10} fontWeight="700"
-                  fill={colors.text.secondary}
+                  fill={colors.accent.warmGold}
                   textAnchor="middle"
                 >
                   {`+${overflowCount}`}
@@ -302,7 +302,8 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
           const initial    = (member.avatarSeed || member.name.charAt(0) || '?').toUpperCase();
           const dotColor   = CIRCLE_NODE_STATUS_COLOR[member.status];
           const isUnread   = member.status === 'unread';
-          const showLabel  = sparseMode || member.proximityBand === 'core' || member.proximityBand === 'close';
+          const denseMode  = visible.length > 14;
+          const showLabel  = sparseMode || member.proximityBand === 'core' || (!denseMode && member.proximityBand === 'close');
           const rawLabel   = displayNames.get(member.id) ?? member.name;
           const truncLen   = sparseMode ? 10 : 8;
           const truncName  = rawLabel.length > truncLen ? `${rawLabel.slice(0, truncLen - 1)}\u2026` : rawLabel;

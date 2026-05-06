@@ -94,6 +94,20 @@ export default function CircleScreen() {
     [readings],
   );
 
+  // Active forming only: cooking_reveal or waiting_other_side WITH a private reading.
+  // Excludes unread/private contacts (snap status waiting_other_side, no reading yet) —
+  // those are not in an active Baobab flow and should not count as "forming".
+  const formingCount = useMemo(
+    () => readings.filter((r) =>
+      !r.relation.archived && (
+        r.relation.localState.revealSnapshot.status === 'cooking_reveal' ||
+        (r.relation.localState.revealSnapshot.status === 'waiting_other_side' &&
+          r.hasFoundationalReading)
+      ),
+    ).length,
+    [readings],
+  );
+
   // Gateway tap → Through X. Locked gateway → alert. Regular node → relation screen.
   const handleNodeTap = useCallback((member: MapMember) => {
     if (member.gatewayAccessState === 'open') {
@@ -185,7 +199,7 @@ export default function CircleScreen() {
             )}
 
           </View>
-          {nonRevealedCount > 0 && (
+          {(readyCount > 0 || formingCount > 0) && (
             <View style={styles.worldCardHint}>
               {readyCount > 0 && (
                 <Pressable
@@ -198,17 +212,17 @@ export default function CircleScreen() {
                   </Text>
                 </Pressable>
               )}
-              {readyCount > 0 && nonRevealedCount > readyCount && (
+              {readyCount > 0 && formingCount > 0 && (
                 <Text style={styles.worldCardHintDivider}>{'·'}</Text>
               )}
-              {nonRevealedCount > readyCount && (
+              {formingCount > 0 && (
                 <Pressable
                   style={styles.worldCardHintChunk}
                   onPress={() => router.push({ pathname: '/garden', params: { filter: 'forming' } })}
                 >
                   <View style={styles.formingDot} />
                   <Text style={styles.worldCardHintText}>
-                    {`${nonRevealedCount - readyCount} forming`}
+                    {`${formingCount} forming`}
                   </Text>
                 </Pressable>
               )}
