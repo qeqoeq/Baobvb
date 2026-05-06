@@ -270,6 +270,24 @@ export default function RelationDetailScreen() {
     }
   };
 
+  const handleArchive = () => {
+    Alert.alert(
+      'Archive relationship',
+      'Removes this from your active network.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Archive',
+          style: 'destructive',
+          onPress: () => {
+            archiveRelation(relation.id);
+            navigateAway();
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
@@ -505,6 +523,14 @@ export default function RelationDetailScreen() {
           </Pressable>
         </View>
       ) : null}
+
+      {!relation.archived && (
+        <View style={styles.managementZone}>
+          <Pressable onPress={handleArchive} style={styles.archiveAction}>
+            <Text style={styles.archiveActionText}>Archive relationship</Text>
+          </Pressable>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -960,6 +986,19 @@ const styles = StyleSheet.create({
   draftResolutionArchiveText: {
     fontSize: 12,
     fontWeight: '600',
+    color: colors.text.muted,
+    textDecorationLine: 'underline',
+  },
+  managementZone: {
+    alignItems: 'center',
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  archiveAction: {
+    paddingVertical: spacing.xs,
+  },
+  archiveActionText: {
+    fontSize: 12,
     color: colors.text.muted,
     textDecorationLine: 'underline',
   },

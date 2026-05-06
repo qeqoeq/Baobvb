@@ -89,7 +89,7 @@ export default function ProfileScreen() {
           activeOpacity={0.7}
         >
           <Ionicons name="person-add-outline" size={24} color={colors.accent.warmGold} />
-          <Text style={styles.shareBtnLabel}>{'Link'}</Text>
+          <Text style={styles.shareBtnLabel}>{'Add'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -97,13 +97,6 @@ export default function ProfileScreen() {
       <View style={styles.accountCard}>
         <Pressable style={styles.actionRow} onPress={() => router.push('/me/settings')}>
           <Text style={styles.actionLabel}>{'Settings'}</Text>
-          <Text style={styles.chevron}>{'›'}</Text>
-        </Pressable>
-
-        <View style={styles.actionDivider} />
-
-        <Pressable style={styles.actionRow} onPress={() => router.push('/relation/archived')}>
-          <Text style={styles.actionLabel}>{'Archived'}</Text>
           <Text style={styles.chevron}>{'›'}</Text>
         </Pressable>
       </View>

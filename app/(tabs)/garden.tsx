@@ -49,6 +49,21 @@ export default function GardenScreen() {
     [entries],
   );
 
+  const readyCount = useMemo(
+    () => entries.filter((entry) =>
+      entry.relation.localState.revealSnapshot.status === 'reveal_ready',
+    ).length,
+    [entries],
+  );
+
+  const formingCount = useMemo(
+    () => entries.filter((entry) => {
+      const s = entry.relation.localState.revealSnapshot.status;
+      return s !== 'revealed' && s !== 'reveal_ready';
+    }).length,
+    [entries],
+  );
+
   const filteredEntries = useMemo(() => {
     const sortedActive = [...entries].sort((a, b) => b.recentDate.localeCompare(a.recentDate));
     const sortedArchived = [...archivedEntries].sort((a, b) => b.recentDate.localeCompare(a.recentDate));
@@ -91,7 +106,7 @@ export default function GardenScreen() {
       case 'ready':       return 'ready';
       case 'forming':     return 'forming';
       case 'active':
-      default:            return 'links';
+      default:            return 'relationships';
     }
   }, [selectedFilter]);
 
@@ -146,11 +161,18 @@ export default function GardenScreen() {
           <Text style={styles.pulseChipLabel}>To nurture</Text>
         </Pressable>
         <Pressable
-          onPress={() => setSelectedFilter('archived')}
-          style={[styles.pulseChip, selectedFilter === 'archived' && styles.pulseChipActive]}
+          onPress={() => setSelectedFilter('ready')}
+          style={[styles.pulseChip, selectedFilter === 'ready' && styles.pulseChipActive]}
         >
-          <Text style={styles.pulseChipValue}>{archivedRelations.length}</Text>
-          <Text style={styles.pulseChipLabel}>Archived</Text>
+          <Text style={styles.pulseChipValue}>{readyCount}</Text>
+          <Text style={styles.pulseChipLabel}>Ready</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setSelectedFilter('forming')}
+          style={[styles.pulseChip, selectedFilter === 'forming' && styles.pulseChipActive]}
+        >
+          <Text style={styles.pulseChipValue}>{formingCount}</Text>
+          <Text style={styles.pulseChipLabel}>Forming</Text>
         </Pressable>
       </View>
 
@@ -170,7 +192,7 @@ export default function GardenScreen() {
                       ? 'Read'
                       : selectedFilter === 'toNurture'
                         ? 'Nurture'
-                        : 'Links'}
+                        : 'Relationships'}
           </Text>
           <View style={styles.sectionLine} />
           {filteredEntries.length > 0 ? (
@@ -182,12 +204,12 @@ export default function GardenScreen() {
           <View style={styles.emptyCard}>
             {entries.length === 0 ? (
               <>
-                <Text style={styles.emptyTitle}>No links yet</Text>
+                <Text style={styles.emptyTitle}>No relationships yet</Text>
                 <Text style={styles.emptyText}>
-                  Start a link to build your network.
+                  Start with someone you trust.
                 </Text>
                 <Pressable onPress={() => router.push('/relation/add')} style={styles.emptyAction}>
-                  <Text style={styles.emptyActionText}>Start a link</Text>
+                  <Text style={styles.emptyActionText}>Add someone</Text>
                 </Pressable>
               </>
             ) : selectedFilter === 'archived' ? (

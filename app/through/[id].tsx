@@ -129,7 +129,7 @@ export default function ThroughScreen() {
         {memberCount > 0 && (
           <View style={styles.opensRow}>
             <Text style={styles.opensCount}>{memberCount}</Text>
-            <Text style={styles.opensLabel}>{memberCount === 1 ? ' link' : ' links'}</Text>
+            <Text style={styles.opensLabel}>{memberCount === 1 ? ' relationship' : ' relationships'}</Text>
           </View>
         )}
       </View>
@@ -236,11 +236,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: spacing.md,
     alignSelf: 'center',
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.text.muted,
     letterSpacing: 2.5,
-    opacity: 0.45,
+    opacity: 0.60,
   },
 
 });
