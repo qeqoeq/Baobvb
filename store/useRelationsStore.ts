@@ -19,6 +19,8 @@ import {
   findAssistedReconciliationSuggestionForRelation,
   findDraftResolutionSuggestionForRelation,
 } from '../lib/assisted-reconciliation';
+// Dev-only — bundled but only callable inside __DEV__ guard. Tree-shaken in production.
+import { generateLargeNetworkSeed } from '../lib/dev/large-network-seed';
 
 export type RelationshipSideIdentityStatus = 'missing' | 'draft' | 'verified';
 
@@ -1918,6 +1920,26 @@ function resetDevStateToSeed() {
   });
 }
 
+function loadLargeNetworkSeedData() {
+  if (!__DEV__) return;
+  const { me, relations, evaluations } = generateLargeNetworkSeed();
+  state.me = me as typeof state.me;
+  state.relations = (relations as Parameters<typeof applyNormalizedRelationModel>[0][]).map(applyNormalizedRelationModel);
+  state.evaluations = evaluations;
+  state.places = [];
+  hydrated = true;
+  emitChange();
+  void clearPersistedState().finally(() => {
+    persistState<PersistedState>({
+      me: state.me,
+      relations: state.relations,
+      evaluations: state.evaluations,
+      places: state.places,
+      seedVersion: SEED_VERSION,
+    });
+  });
+}
+
 // ── hook ───────────────────────────────────────────────────────────────
 
 export function useRelationsStore() {
@@ -1952,6 +1974,7 @@ export function useRelationsStore() {
   const syncRevealReadyState = (relationId: string) => markRevealReadyIfUnlocked(relationId);
   const revealMutualRelationship = (relationId: string) => openMutualReveal(relationId);
   const resetDevState = () => resetDevStateToSeed();
+  const loadLargeNetworkSeed = () => loadLargeNetworkSeedData();
   const setAuthIdentity = (userId: string | null) => hydrateAuthIdentity(userId);
   const setPublicProfileId = (id: string | null) => hydratePublicProfileId(id);
   const setCanonicalRelationId = (localId: string, canonicalId: string) =>
@@ -1984,6 +2007,7 @@ export function useRelationsStore() {
     syncRevealReadyState,
     revealMutualRelationship,
     resetDevState,
+    loadLargeNetworkSeed,
     updateMe,
     updateShowBaobabCode,
     updatePhotoUri,

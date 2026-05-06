@@ -14,7 +14,7 @@ const VALID_FILTER_KEYS: GardenFilterKey[] = ['active', 'read', 'unread', 'toNur
 
 export default function GardenScreen() {
   const params = useLocalSearchParams<{ filter?: string }>();
-  const { activeRelations, archivedRelations, evaluations, resetDevState } = useRelationsStore();
+  const { activeRelations, archivedRelations, evaluations, resetDevState, loadLargeNetworkSeed } = useRelationsStore();
   const [selectedFilter, setSelectedFilter] = useState<GardenFilterKey>('active');
 
   // Sync incoming filter param from deep-link (e.g. from World hint taps).
@@ -295,6 +295,9 @@ export default function GardenScreen() {
 
       {__DEV__ ? (
         <View style={styles.footer}>
+          <Pressable onPress={loadLargeNetworkSeed} style={styles.devResetButton}>
+            <Text style={styles.devResetButtonText}>Load stress test — 150 contacts</Text>
+          </Pressable>
           <Pressable onPress={resetDevState} style={styles.devResetButton}>
             <Text style={styles.devResetButtonText}>Reset local dev state</Text>
           </Pressable>
