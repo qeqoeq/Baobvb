@@ -78,8 +78,6 @@ export default function MyCardQrScreen() {
               <Text style={styles.handle}>{me.handle}</Text>
               {baobabCode !== null ? (
                 <Text style={styles.baobabCode}>{`· ${baobabCode}`}</Text>
-              ) : me.showBaobabCode ? (
-                <Text style={styles.syncingNote}>{'syncing…'}</Text>
               ) : null}
             </View>
           </View>
@@ -94,8 +92,8 @@ export default function MyCardQrScreen() {
             <View style={[styles.qrPlaceholder, styles.qrPlaceholderLoading]}>
               <View style={styles.loadingContent}>
                 <BaoSprout />
-                <Text style={styles.loadingTitle}>{'Preparing your Bao'}</Text>
-                <Text style={styles.loadingBody}>{'Just a moment.'}</Text>
+                <Text style={styles.loadingTitle}>{'Your Bao is forming'}</Text>
+                <Text style={styles.loadingBody}>{'We\'re aligning both readings.'}</Text>
                 {provisionFailed ? (
                   <Pressable onPress={handleRetry} style={styles.retryAction}>
                     <Text style={styles.retryActionText}>{'Retry'}</Text>
@@ -118,12 +116,12 @@ function BaoSprout() {
   return (
     <Svg width={72} height={66} viewBox="0 0 52 48">
       <G fill="none" strokeLinecap="round" strokeLinejoin="round">
-        <Path d="M26 42C26 32 26 26 26 18" stroke="#3D2B1A" strokeWidth={2.2} strokeOpacity={0.55} />
-        <Path d="M24 44C21 42 18 41 14 41" stroke="#3D2B1A" strokeWidth={1.6} strokeOpacity={0.38} />
-        <Path d="M28 44C31 42 34 41 38 41" stroke="#3D2B1A" strokeWidth={1.6} strokeOpacity={0.38} />
-        <Path d="M26 22C21 17 15 15 10 17" stroke="#3D2B1A" strokeWidth={1.6} strokeOpacity={0.44} />
-        <Path d="M26 22C31 17 37 15 42 17" stroke="#3D2B1A" strokeWidth={1.6} strokeOpacity={0.44} />
-        <Path d="M10 13C16 9 21 8 26 9C31 8 36 9 42 13" stroke="#3D2B1A" strokeWidth={1.3} strokeOpacity={0.32} />
+        <Path d="M26 42C26 32 26 26 26 18" stroke={colors.accent.warmGold} strokeWidth={2.2} strokeOpacity={0.75} />
+        <Path d="M24 44C21 42 18 41 14 41" stroke={colors.accent.leafGreen} strokeWidth={1.6} strokeOpacity={0.55} />
+        <Path d="M28 44C31 42 34 41 38 41" stroke={colors.accent.leafGreen} strokeWidth={1.6} strokeOpacity={0.55} />
+        <Path d="M26 22C21 17 15 15 10 17" stroke={colors.accent.leafGreen} strokeWidth={1.6} strokeOpacity={0.55} />
+        <Path d="M26 22C31 17 37 15 42 17" stroke={colors.accent.leafGreen} strokeWidth={1.6} strokeOpacity={0.55} />
+        <Path d="M10 13C16 9 21 8 26 9C31 8 36 9 42 13" stroke={colors.accent.leafGreen} strokeWidth={1.3} strokeOpacity={0.40} />
       </G>
     </Svg>
   );
@@ -193,7 +191,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.7,
   },
   card: {
-    backgroundColor: '#181513',
+    backgroundColor: colors.background.secondary,
     borderRadius: radius.lg + 6,
     borderWidth: 1,
     borderColor: colors.accent.warmGold + '44',
@@ -263,6 +261,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.text.muted,
     fontStyle: 'italic',
+    opacity: 0.35,
   },
   qrPlaceholder: {
     width: '100%',
@@ -270,7 +269,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.accent.warmGold + '30',
-    backgroundColor: '#EEDFCF',
+    backgroundColor: colors.background.tertiary,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.md + 2,
@@ -293,26 +292,26 @@ const styles = StyleSheet.create({
   loadingTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.background.primary,
+    color: colors.text.primary,
     textAlign: 'center',
   },
   loadingBody: {
     fontSize: 13,
-    color: colors.background.primary + 'AA',
+    color: colors.text.secondary,
     textAlign: 'center',
   },
   retryAction: {
     marginTop: spacing.xs,
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.background.primary + '22',
+    borderColor: colors.accent.warmGold + '44',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2,
   },
   retryActionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.background.primary,
+    color: colors.accent.warmGold,
   },
   editAction: {
     alignItems: 'center',

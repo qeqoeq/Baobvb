@@ -27,7 +27,7 @@ export default function CircleScreen() {
   const { me, relations, evaluations } = useRelationsStore();
   const { width: screenWidth } = useWindowDimensions();
   const { bottom: bottomInset } = useSafeAreaInsets();
-  const atlasSize = screenWidth - spacing.sm * 2;
+  const atlasSize = screenWidth;
 
   const readings = useMemo(
     () => getFoundationalReadings(relations, evaluations),
@@ -140,7 +140,7 @@ export default function CircleScreen() {
           {networkCount > 0 && (
             <View style={styles.networkBadge}>
               <Text style={styles.networkCount}>{networkCount}</Text>
-              <Text style={styles.networkLabel}>{'in Bao'}</Text>
+              <Text style={styles.networkLabel}>{'in your Bao'}</Text>
             </View>
           )}
           <Pressable
@@ -180,7 +180,7 @@ export default function CircleScreen() {
               >
                 <Text style={styles.emptyPromptHeadline}>{'Begin with one person.'}</Text>
                 <Text style={styles.emptyPromptSupport}>{'Let Bao begin with someone you trust.'}</Text>
-                <Text style={styles.emptyPromptAction}>{'Add someone'}</Text>
+                <Text style={styles.emptyPromptAction}>{'Add'}</Text>
               </Pressable>
             )}
 
@@ -257,10 +257,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.secondary,
-    letterSpacing: -0.1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text.primary,
+    letterSpacing: -0.3,
   },
   headerRight: {
     flexDirection: 'row',
@@ -290,13 +290,13 @@ const styles = StyleSheet.create({
   networkLabel: {
     fontSize: 11,
     fontWeight: '500',
-    color: colors.text.muted,
+    color: colors.text.secondary,
     letterSpacing: 0.3,
   },
 
   atlasWrap: {
     flex: 1,
-    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.xs,
   },
 
   worldCard: {
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 16,
+    paddingBottom: spacing.lg,
   },
   worldCardHint: {
     flexDirection: 'row',
@@ -319,8 +319,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm + 2,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.xs + 2,
+    paddingBottom: spacing.xs + 2,
     borderTopWidth: 1,
     borderTopColor: colors.accent.warmGold + '12',
   },

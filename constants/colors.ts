@@ -1,37 +1,37 @@
 export const colors = {
     background: {
-      primary: '#0F1115',
-      secondary: '#1A1D23',
-      tertiary: '#242830',
+      primary: '#111313',
+      secondary: '#171A18',
+      tertiary: '#1D211D',
     },
-  
+
     accent: {
-      warmGold: '#C8956C',
+      warmGold: '#D8A85F',
       softAmber: '#E8B87A',
-      deepTeal: '#2A7C7C',
-      leafGreen: '#88AB72',
+      deepTeal: '#38C8B5',
+      leafGreen: '#8FBC72',
       mutedSage: '#7A9E7E',
       dustyRose: '#B07282',
-      softCoral: '#D4816B',
+      softCoral: '#E98F6F',
     },
-  
+
     text: {
-      primary: '#F2EDE8',
-      secondary: '#9A958E',
-      muted: '#5C5851',
+      primary: '#F4F1EA',
+      secondary: '#B8B3A8',
+      muted: '#7E7A72',
     },
-  
+
     semantic: {
       growth: '#7A9E7E',
       caution: '#D4A054',
       alert: '#C46B5C',
-      trust: '#2A7C7C',
+      trust: '#38C8B5',
     },
-  
+
     border: {
-      soft: '#2B3038',
-      strong: '#3A414C',
+      soft: '#252C25',
+      strong: '#303830',
     },
   } as const;
-  
+
   export type BaobabColors = typeof colors;
