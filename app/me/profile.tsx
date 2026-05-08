@@ -2,22 +2,49 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRef } from 'react';
+import { Pressable, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import Svg, { G, Path } from 'react-native-svg';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { deriveBaobabCode } from '../../lib/identity-format';
+import { buildPersonCardPayload, encodePersonCardPayload } from '../../lib/person-card';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function ProfileScreen() {
   const { me, updateShowBaobabCode } = useRelationsStore();
 
   const baobabCode = deriveBaobabCode(me.publicProfileId);
+  const isCardReady = Boolean(me.publicProfileId);
+  const payload = me.publicProfileId
+    ? encodePersonCardPayload(buildPersonCardPayload(me, { preferV2: true }))
+    : null;
 
   const handleToggleCode = () => {
     if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     updateShowBaobabCode(!me.showBaobabCode);
+  };
+
+  const isSendingRef = useRef(false);
+
+  const handleSend = () => {
+    if (isSendingRef.current) return;
+    if (!isCardReady) {
+      router.push('/me/qr');
+      return;
+    }
+    isSendingRef.current = true;
+    if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void Share.share({
+      message: `Add me on Baobab — ${me.handle}${baobabCode ? ` · ${baobabCode}` : ''}\n\nOpen Baobab and scan my Bao.`,
+    }).finally(() => { isSendingRef.current = false; });
+  };
+
+  const handleScan = () => {
+    if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/me/scan');
   };
 
   return (
@@ -67,36 +94,65 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {/* ── Share ────────────────────────────────────────────────────────────── */}
-      <View style={styles.shareSection}>
-        <View style={styles.shareRow}>
-          <TouchableOpacity
-            style={[styles.shareBtn, styles.shareBtnPrimary]}
-            onPress={() => router.push('/me/scan')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="scan-outline" size={24} color={colors.accent.warmGold} />
-            <Text style={styles.shareBtnLabel}>{'Scan'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.shareBtn, styles.shareBtnPrimary]}
-            onPress={() => router.push('/me/qr')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="qr-code-outline" size={24} color={colors.accent.warmGold} />
-            <Text style={styles.shareBtnLabel}>{'My Bao'}</Text>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity
-          style={styles.shareBtnSecondary}
-          onPress={() => router.push('/relation/add')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="person-add-outline" size={18} color={colors.text.secondary} />
-          <Text style={styles.shareBtnSecondaryLabel}>{'Add someone'}</Text>
+      {/* ── My Bao compact card ───────────────────────────────────────────────── */}
+      <TouchableOpacity
+        style={styles.baoCard}
+        onPress={() => {
+          if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.push('/me/qr');
+        }}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.baoCardLabel}>{'MY BAO'}</Text>
+
+        {isCardReady ? (
+          <View style={styles.baoQrSurface}>
+            <QRCode
+              value={payload!}
+              size={160}
+              color="#111111"
+              backgroundColor="#FBF3E8"
+              ecl="H"
+            />
+            {me.photoUri && (
+              <View style={styles.baoQrAvatarWrap} pointerEvents="none">
+                <View style={styles.baoQrAvatarRing}>
+                  <Image
+                    source={{ uri: me.photoUri }}
+                    style={styles.baoQrAvatarPhoto}
+                    contentFit="cover"
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+        ) : (
+          <View style={styles.baoQrLoading}>
+            <Text style={styles.baoQrLoadingText}>{'Preparing your Bao…'}</Text>
+          </View>
+        )}
+
+        <Text style={styles.baoCardHint}>{'Show · Send'}</Text>
+      </TouchableOpacity>
+
+      {/* ── Actions ──────────────────────────────────────────────────────────── */}
+      <View style={styles.actionsRow}>
+        <TouchableOpacity style={styles.actionBtn} onPress={handleSend} activeOpacity={0.7}>
+          <Ionicons name="share-outline" size={20} color={colors.text.secondary} />
+          <Text style={styles.actionBtnLabel}>{'SEND'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn} onPress={handleScan} activeOpacity={0.7}>
+          <Ionicons name="scan-outline" size={20} color={colors.text.secondary} />
+          <Text style={styles.actionBtnLabel}>{'SCAN'}</Text>
         </TouchableOpacity>
       </View>
 
+      <TouchableOpacity style={styles.addLink} onPress={() => router.push('/relation/add')} activeOpacity={0.7}>
+        <Ionicons name="person-add-outline" size={15} color={colors.text.muted} />
+        <Text style={styles.addLinkLabel}>{'Add'}</Text>
+      </TouchableOpacity>
+
+      {/* ── Utility ──────────────────────────────────────────────────────────── */}
       <View style={styles.utilitySection}>
         <Pressable style={styles.settingsLink} onPress={() => router.push('/me/settings')}>
           <Text style={styles.settingsLinkText}>{'Settings'}</Text>
@@ -287,47 +343,110 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
 
-  // ── Share row ──────────────────────────────────────────────────────────────
+  // ── My Bao compact card ────────────────────────────────────────────────────
 
-  shareSection: {
+  baoCard: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.lg + 4,
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + '44',
+    padding: spacing.md,
+    alignItems: 'center',
     gap: spacing.sm,
   },
-  shareRow: {
+  baoCardLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.accent.warmGold,
+    letterSpacing: 2.5,
+    textTransform: 'uppercase',
+  },
+  baoQrSurface: {
+    padding: 8,
+    borderRadius: radius.md,
+    backgroundColor: '#FBF3E8',
+  },
+  baoQrAvatarWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  baoQrAvatarRing: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FBF3E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  baoQrAvatarPhoto: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  baoQrLoading: {
+    width: 176,
+    height: 176,
+    borderRadius: radius.md,
+    backgroundColor: colors.background.tertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  baoQrLoadingText: {
+    fontSize: 12,
+    color: colors.text.muted,
+    textAlign: 'center',
+  },
+  baoCardHint: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.text.muted,
+    letterSpacing: 0.4,
+  },
+
+  // ── Actions ────────────────────────────────────────────────────────────────
+
+  actionsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
-  shareBtn: {
+  actionBtn: {
     flex: 1,
     backgroundColor: colors.background.secondary,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.accent.warmGold + '28',
-    paddingVertical: spacing.md + 2,
+    borderColor: colors.border.soft,
+    paddingVertical: spacing.md,
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
-  shareBtnPrimary: {
-    backgroundColor: colors.background.secondary,
-  },
-  shareBtnLabel: {
+  actionBtnLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.text.secondary,
+    color: colors.text.muted,
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
-  shareBtnSecondary: {
+  addLink: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm + 2,
+    gap: 6,
+    paddingVertical: spacing.xs,
   },
-  shareBtnSecondaryLabel: {
-    fontSize: 13,
-    color: colors.text.secondary,
+  addLinkLabel: {
+    fontSize: 12,
     fontWeight: '600',
+    color: colors.text.muted,
   },
+
+  // ── Utility ────────────────────────────────────────────────────────────────
+
   utilitySection: {
     alignItems: 'center',
     gap: spacing.md,
