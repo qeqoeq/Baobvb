@@ -30,7 +30,10 @@ export default function MyCardQrScreen() {
     setProvisionFailed(false);
     void getOrCreatePublicProfileId()
       .then((id) => { setPublicProfileId(id); })
-      .catch(() => { setProvisionFailed(true); })
+      .catch((err) => {
+        if (__DEV__) console.warn('[identity:qr] provisioning failed:', err);
+        setProvisionFailed(true);
+      })
       .finally(() => { provisioningRef.current = false; });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -41,7 +44,10 @@ export default function MyCardQrScreen() {
     setProvisionFailed(false);
     void getOrCreatePublicProfileId()
       .then((id) => { setPublicProfileId(id); })
-      .catch(() => { setProvisionFailed(true); })
+      .catch((err) => {
+        if (__DEV__) console.warn('[identity:qr] retry failed:', err);
+        setProvisionFailed(true);
+      })
       .finally(() => { provisioningRef.current = false; });
   };
 

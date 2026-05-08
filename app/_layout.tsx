@@ -158,18 +158,33 @@ export default function RootLayout() {
     }
     if (provisionedForUserIdRef.current === userId) return;
     provisionedForUserIdRef.current = userId;
-    void getOrCreatePublicProfileId()
-      .then((id) => {
-        setPublicProfileId(id);
-      })
-      .catch(() => {
-        // Best-effort: publicProfileId stays null, QR remains v1, app is unaffected.
-        // Will retry on next app launch when the user is still authenticated.
-        provisionedForUserIdRef.current = null;
-        if (__DEV__) {
-          console.warn('[identity] publicProfileId provisioning failed — QR stays v1');
+    // Retry up to 3 attempts with backoff (2 s, 4 s) to survive cold-start network
+    // conditions. Each await checks the userId guard to abort if the user signs out
+    // between attempts.
+    void (async () => {
+      const MAX_ATTEMPTS = 3;
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          const id = await getOrCreatePublicProfileId();
+          if (provisionedForUserIdRef.current !== userId) return;
+          setPublicProfileId(id);
+          return;
+        } catch (err) {
+          if (__DEV__) {
+            console.warn(`[identity] provisioning attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err);
+          }
+          if (attempt < MAX_ATTEMPTS) {
+            await new Promise<void>((resolve) => setTimeout(resolve, attempt * 2000));
+            if (provisionedForUserIdRef.current !== userId) return;
+          }
         }
-      });
+      }
+      // All attempts exhausted — allow the QR screen's own retry to take over.
+      provisionedForUserIdRef.current = null;
+      if (__DEV__) {
+        console.warn('[identity] publicProfileId provisioning exhausted — QR screen retry available');
+      }
+    })();
   }, [me.internalAuthUserId]);
 
   useEffect(() => {
