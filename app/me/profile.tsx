@@ -26,11 +26,6 @@ export default function ProfileScreen() {
     updateShowBaobabCode(!me.showBaobabCode);
   };
 
-  const handleSend = () => {
-    if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/me/qr');
-  };
-
   const handleScan = () => {
     if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push('/me/scan');
@@ -124,22 +119,17 @@ export default function ProfileScreen() {
         <Text style={styles.baoCardHint}>{'Show · Send'}</Text>
       </TouchableOpacity>
 
-      {/* ── Actions ──────────────────────────────────────────────────────────── */}
-      <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.actionBtn} onPress={handleSend} activeOpacity={0.7}>
-          <Ionicons name="share-outline" size={20} color={colors.text.secondary} />
-          <Text style={styles.actionBtnLabel}>{'SEND'}</Text>
+      {/* ── Quiet links ──────────────────────────────────────────────────────── */}
+      <View style={styles.quietLinks}>
+        <TouchableOpacity style={styles.quietLink} onPress={handleScan} activeOpacity={0.7}>
+          <Ionicons name="scan-outline" size={15} color={colors.text.muted} />
+          <Text style={styles.quietLinkLabel}>{'Scan a Bao'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={handleScan} activeOpacity={0.7}>
-          <Ionicons name="scan-outline" size={20} color={colors.text.secondary} />
-          <Text style={styles.actionBtnLabel}>{'SCAN'}</Text>
+        <TouchableOpacity style={styles.quietLink} onPress={() => router.push('/relation/add')} activeOpacity={0.7}>
+          <Ionicons name="person-add-outline" size={15} color={colors.text.muted} />
+          <Text style={styles.quietLinkLabel}>{'Add'}</Text>
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity style={styles.addLink} onPress={() => router.push('/relation/add')} activeOpacity={0.7}>
-        <Ionicons name="person-add-outline" size={15} color={colors.text.muted} />
-        <Text style={styles.addLinkLabel}>{'Add'}</Text>
-      </TouchableOpacity>
 
       {/* ── Utility ──────────────────────────────────────────────────────────── */}
       <View style={styles.utilitySection}>
@@ -398,37 +388,20 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
 
-  // ── Actions ────────────────────────────────────────────────────────────────
+  // ── Quiet links ────────────────────────────────────────────────────────────
 
-  actionsRow: {
+  quietLinks: {
     flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  actionBtn: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    gap: 5,
-  },
-  actionBtnLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.text.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  addLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.lg,
+  },
+  quietLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
     paddingVertical: spacing.xs,
   },
-  addLinkLabel: {
+  quietLinkLabel: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.text.muted,
