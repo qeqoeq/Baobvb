@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
+import * as FileSystem from 'expo-file-system/legacy';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Animated, PanResponder, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -26,12 +27,13 @@ export default function MyCardQrScreen() {
   const baobabCode = me.showBaobabCode ? deriveBaobabCode(me.publicProfileId) : null;
 
   const cardY = useRef(new Animated.Value(0)).current;
+  const qrSvgRef = useRef<any>(null);
   const shareDataRef = useRef({ handle: me.handle, baobabCode });
   shareDataRef.current = { handle: me.handle, baobabCode };
   const isSharingRef = useRef(false);
   const hasTriggeredSendRef = useRef(false);
 
-  // Stable function ref: all deps (cardY, shareDataRef, isSharingRef,
+  // Stable function ref: all deps (cardY, qrSvgRef, shareDataRef, isSharingRef,
   // hasTriggeredSendRef) are stable refs captured once by the PanResponder
   // closure. .current is re-assigned each render so it always reads fresh refs.
   const launchSendRef = useRef<() => void>(() => { /* populated below */ });
@@ -43,10 +45,30 @@ export default function MyCardQrScreen() {
       Animated.spring(cardY, { toValue: 0, useNativeDriver: false, tension: 100, friction: 18 }).start();
     });
     const { handle, baobabCode: code } = shareDataRef.current;
+    const message = `Add me on Baobab — ${handle}${code ? ` · ${code}` : ''}`;
     void (async () => {
       try {
         await triggerSendHaptics();
-        await Share.share({ message: `Add me on Baobab — ${handle}${code ? ` · ${code}` : ''}` });
+        const svgRef = qrSvgRef.current;
+        if (svgRef?.toDataURL) {
+          await new Promise<void>((resolve) => {
+            svgRef.toDataURL(async (base64: string) => {
+              try {
+                const fileUri = `${FileSystem.cacheDirectory}bao-${Date.now()}.png`;
+                await FileSystem.writeAsStringAsync(fileUri, base64, {
+                  encoding: FileSystem.EncodingType.Base64,
+                });
+                await Share.share({ url: fileUri, message });
+              } catch {
+                await Share.share({ message });
+              } finally {
+                resolve();
+              }
+            });
+          });
+        } else {
+          await Share.share({ message });
+        }
       } finally {
         isSharingRef.current = false;
         hasTriggeredSendRef.current = false;
@@ -163,6 +185,7 @@ export default function MyCardQrScreen() {
                     color="#111111"
                     backgroundColor="#FBF3E8"
                     ecl="H"
+                    getRef={(c) => { qrSvgRef.current = c; }}
                   />
                   {me.photoUri && (
                     <View style={styles.qrAvatarWrap} pointerEvents="none">
