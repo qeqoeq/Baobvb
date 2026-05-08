@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, PanResponder, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Svg, { G, Path } from 'react-native-svg';
 
@@ -23,6 +24,66 @@ export default function MyCardQrScreen() {
     ? encodePersonCardPayload(buildPersonCardPayload(me, { preferV2: true }))
     : null;
   const baobabCode = me.showBaobabCode ? deriveBaobabCode(me.publicProfileId) : null;
+
+  const cardY = useRef(new Animated.Value(0)).current;
+  const shareDataRef = useRef({ handle: me.handle, baobabCode });
+  shareDataRef.current = { handle: me.handle, baobabCode };
+  const isSharingRef = useRef(false);
+  const hasTriggeredSendRef = useRef(false);
+
+  // Stable function ref: all deps (cardY, shareDataRef, isSharingRef,
+  // hasTriggeredSendRef) are stable refs captured once by the PanResponder
+  // closure. .current is re-assigned each render so it always reads fresh refs.
+  const launchSendRef = useRef<() => void>(() => { /* populated below */ });
+  launchSendRef.current = () => {
+    if (isSharingRef.current) return;
+    isSharingRef.current = true;
+    hasTriggeredSendRef.current = true;
+    Animated.spring(cardY, { toValue: -110, useNativeDriver: false, tension: 220, friction: 12 }).start(() => {
+      Animated.spring(cardY, { toValue: 0, useNativeDriver: false, tension: 100, friction: 18 }).start();
+    });
+    const { handle, baobabCode: code } = shareDataRef.current;
+    void (async () => {
+      try {
+        await triggerSendHaptics();
+        await Share.share({ message: `Add me on Baobab — ${handle}${code ? ` · ${code}` : ''}` });
+      } finally {
+        isSharingRef.current = false;
+        hasTriggeredSendRef.current = false;
+      }
+    })();
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      // Claim immediately so iOS native gesture system doesn't steal the responder
+      // before onMoveShouldSetPanResponder fires. Safe: no Pressables inside the
+      // card when isCardReady (panHandlers are not spread when !isCardReady).
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) => gs.dy < -5 && Math.abs(gs.dy) > Math.abs(gs.dx),
+      onPanResponderMove: (_, gs) => {
+        if (gs.dy < 0) {
+          const nextY = Math.max(gs.dy * 0.75, -90);
+          cardY.setValue(nextY);
+          // Trigger on crossing during move — onPanResponderRelease can be stolen
+          // by the iOS modal gesture recognizer before the finger lifts.
+          if (!hasTriggeredSendRef.current && (gs.dy < -24 || gs.vy < -0.22)) {
+            launchSendRef.current();
+          }
+        }
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (!hasTriggeredSendRef.current) {
+          Animated.spring(cardY, { toValue: 0, useNativeDriver: false, tension: 120, friction: 14 }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        if (!hasTriggeredSendRef.current) {
+          Animated.spring(cardY, { toValue: 0, useNativeDriver: false, tension: 120, friction: 14 }).start();
+        }
+      },
+    }),
+  ).current;
 
   useEffect(() => {
     if (me.publicProfileId || provisioningRef.current) return;
@@ -66,6 +127,10 @@ export default function MyCardQrScreen() {
           <Text style={styles.brandTitle}>{'My Bao'}</Text>
         </View>
 
+        <Animated.View
+          style={[styles.cardMotion, { transform: [{ translateY: cardY }] }]}
+          {...(isCardReady ? panResponder.panHandlers : {})}
+        >
         <View style={styles.card}>
           <View style={styles.identityZone}>
             <View style={styles.avatarRing}>
@@ -89,11 +154,31 @@ export default function MyCardQrScreen() {
           </View>
 
           {isCardReady ? (
-            <View style={styles.qrPlaceholder}>
-              <View style={styles.qrSurface}>
-                <QRCode value={payload!} size={214} color="#111111" backgroundColor="#FBF3E8" />
+            <>
+              <View style={styles.qrPlaceholder}>
+                <View style={styles.qrSurface}>
+                  <QRCode
+                    value={payload!}
+                    size={214}
+                    color="#111111"
+                    backgroundColor="#FBF3E8"
+                    ecl="H"
+                  />
+                  {me.photoUri && (
+                    <View style={styles.qrAvatarWrap} pointerEvents="none">
+                      <View style={styles.qrAvatarRing}>
+                        <Image
+                          source={{ uri: me.photoUri }}
+                          style={styles.qrAvatarPhoto}
+                          contentFit="cover"
+                        />
+                      </View>
+                    </View>
+                  )}
+                </View>
               </View>
-            </View>
+              <Text style={styles.qrScanLabel}>{'Scan my Bao'}</Text>
+            </>
           ) : (
             <View style={[styles.qrPlaceholder, styles.qrPlaceholderLoading]}>
               <View style={styles.loadingContent}>
@@ -109,13 +194,27 @@ export default function MyCardQrScreen() {
             </View>
           )}
         </View>
+        </Animated.View>
       </View>
+
+      {isCardReady && (
+        <Text style={styles.swipeHint}>{'↑  Swipe up to send'}</Text>
+      )}
 
       <Pressable onPress={() => router.push('../me/edit')} style={styles.editAction}>
         <Text style={styles.editActionText}>{'Edit my Bao'}</Text>
       </Pressable>
     </View>
   );
+}
+
+async function triggerSendHaptics() {
+  if (process.env.EXPO_OS !== 'ios') return;
+  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  await new Promise<void>((r) => setTimeout(r, 90));
+  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  await new Promise<void>((r) => setTimeout(r, 120));
+  await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 }
 
 function BaoSprout() {
@@ -195,6 +294,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text.primary,
     letterSpacing: -0.7,
+  },
+  cardMotion: {
+    // Motion-only wrapper: no visual properties so styles.card is the sole source
+    // of border/background/padding — eliminates any style conflict with transform.
   },
   card: {
     backgroundColor: colors.background.secondary,
@@ -290,6 +393,37 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: '#FBF3E8',
   },
+  qrAvatarWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrAvatarRing: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FBF3E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  qrAvatarPhoto: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+  },
+  qrScanLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.text.muted,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
   loadingContent: {
     alignItems: 'center',
     gap: spacing.sm,
@@ -318,6 +452,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.accent.warmGold,
+  },
+  swipeHint: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.text.muted,
+    letterSpacing: 0.4,
+    textAlign: 'center',
+    opacity: 0.7,
+    paddingBottom: spacing.xs,
   },
   editAction: {
     alignItems: 'center',
