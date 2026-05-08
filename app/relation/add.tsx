@@ -300,22 +300,11 @@ export default function AddRelationScreen() {
 
           <View style={styles.actionList}>
             <Pressable
-              style={[styles.actionRow, styles.actionRowPrimary]}
-              onPress={() => router.replace('/me/scan')}
-            >
-              <View style={styles.actionBody}>
-                <Text style={[styles.actionLabel, styles.actionLabelPrimary]}>{'Scan their Bao'}</Text>
-              </View>
-              <Text style={[styles.actionChevron, styles.actionChevronPrimary]}>{'›'}</Text>
-            </Pressable>
-            <View style={styles.actionDivider} />
-            <Pressable
               style={styles.actionRow}
               onPress={() => router.push('/me/invite-by-number' as never)}
             >
               <View style={styles.actionBody}>
-                <Text style={styles.actionLabel}>{'Invite by number'}</Text>
-                <Text style={styles.actionCaption}>{'Use their phone number.'}</Text>
+                <Text style={styles.actionLabel}>{'Invite'}</Text>
               </View>
               <Text style={styles.actionChevron}>{'›'}</Text>
             </Pressable>
@@ -532,35 +521,6 @@ const styles = StyleSheet.create({
   actionChevron: {
     fontSize: 18,
     color: colors.text.muted,
-  },
-  actionRowPrimary: {
-    backgroundColor: colors.accent.warmGold + '12',
-  },
-  actionLabelPrimary: {
-    color: colors.text.primary,
-  },
-  actionChevronPrimary: {
-    color: colors.accent.warmGold,
-  },
-  actionDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border.soft,
-    marginLeft: spacing.md,
-  },
-  orDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  orLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border.soft,
-  },
-  orText: {
-    fontSize: 12,
-    color: colors.text.muted,
-    fontWeight: '500',
   },
   addPrivatelyBtn: {
     alignItems: 'center',
