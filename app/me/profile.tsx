@@ -2,8 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { useRef } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Svg, { G, Path } from 'react-native-svg';
 
@@ -27,19 +26,9 @@ export default function ProfileScreen() {
     updateShowBaobabCode(!me.showBaobabCode);
   };
 
-  const isSendingRef = useRef(false);
-
   const handleSend = () => {
-    if (isSendingRef.current) return;
-    if (!isCardReady) {
-      router.push('/me/qr');
-      return;
-    }
-    isSendingRef.current = true;
     if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    void Share.share({
-      message: `Add me on Baobab — ${me.handle}${baobabCode ? ` · ${baobabCode}` : ''}\n\nOpen Baobab and scan my Bao.`,
-    }).finally(() => { isSendingRef.current = false; });
+    router.push('/me/qr');
   };
 
   const handleScan = () => {
