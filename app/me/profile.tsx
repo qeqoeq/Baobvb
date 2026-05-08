@@ -125,7 +125,7 @@ export default function ProfileScreen() {
           <Ionicons name="scan-outline" size={15} color={colors.text.muted} />
           <Text style={styles.quietLinkLabel}>{'Scan a Bao'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quietLink} onPress={() => router.push('/relation/add')} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.quietLink} onPress={() => router.push('/me/invite-by-number')} activeOpacity={0.7}>
           <Ionicons name="person-add-outline" size={15} color={colors.text.muted} />
           <Text style={styles.quietLinkLabel}>{'Add'}</Text>
         </TouchableOpacity>
