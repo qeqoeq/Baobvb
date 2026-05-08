@@ -1,5 +1,6 @@
-import { CameraView, type BarcodeScanningResult, useCameraPermissions } from 'expo-camera';
+import { CameraView, type BarcodeScanningResult, useCameraPermissions, scanFromURLAsync } from 'expo-camera';
 import { router } from 'expo-router';
+import { launchImageLibraryAsync } from 'expo-image-picker';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -11,18 +12,20 @@ export default function ScanCardScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [hasScanned, setHasScanned] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPickingPhoto, setIsPickingPhoto] = useState(false);
 
   const resetScan = useCallback(() => {
     setHasScanned(false);
     setError(null);
   }, []);
 
-  const onScan = useCallback(
-    (result: BarcodeScanningResult) => {
+  // Shared processing — used by both camera scan and photo import.
+  const processScannedData = useCallback(
+    (rawData: string) => {
       if (hasScanned) return;
       setHasScanned(true);
 
-      const payload = parsePersonCardPayload(result.data);
+      const payload = parsePersonCardPayload(rawData);
       if (!payload) {
         setError('This code is not a valid Baobab person card.');
         return;
@@ -42,6 +45,30 @@ export default function ScanCardScreen() {
     },
     [hasScanned],
   );
+
+  const onScan = useCallback(
+    (result: BarcodeScanningResult) => processScannedData(result.data),
+    [processScannedData],
+  );
+
+  const onPickPhoto = useCallback(async () => {
+    if (isPickingPhoto) return;
+    setIsPickingPhoto(true);
+    try {
+      const picked = await launchImageLibraryAsync({ mediaTypes: 'images', allowsEditing: false, quality: 1 });
+      if (picked.canceled || !picked.assets[0]) return;
+      const barcodes = await scanFromURLAsync(picked.assets[0].uri, ['qr']);
+      if (barcodes.length === 0) {
+        setError('No Bao QR found in this image.');
+        return;
+      }
+      processScannedData(barcodes[0].data);
+    } catch {
+      setError('No Bao QR found in this image.');
+    } finally {
+      setIsPickingPhoto(false);
+    }
+  }, [isPickingPhoto, processScannedData]);
 
   if (!permission) {
     return <View style={styles.screen} />;
@@ -98,6 +125,15 @@ export default function ScanCardScreen() {
           <Text style={styles.footerText}>
             Hold steady and keep the code inside the frame.
           </Text>
+          <Pressable
+            onPress={onPickPhoto}
+            disabled={isPickingPhoto}
+            style={styles.secondaryButton}
+          >
+            <Text style={[styles.secondaryButtonText, isPickingPhoto && styles.secondaryButtonTextDim]}>
+              {isPickingPhoto ? 'Scanning…' : 'Scan from Photos'}
+            </Text>
+          </Pressable>
           <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Close</Text>
           </Pressable>
@@ -208,6 +244,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.text.secondary,
+  },
+  secondaryButtonTextDim: {
+    opacity: 0.4,
   },
   footer: {
     gap: spacing.xs,
