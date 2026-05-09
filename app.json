@@ -39,6 +39,12 @@
       "expo-apple-authentication",
       "expo-notifications",
       [
+        "expo-contacts",
+        {
+          "contactsPermission": "Baobab uses your contacts to invite friends. No contact data is stored or shared."
+        }
+      ],
+      [
         "expo-dev-client",
         {
           "addGeneratedScheme": false,

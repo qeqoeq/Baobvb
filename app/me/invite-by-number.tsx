@@ -1,3 +1,4 @@
+import * as Contacts from 'expo-contacts';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
@@ -25,11 +26,30 @@ export default function InviteByNumberScreen() {
   const [phone, setPhone] = useState('');
   const [label, setLabel] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedContactName, setSelectedContactName] = useState<string | null>(null);
+  const [contactError, setContactError] = useState<string | null>(null);
   const labelRef = useRef<TextInput>(null);
 
   const cleanPhone = phone.trim();
   const cleanLabel = label.trim();
   const canSubmit = cleanPhone.length >= 6 && cleanLabel.length >= 2;
+
+  const handlePickContact = async () => {
+    setContactError(null);
+    const contact = await Contacts.presentContactPickerAsync();
+    if (!contact) return;
+    const firstPhone = contact.phoneNumbers?.[0];
+    if (!firstPhone?.number) {
+      setContactError('This contact has no phone number.');
+      return;
+    }
+    const name = contact.name
+      || [contact.firstName, contact.lastName].filter(Boolean).join(' ')
+      || '';
+    setPhone(firstPhone.number);
+    if (name) setLabel(name);
+    setSelectedContactName(name || null);
+  };
 
   const handleCreate = async () => {
     if (!canSubmit || isSubmitting) return;
@@ -86,11 +106,33 @@ export default function InviteByNumberScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
-          <Text style={styles.title}>{'Invite with their number'}</Text>
+          <Text style={styles.title}>{'Invite someone'}</Text>
           <Text style={styles.subtitle}>
-            {'An invite link will open on their side. They confirm when ready.'}
+            {'Choose someone to invite. Your contacts stay on this device.'}
           </Text>
 
+          {/* ── Contact picker ────────────────────────────────────────── */}
+          <Pressable
+            style={styles.contactPickerBtn}
+            onPress={() => void handlePickContact()}
+          >
+            <Text style={styles.contactPickerText}>
+              {selectedContactName ?? 'Choose contact'}
+            </Text>
+          </Pressable>
+
+          {contactError ? (
+            <Text style={styles.contactError}>{contactError}</Text>
+          ) : null}
+
+          {/* ── Divider ───────────────────────────────────────────────── */}
+          <View style={styles.orRow}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>{'or enter manually'}</Text>
+            <View style={styles.orLine} />
+          </View>
+
+          {/* ── Manual fields ─────────────────────────────────────────── */}
           <View style={styles.fieldBlock}>
             <Text style={styles.fieldLabel}>{'Phone number'}</Text>
             <TextInput
@@ -167,6 +209,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     color: colors.text.secondary,
+  },
+  contactPickerBtn: {
+    backgroundColor: colors.accent.deepTeal,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  contactPickerText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  contactError: {
+    fontSize: 12,
+    color: colors.semantic.alert,
+    textAlign: 'center',
+    marginTop: -spacing.xs,
+  },
+  orRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  orLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border.soft,
+  },
+  orText: {
+    fontSize: 11,
+    color: colors.text.muted,
+    fontWeight: '500',
   },
   fieldBlock: {
     gap: spacing.xs,
