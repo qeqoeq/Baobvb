@@ -46,3 +46,9 @@ app-example
 
 # Supabase CLI local cache (not project SQL)
 supabase/.temp/
+
+# BMAD local agent tooling
+.agents/
+.claude/
+_bmad/
+_bmad-output/
