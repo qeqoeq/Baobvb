@@ -311,7 +311,7 @@ export default function AddRelationScreen() {
           </View>
 
           <Pressable style={styles.addPrivatelyBtn} onPress={() => setMode('private')}>
-            <Text style={styles.addPrivatelyText}>{'Add privately'}</Text>
+            <Text style={styles.addPrivatelyText}>{'Start a reading'}</Text>
           </Pressable>
 
           <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
@@ -401,7 +401,7 @@ export default function AddRelationScreen() {
       <View style={styles.card}>
         {!fromClaim && <Text style={styles.hubKicker}>{'BAOBAB'}</Text>}
         <Text style={styles.title}>
-          {fromClaim ? 'Name this person' : 'Add privately'}
+          {fromClaim ? 'Name this person' : 'Start a reading'}
         </Text>
         <Text style={styles.subtitle}>
           {fromClaim
