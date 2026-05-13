@@ -144,7 +144,7 @@ export function getVisibleTierLabel(
 export function getReadingNoteText(nameRevealed: boolean, revealStatus: RevealStatus): string {
   if (nameRevealed) return 'Reading is one layer of this link.';
   if (revealStatus === 'reveal_ready') return 'The reveal is a one-time action.';
-  return 'Private until both sides are in.';
+  return 'Your reading stays private until both sides share.';
 }
 
 export function getTemporaryRelationDepth(input: {
@@ -181,12 +181,13 @@ export function getRelationSheetIdentity(input: {
   const anchorMode = deriveRelationAnchorMode(relation);
 
   if (anchorMode === 'invite_number') {
+    const isRevealed = relation.localState.revealSnapshot.status === 'revealed';
     return {
       privateLabel,
       primaryTitle: privateLabel,
-      titleEyebrow: 'Private label',
+      titleEyebrow: isRevealed ? 'Shared connection' : 'Invite pending',
       supportingText: null,
-      stateLabel: relation.archived ? 'Archived' : 'Invited by number',
+      stateLabel: relation.archived ? 'Archived' : (isRevealed ? 'Shared connection' : 'Invited by number'),
       relationDepth,
       relationDepthLabel,
       anchorLabel: 'Anchored by',
@@ -296,15 +297,15 @@ export function getRelationNextAction(input: {
   }
 
   if (input.revealStatus === 'waiting_other_side') {
+    const isInviteNumber = deriveRelationAnchorMode(input.relation) === 'invite_number';
     return {
-      title:
-        deriveRelationAnchorMode(input.relation) === 'invite_number'
-          ? 'Invite sent. Waiting for their side'
-          : 'Waiting for the other side',
+      title: isInviteNumber
+        ? 'Invite sent. Waiting for their side'
+        : 'Waiting for the other side',
       body: isSharedBackedRelation(input.relation)
         ? 'Waiting on their side.'
         : 'Ready when they join.',
-      ctaLabel: 'Invite them',
+      ctaLabel: isInviteNumber ? 'Send again' : 'Invite them',
       ctaKind: 'invite',
     };
   }

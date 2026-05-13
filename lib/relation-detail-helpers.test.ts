@@ -108,13 +108,13 @@ describe('getReadingNoteText', () => {
 
   it('returns private note for waiting_other_side', () => {
     expect(getReadingNoteText(false, 'waiting_other_side')).toBe(
-      'Private until both sides are in.',
+      'Your reading stays private until both sides share.',
     );
   });
 
   it('returns private note for cooking_reveal', () => {
     expect(getReadingNoteText(false, 'cooking_reveal')).toBe(
-      'Private until both sides are in.',
+      'Your reading stays private until both sides share.',
     );
   });
 
