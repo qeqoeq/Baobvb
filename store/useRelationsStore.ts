@@ -140,6 +140,13 @@ export type Relation = {
    * REPLACE with auto-suggested computation when cross-user trust graph is available.
    */
   viaRelationId?: string;
+  /**
+   * ISO timestamp of the first time the user opened a delivery channel for this relation's invite.
+   * Set when the user chooses Messages, WhatsApp, or More options in the invite sheet.
+   * Null / undefined if no delivery channel has ever been opened.
+   * Does not confirm the message was sent, delivered, or received.
+   */
+  inviteDeliveryOpenedAt?: string | null;
 };
 
 export type PlaceCategory = 'restaurant' | 'cafe' | 'bar' | 'spot' | 'other';
@@ -1741,6 +1748,17 @@ function setRelation(id: string, update: RelationUpdate): boolean {
   return true;
 }
 
+function setInviteDeliveryOpened(id: string): void {
+  if (!state.relations.some((r) => r.id === id)) return;
+  state.relations = state.relations.map((r) =>
+    r.id === id
+      ? { ...r, inviteDeliveryOpenedAt: r.inviteDeliveryOpenedAt ?? new Date().toISOString() }
+      : r,
+  );
+  emitChange();
+  persist();
+}
+
 function attachCanonicalRelationId(localId: string, canonicalId: string): boolean {
   let didUpdate = false;
   state.relations = state.relations.map((relation) => {
@@ -1979,6 +1997,7 @@ export function useRelationsStore() {
   const setPublicProfileId = (id: string | null) => hydratePublicProfileId(id);
   const setCanonicalRelationId = (localId: string, canonicalId: string) =>
     attachCanonicalRelationId(localId, canonicalId);
+  const markInviteDeliveryOpened = (id: string) => setInviteDeliveryOpened(id);
   const bootstrapSharedRelations = (rows: SharedRelationBootstrapInput[]) =>
     upsertBootstrappedSharedRelations(rows);
 
@@ -2016,6 +2035,7 @@ export function useRelationsStore() {
     setAuthIdentity,
     setPublicProfileId,
     setCanonicalRelationId,
+    markInviteDeliveryOpened,
     bootstrapSharedRelations,
     getAssistedReconciliationSuggestionForRelation,
     getDraftResolutionSuggestionForRelation,

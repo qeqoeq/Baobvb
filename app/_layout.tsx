@@ -266,7 +266,7 @@ export default function RootLayout() {
       />
       <Stack.Screen
         name="me/invite-by-number"
-        options={{ title: 'Invite by number', presentation: 'modal' }}
+        options={{ title: 'Invite by number' }}
       />
       <Stack.Screen
         name="relation/add"
@@ -279,7 +279,13 @@ export default function RootLayout() {
       {/* Places routes are intentionally hidden from MVP navigation; files are kept parked for later. */}
       <Stack.Screen
         name="relation/[id]"
-        options={{ title: 'Relationship', headerBackTitle: '' }}
+        options={{
+          title: '',
+          headerBackTitle: '',
+          headerStyle: { backgroundColor: colors.background.primary },
+          headerTintColor: colors.text.primary,
+          headerShadowVisible: false,
+        }}
       />
       <Stack.Screen name="invite/[relationId]" options={{ title: 'Reveal together' }} />
       <Stack.Screen

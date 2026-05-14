@@ -5,7 +5,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -14,12 +13,9 @@ import {
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
-import { isLocalDraftId, newCanonicalRelationId } from '../../lib/identity';
-import { getRelationshipInviteMessage } from '../../lib/relationship-invite';
-import { createRelationshipInviteForCurrentUser } from '../../lib/reveal-shared-repo';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
-type ScreenState = 'ready' | 'no_phone' | 'manual' | 'submitting';
+type ScreenState = 'ready' | 'no_phone' | 'manual';
 
 // ── Decorative Bao orb — concentric rings + 3 satellite nodes ─────────────────
 function BaoOrb() {
@@ -37,7 +33,7 @@ function BaoOrb() {
 }
 
 export default function InviteByNumberScreen() {
-  const { me, addRelation, setCanonicalRelationId } = useRelationsStore();
+  const { addRelation } = useRelationsStore();
   const [screenState, setScreenState] = useState<ScreenState>('ready');
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
@@ -50,50 +46,21 @@ export default function InviteByNumberScreen() {
 
   const canSubmitManual = phone.trim().length >= 6;
 
-  const sendInvite = async (anchorPhone: string, label: string) => {
-    setScreenState('submitting');
+  const createRelationAndStart = (anchorPhone: string, label: string) => {
     const effectiveLabel = label.trim() || anchorPhone.trim();
-    try {
-      const relation = addRelation(effectiveLabel, {
-        source: 'invite_number',
-        privateLabel: effectiveLabel,
-        anchorMode: 'invite_number',
-        anchorValue: anchorPhone,
-        relationDepth: 'encounter',
-      });
-      if (!relation) {
-        setErrorMsg('Could not create relationship. Try again.');
-        setScreenState('ready');
-        return;
-      }
-
-      const canonicalId = relation.canonicalRelationId ?? newCanonicalRelationId();
-      if (!relation.canonicalRelationId) {
-        setCanonicalRelationId(relation.id, canonicalId);
-      }
-      if (isLocalDraftId(canonicalId)) {
-        setErrorMsg('Could not generate invite. Try again.');
-        setScreenState('ready');
-        return;
-      }
-
-      try {
-        const invite = await createRelationshipInviteForCurrentUser(canonicalId, 'sideA');
-        const { message, url } = getRelationshipInviteMessage({
-          relationId: canonicalId,
-          inviteToken: invite.invite_token,
-          senderName: me.displayName,
-        });
-        await Share.share({ message: url ? `${message}\n${url}` : message });
-      } catch {
-        // invite/share failed — relation created, re-share available from relation/[id]
-      }
-
-      router.replace({ pathname: '/relation/[id]', params: { id: relation.id } });
-    } catch {
-      setErrorMsg('Something went wrong. Try again.');
-      setScreenState('ready');
+    const relation = addRelation(effectiveLabel, {
+      source: 'invite_number',
+      privateLabel: effectiveLabel,
+      anchorMode: 'invite_number',
+      anchorValue: anchorPhone,
+      relationDepth: 'encounter',
+    });
+    if (!relation) {
+      setErrorMsg('Could not create relationship. Try again.');
+      return;
     }
+    // Navigate to private reading first; invite is sent from relation detail after reading.
+    router.replace({ pathname: '/relation/evaluate/[id]', params: { id: relation.id } });
   };
 
   const launchPicker = async () => {
@@ -117,7 +84,7 @@ export default function InviteByNumberScreen() {
         contact.name ||
         [contact.firstName, contact.lastName].filter(Boolean).join(' ') ||
         '';
-      await sendInvite(firstPhone.number, contactName);
+      createRelationAndStart(firstPhone.number, contactName);
     } catch {
       // Native error (e.g. concurrent picker call that slipped through) — ignore silently.
     } finally {
@@ -125,15 +92,6 @@ export default function InviteByNumberScreen() {
       setIsPicking(false);
     }
   };
-
-  // ── Submitting ──────────────────────────────────────────────────────────────
-  if (screenState === 'submitting') {
-    return (
-      <View style={styles.screen}>
-        <Text style={styles.statusText}>{'Sending invite…'}</Text>
-      </View>
-    );
-  }
 
   // ── Manual entry ────────────────────────────────────────────────────────────
   if (screenState === 'manual') {
@@ -155,7 +113,7 @@ export default function InviteByNumberScreen() {
             autoFocus
             returnKeyType="done"
             onSubmitEditing={() => {
-              if (canSubmitManual) void sendInvite(phone.trim(), name.trim());
+              if (canSubmitManual) createRelationAndStart(phone.trim(), name.trim());
             }}
           />
           <TextInput
@@ -166,15 +124,15 @@ export default function InviteByNumberScreen() {
             style={[styles.input, styles.inputSecondary]}
             returnKeyType="done"
             onSubmitEditing={() => {
-              if (canSubmitManual) void sendInvite(phone.trim(), name.trim());
+              if (canSubmitManual) createRelationAndStart(phone.trim(), name.trim());
             }}
           />
           <Pressable
-            onPress={() => void sendInvite(phone.trim(), name.trim())}
+            onPress={() => createRelationAndStart(phone.trim(), name.trim())}
             disabled={!canSubmitManual}
             style={[styles.primaryButton, !canSubmitManual && styles.primaryButtonDisabled]}
           >
-            <Text style={styles.primaryButtonText}>{'Send invite'}</Text>
+            <Text style={styles.primaryButtonText}>{'Get started'}</Text>
           </Pressable>
           <Pressable onPress={() => router.back()} style={styles.ghostButton}>
             <Text style={styles.ghostButtonText}>{'Cancel'}</Text>
@@ -235,12 +193,7 @@ export default function InviteByNumberScreen() {
 
           {/* ── Copy ── */}
           <Text style={styles.title}>{'Send a Bao'}</Text>
-          <Text style={styles.body}>
-            {'Choose someone you truly know to start a private reading.'}
-          </Text>
-          <Text style={styles.microcopy}>
-            {'Nothing is public. The link reveals only when both sides share.'}
-          </Text>
+          <Text style={styles.body}>{'Choose someone you know.'}</Text>
 
           {/* ── Error ── */}
           {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}

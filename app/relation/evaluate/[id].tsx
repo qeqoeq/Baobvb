@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../../constants/colors';
@@ -11,8 +11,12 @@ import {
   type PillarKey,
   type PillarRating,
 } from '../../../lib/evaluation';
+import { newCanonicalRelationId } from '../../../lib/identity';
+import { showPhoneInviteSheet } from '../../../lib/phone-invite-sheet';
+import { getRelationshipInviteMessage } from '../../../lib/relationship-invite';
 import {
   attachSharedPrivateReadingReferenceForCurrentUser,
+  createRelationshipInviteForCurrentUser,
   getSharedRevealRecordForCurrentUser,
   startSharedCookingRevealIfReady,
 } from '../../../lib/reveal-shared-repo';
@@ -32,7 +36,7 @@ const RATING_OPTIONS: PillarRating[] = [1, 2, 3, 4, 5];
 
 export default function EvaluateScreen() {
   const { id, side } = useLocalSearchParams<{ id: string; side?: string }>();
-  const { relations, attachPrivateReadingToRelationshipSide } = useRelationsStore();
+  const { me, relations, attachPrivateReadingToRelationshipSide, setCanonicalRelationId, markInviteDeliveryOpened } = useRelationsStore();
   const targetSide: RelationshipSideKey = side === 'sideB' ? 'sideB' : 'sideA';
 
   const relation = useMemo(
@@ -53,6 +57,8 @@ export default function EvaluateScreen() {
   }, [relation, targetSide]);
 
   useEffect(() => {
+    // Do not redirect if handleSubmit just saved — it owns the navigation.
+    if (hasSavedReadingRef.current) return;
     if (!id || !relation) {
       router.back();
       return;
@@ -75,6 +81,8 @@ export default function EvaluateScreen() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Prevents the sideAlreadyHasReading guard from calling router.back() after a successful save.
+  const hasSavedReadingRef = useRef(false);
 
   const completedCount = useMemo(
     () => Object.values(ratings).filter((v) => v !== null).length,
@@ -85,6 +93,7 @@ export default function EvaluateScreen() {
     [ratings],
   );
   const progress = completedCount / PILLARS.length;
+  const isInviteNumberRelation = relation?.source === 'invite_number';
   const sourceLabel = relation?.source === 'scan' ? 'Added by scan' : 'Added manually';
   const sourceSubtext = relation?.source === 'scan' && relation.sourceHandle
     ? `Scanned from ${relation.sourceHandle}`
@@ -111,12 +120,55 @@ export default function EvaluateScreen() {
       createdAt: new Date().toISOString(),
     };
 
+    hasSavedReadingRef.current = true;
     const saved = attachPrivateReadingToRelationshipSide(evaluation, targetSide);
     if (!saved) {
       Alert.alert('Could not save reading', 'This side is not ready for a private reading yet.');
+      hasSavedReadingRef.current = false;
       setIsSubmitting(false);
       return;
     }
+
+    if (!relation.canonicalRelationId) {
+      if (relation.source === 'invite_number' && relation.anchorValue) {
+        try {
+          const canonicalId = newCanonicalRelationId();
+          setCanonicalRelationId(relation.id, canonicalId);
+          const invite = await createRelationshipInviteForCurrentUser(canonicalId, 'sideA');
+          try {
+            await attachSharedPrivateReadingReferenceForCurrentUser(
+              canonicalId,
+              'sideA',
+              evaluation.id,
+              finalRatings,
+            );
+          } catch {
+            // Additive — invite delivery is not blocked by a failed reading attach.
+          }
+          const { message, url } = getRelationshipInviteMessage({
+            relationId: canonicalId,
+            inviteToken: invite.invite_token,
+            senderName: me.displayName,
+          });
+          showPhoneInviteSheet({
+            rawPhone: relation.anchorValue,
+            privateLabel: relation.name,
+            fullMessage: url ? `${message}\n${url}` : message,
+            onDeliveryChannelOpened: () => markInviteDeliveryOpened(relation.id),
+            onDismiss: () =>
+              router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }),
+          });
+        } catch {
+          // Invite creation failed — land on relation detail where retry is available.
+          router.replace({ pathname: '/relation/[id]', params: { id: relation.id } });
+        }
+        return;
+      }
+      if (__DEV__) console.log('[evaluate:save] local-only → navigate to', relation.id);
+      router.replace({ pathname: '/relation/[id]', params: { id: relation.id } });
+      return;
+    }
+    if (__DEV__) console.log('[evaluate:save] shared-backed → canonical', relation.canonicalRelationId);
 
     try {
       // Final-path rule: shared attach only runs after invite-driven binding exists.
@@ -140,8 +192,8 @@ export default function EvaluateScreen() {
       // Shared backend remains additive; local-first flow stays primary if shared call fails.
     }
 
-    router.replace(`/relation/${id}`);
-  }, [allRated, relation, isSubmitting, ratings, attachPrivateReadingToRelationshipSide, targetSide]);
+    router.replace({ pathname: '/relation/[id]', params: { id: relation.id } });
+  }, [allRated, relation, isSubmitting, ratings, attachPrivateReadingToRelationshipSide, targetSide, me, setCanonicalRelationId, markInviteDeliveryOpened]);
 
   if (!relation || !canEvaluateSideB || sideAlreadyHasReading) {
     return (
@@ -240,7 +292,7 @@ export default function EvaluateScreen() {
           {isSubmitting
             ? 'Saving...'
             : allRated
-              ? 'Save foundational reading'
+              ? (isInviteNumberRelation ? 'Save & send invite' : 'Save foundational reading')
               : `Rate ${PILLARS.length - completedCount} more pillar${PILLARS.length - completedCount > 1 ? 's' : ''}`}
         </Text>
       </Pressable>

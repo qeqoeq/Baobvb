@@ -33,7 +33,7 @@ export type RelationNextAction = {
   title: string;
   body: string;
   ctaLabel: string | null;
-  ctaKind: 'evaluate' | 'invite' | 'reveal' | null;
+  ctaKind: 'evaluate' | 'invite' | 'reveal' | 'resend' | null;
 };
 
 type RevealStatus = RelationshipRevealSnapshot['status'];
@@ -185,9 +185,9 @@ export function getRelationSheetIdentity(input: {
     return {
       privateLabel,
       primaryTitle: privateLabel,
-      titleEyebrow: isRevealed ? 'Shared connection' : 'Invite pending',
+      titleEyebrow: isRevealed ? 'Shared connection' : 'Added by phone',
       supportingText: null,
-      stateLabel: relation.archived ? 'Archived' : (isRevealed ? 'Shared connection' : 'Invited by number'),
+      stateLabel: relation.archived ? 'Archived' : (isRevealed ? 'Shared connection' : 'Private'),
       relationDepth,
       relationDepthLabel,
       anchorLabel: 'Anchored by',
@@ -250,6 +250,7 @@ export function getRelationNextAction(input: {
   hasEvaluation: boolean;
   revealStatus: RevealStatus;
   nameRevealed: boolean;
+  deliveryChannelOpened: boolean;
 }): RelationNextAction {
   if (input.relation.archived) {
     return {
@@ -298,14 +299,24 @@ export function getRelationNextAction(input: {
 
   if (input.revealStatus === 'waiting_other_side') {
     const isInviteNumber = deriveRelationAnchorMode(input.relation) === 'invite_number';
+
+    if (isInviteNumber && input.deliveryChannelOpened) {
+      return {
+        title: 'Invite sent',
+        body: 'Waiting for them.',
+        ctaLabel: 'Send again',
+        ctaKind: 'resend',
+      };
+    }
+
     return {
       title: isInviteNumber
-        ? 'Invite sent. Waiting for their side'
+        ? 'Reading saved'
         : 'Waiting for the other side',
-      body: isSharedBackedRelation(input.relation)
-        ? 'Waiting on their side.'
-        : 'Ready when they join.',
-      ctaLabel: isInviteNumber ? 'Send again' : 'Invite them',
+      body: isInviteNumber
+        ? 'Send invite to continue.'
+        : (isSharedBackedRelation(input.relation) ? 'Waiting on their side.' : 'Ready when they join.'),
+      ctaLabel: isInviteNumber ? 'Send invite' : 'Invite them',
       ctaKind: 'invite',
     };
   }

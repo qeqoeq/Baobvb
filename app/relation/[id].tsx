@@ -1,5 +1,6 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
@@ -23,6 +24,7 @@ import {
 } from '../../lib/relationship-reveal';
 import { applyEffectiveRevealToRelation } from '../../lib/relationship-reveal-precedence';
 import {
+  attachSharedPrivateReadingReferenceForCurrentUser,
   createRelationshipInviteForCurrentUser,
   getSharedRevealRecordForCurrentUser,
   markSharedRevealReadyIfUnlocked,
@@ -34,7 +36,19 @@ import {
   getRelationNextAction,
   getRelationSheetIdentity,
 } from '../../lib/relation-detail-helpers';
+import { showPhoneInviteSheet } from '../../lib/phone-invite-sheet';
 import { useRelationsStore } from '../../store/useRelationsStore';
+
+function getHeaderTitle(
+  privateLabel: string,
+  ctaKind: 'evaluate' | 'invite' | 'reveal' | 'resend' | null,
+): string {
+  if (ctaKind === 'resend') return 'Invite';
+  const trimmed = privateLabel.trim();
+  if (trimmed.length < 3) return '';
+  if (trimmed.startsWith('(')) return '';
+  return trimmed;
+}
 
 const PILLAR_ORDER: PillarKey[] = [
   'trust',
@@ -46,10 +60,13 @@ const PILLAR_ORDER: PillarKey[] = [
 
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
-  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation } = useRelationsStore();
+  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation } = useRelationsStore();
   const [sharedReveal, setSharedReveal] = useState<Awaited<
     ReturnType<typeof getSharedRevealRecordForCurrentUser>
   > | null>(null);
+  // Prevents refreshSharedReveal from fetching an incomplete backend record
+  // during the invite creation window, which would override local state.
+  const isInviteFlowActiveRef = useRef(false);
 
   const relation = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
@@ -62,6 +79,7 @@ export default function RelationDetailScreen() {
   );
 
   const refreshSharedReveal = useCallback(async () => {
+    if (isInviteFlowActiveRef.current) return;
     if (!relation) {
       setSharedReveal(null);
       return;
@@ -178,11 +196,13 @@ export default function RelationDetailScreen() {
   });
   const isSharedIdentity = relationIdentity.titleEyebrow === 'Shared identity';
   const isScannedIdentity = relationIdentity.titleEyebrow === 'Scanned contact';
+  const deliveryChannelOpened = Boolean(relation.inviteDeliveryOpenedAt);
   const nextAction = getRelationNextAction({
     relation,
     hasEvaluation: Boolean(evaluation),
     revealStatus,
     nameRevealed,
+    deliveryChannelOpened,
   });
   const readingSectionLabel = nameRevealed ? 'Shared reading' : 'Private reading';
   // visibleScore / visibleScoreTier are derived from the revealed source of truth.
@@ -228,25 +248,59 @@ export default function RelationDetailScreen() {
   };
 
   const handleInviteToReveal = async () => {
+    if (isInviteFlowActiveRef.current) return;
+    isInviteFlowActiveRef.current = true;
     try {
-      // Ensure a canonical relation ID exists before promoting this relation to shared.
-      // If absent, generate a new UUID and persist it — idempotent on subsequent invites.
-      // This UUID replaces relation.id (localDraftId) as the backend relationship_id.
       const canonicalId = relation.canonicalRelationId ?? newCanonicalRelationId();
       if (!relation.canonicalRelationId) {
         setCanonicalRelationId(relation.id, canonicalId);
       }
-      // Hard guard: never send a localDraftId to the backend as a relation join key.
       if (isLocalDraftId(canonicalId)) {
         throw new Error('[invite] canonicalRelationId must not be a localDraftId');
       }
       const invite = await createRelationshipInviteForCurrentUser(canonicalId, 'sideA');
+
+      // Attach local reading to the shared record so the backend state is consistent
+      // before refreshSharedReveal can fire. Additive — failure does not block invite.
+      if (reading?.foundationalEvaluation) {
+        try {
+          await attachSharedPrivateReadingReferenceForCurrentUser(
+            canonicalId,
+            'sideA',
+            reading.foundationalEvaluation.id,
+            reading.foundationalEvaluation.ratings,
+          );
+        } catch {
+          // Best-effort: local reading stays primary.
+        }
+      }
+
       const { message, url } = getRelationshipInviteMessage({
         relationId: canonicalId,
         inviteToken: invite.invite_token,
         senderName: me.displayName,
       });
-      await Share.share({ message: url ? `${message}\n${url}` : message });
+      const fullMessage = url ? `${message}\n${url}` : message;
+
+      // For phone-anchored relations, offer targeted channels instead of the generic sheet.
+      if (relation.source === 'invite_number' && relation.anchorValue) {
+        showPhoneInviteSheet({
+          rawPhone: relation.anchorValue,
+          privateLabel: relationIdentity.privateLabel,
+          fullMessage,
+          onDeliveryChannelOpened: () => {
+            markInviteDeliveryOpened(relation.id);
+            if (process.env.EXPO_OS === 'ios') {
+              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+          },
+          onDismiss: () => {},
+        });
+        return;
+      }
+
+      // Non-phone relations: general share sheet.
+      await Share.share({ message: fullMessage });
     } catch (error) {
       const description = error instanceof Error ? error.message : '';
       if (description.includes('Authentication required')) {
@@ -254,6 +308,8 @@ export default function RelationDetailScreen() {
         return;
       }
       Alert.alert('Invite to reveal', 'Sharing is not available right now.');
+    } finally {
+      isInviteFlowActiveRef.current = false;
     }
   };
 
@@ -262,7 +318,10 @@ export default function RelationDetailScreen() {
       router.push(`./evaluate/${relation.id}`);
       return;
     }
-    if (nextAction.ctaKind === 'invite') {
+    if (nextAction.ctaKind === 'invite' || nextAction.ctaKind === 'resend') {
+      if (process.env.EXPO_OS === 'ios') {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       void handleInviteToReveal();
       return;
     }
@@ -290,6 +349,8 @@ export default function RelationDetailScreen() {
   };
 
   return (
+    <>
+    <Stack.Screen options={{ title: getHeaderTitle(relationIdentity.privateLabel, nextAction.ctaKind), headerBackTitle: '' }} />
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: headerAccent + '14', borderColor: headerAccent + '44' }]}>
@@ -338,155 +399,179 @@ export default function RelationDetailScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.anchorCard}>
-          <Text style={styles.anchorCardLabel}>{relationIdentity.anchorLabel}</Text>
-          <Text style={styles.anchorCardValue}>{relationIdentity.anchorValue}</Text>
-          {relationIdentity.anchorHint ? (
-            <Text style={styles.anchorCardHint}>{relationIdentity.anchorHint}</Text>
-          ) : null}
-        </View>
+        {nextAction.ctaKind !== 'resend' && (
+          <>
+            <View style={styles.anchorCard}>
+              <Text style={styles.anchorCardLabel}>{relationIdentity.anchorLabel}</Text>
+              <Text style={styles.anchorCardValue}>{relationIdentity.anchorValue}</Text>
+              {relationIdentity.anchorHint ? (
+                <Text style={styles.anchorCardHint}>{relationIdentity.anchorHint}</Text>
+              ) : null}
+            </View>
 
-        <View style={styles.depthRow}>
-          <Text style={styles.depthLabel}>Depth</Text>
-          <Text style={styles.depthValue}>{relationIdentity.relationDepthLabel}</Text>
-        </View>
+            <View style={styles.depthRow}>
+              <Text style={styles.depthLabel}>Depth</Text>
+              <Text style={styles.depthValue}>{relationIdentity.relationDepthLabel}</Text>
+            </View>
+          </>
+        )}
       </View>
 
-      <View style={[styles.primaryActionCard, justCreated === '1' && !evaluation && styles.primaryActionCardHighlight]}>
-        <Text style={styles.primaryActionEyebrow}>{'Next'}</Text>
+      <View style={[
+        styles.primaryActionCard,
+        nextAction.ctaKind === 'resend' && styles.primaryActionCardPending,
+        justCreated === '1' && !evaluation && nextAction.ctaKind !== 'resend' && styles.primaryActionCardHighlight,
+      ]}>
+        {nextAction.ctaKind === 'resend' ? (
+          <Text style={styles.pendingKicker}>Baobab</Text>
+        ) : (
+          <Text style={styles.primaryActionEyebrow}>Next</Text>
+        )}
         <Text style={styles.primaryActionTitle}>{nextAction.title}</Text>
         <Text style={styles.primaryActionBody}>{nextAction.body}</Text>
-        {nextAction.ctaLabel ? (
+        {nextAction.ctaKind === 'resend' ? (
+          <Pressable onPress={handlePrimaryAction} style={styles.resendTreeBtn}>
+            <View style={styles.baoTreeIcon}>
+              <View style={styles.baoTreeCrown}>
+                <View style={styles.baoLeaf} />
+                <View style={[styles.baoLeaf, styles.baoLeafCenter]} />
+                <View style={styles.baoLeaf} />
+              </View>
+              <View style={styles.baoTrunk} />
+            </View>
+            <Text style={styles.resendTreeLabel}>Send again</Text>
+          </Pressable>
+        ) : nextAction.ctaLabel ? (
           <Pressable onPress={handlePrimaryAction} style={styles.ctaButton}>
             <Text style={styles.ctaButtonText}>{nextAction.ctaLabel}</Text>
           </Pressable>
         ) : null}
       </View>
 
-      {evaluation ? (
-        <View style={styles.readingSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>{readingSectionLabel}</Text>
-            <View style={styles.sectionLine} />
-          </View>
+      {nextAction.ctaKind !== 'resend' && (
+        evaluation ? (
+          <View style={styles.readingSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>{readingSectionLabel}</Text>
+              <View style={styles.sectionLine} />
+            </View>
 
-          <View style={styles.readingCard}>
-            {readingVariant === 'revealed' ? (
-              <>
-                <View style={styles.scoreRow}>
-                  <Text style={[styles.scoreValue, { color: readingAccent }]}>
-                    {visibleScore ?? '--'}
-                  </Text>
-                  <View style={styles.scoreMeta}>
-                    <View style={styles.scoreMetaRow}>
-                      <Text style={[styles.scoreTier, { color: readingAccent }]}>
-                        {visibleScoreTier}
+            <View style={styles.readingCard}>
+              {readingVariant === 'revealed' ? (
+                <>
+                  <View style={styles.scoreRow}>
+                    <Text style={[styles.scoreValue, { color: readingAccent }]}>
+                      {visibleScore ?? '--'}
+                    </Text>
+                    <View style={styles.scoreMeta}>
+                      <View style={styles.scoreMetaRow}>
+                        <Text style={[styles.scoreTier, { color: readingAccent }]}>
+                          {visibleScoreTier}
+                        </Text>
+                        {tierLexicon ? (
+                          <Pressable onPress={openTierInfo} style={styles.infoButton}>
+                            <Text style={styles.infoButtonText}>i</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                      <Text style={styles.scoreDate}>
+                        {new Date(evaluation.createdAt).toLocaleDateString()}
                       </Text>
-                      {tierLexicon ? (
-                        <Pressable onPress={openTierInfo} style={styles.infoButton}>
-                          <Text style={styles.infoButtonText}>i</Text>
-                        </Pressable>
-                      ) : null}
                     </View>
-                    <Text style={styles.scoreDate}>
-                      {new Date(evaluation.createdAt).toLocaleDateString()}
+                  </View>
+
+                  <View style={styles.pillarsSection}>
+                    {PILLAR_ORDER.map((key) => {
+                      const dots = reading?.pillarDots?.[key] ?? [];
+                      return (
+                        <View key={key} style={styles.pillarRow}>
+                          <Text style={styles.pillarLabel}>{getPillarLabel(key)}</Text>
+                          <View style={styles.pillarDots}>
+                            {dots.map((isFilled, idx) => (
+                              <View
+                                key={idx}
+                                style={[
+                                  styles.pillarDot,
+                                  isFilled
+                                    ? { backgroundColor: readingAccent }
+                                    : { backgroundColor: colors.border.soft },
+                                ]}
+                              />
+                            ))}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                  <View style={styles.narrativeCard}>
+                    <Text style={styles.narrativeLine}>
+                      <Text style={styles.narrativeKey}>Where it's strong:</Text> {strongestLabel}
+                    </Text>
+                    <Text style={styles.narrativeLine}>
+                      <Text style={styles.narrativeKey}>Where it can grow:</Text> {weakestLabel}
+                    </Text>
+                    <Text style={styles.narrativeReading}>
+                      {tierNarrative}
                     </Text>
                   </View>
+                </>
+              ) : readingVariant === 'reveal_ready' ? (
+                <View style={styles.revealReadyCard}>
+                  <Text style={styles.privateStateDate}>
+                    Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
+                  </Text>
+                  <Text style={styles.revealReadyTitle}>Shared reading ready</Text>
+                  <Text style={styles.privateStateText}>
+                    Open it above.
+                  </Text>
                 </View>
+              ) : (
+                <View style={styles.privateStateCard}>
+                  <Text style={styles.privateStateDate}>
+                    Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
+                  </Text>
+                  {readingVariant === 'waiting_other_side' ? (
+                    <>
+                      <Text style={styles.privateStateTitle}>Private reading saved</Text>
+                      <Text style={styles.privateStateText}>Waiting on their side.</Text>
+                    </>
+                  ) : readingVariant === 'cooking' ? (
+                    <>
+                      <Text style={styles.privateStateTitle}>Private reading saved</Text>
+                      <Text style={styles.privateStateText}>
+                        Both sides in. Preparing.
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.privateStateTitle}>{safeRevealSummary?.stateLabel}</Text>
+                      <Text style={styles.privateStateText}>{safeRevealSummary?.shortDescription}</Text>
+                    </>
+                  )}
+                </View>
+              )}
+            </View>
 
-                <View style={styles.pillarsSection}>
-                  {PILLAR_ORDER.map((key) => {
-                    const dots = reading?.pillarDots?.[key] ?? [];
-                    return (
-                      <View key={key} style={styles.pillarRow}>
-                        <Text style={styles.pillarLabel}>{getPillarLabel(key)}</Text>
-                        <View style={styles.pillarDots}>
-                          {dots.map((isFilled, idx) => (
-                            <View
-                              key={idx}
-                              style={[
-                                styles.pillarDot,
-                                isFilled
-                                  ? { backgroundColor: readingAccent }
-                                  : { backgroundColor: colors.border.soft },
-                              ]}
-                            />
-                          ))}
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-                <View style={styles.narrativeCard}>
-                  <Text style={styles.narrativeLine}>
-                    <Text style={styles.narrativeKey}>Where it's strong:</Text> {strongestLabel}
-                  </Text>
-                  <Text style={styles.narrativeLine}>
-                    <Text style={styles.narrativeKey}>Where it can grow:</Text> {weakestLabel}
-                  </Text>
-                  <Text style={styles.narrativeReading}>
-                    {tierNarrative}
-                  </Text>
-                </View>
-              </>
-            ) : readingVariant === 'reveal_ready' ? (
-              <View style={styles.revealReadyCard}>
-                <Text style={styles.privateStateDate}>
-                  Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
-                </Text>
-                <Text style={styles.revealReadyTitle}>Shared reading ready</Text>
-                <Text style={styles.privateStateText}>
-                  Open it above.
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.privateStateCard}>
-                <Text style={styles.privateStateDate}>
-                  Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
-                </Text>
-                {readingVariant === 'waiting_other_side' ? (
-                  <>
-                    <Text style={styles.privateStateTitle}>Private reading saved</Text>
-                    <Text style={styles.privateStateText}>
-                      Waiting on their side.
-                    </Text>
-                  </>
-                ) : readingVariant === 'cooking' ? (
-                  <>
-                    <Text style={styles.privateStateTitle}>Private reading saved</Text>
-                    <Text style={styles.privateStateText}>
-                      Both sides in. Preparing.
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Text style={styles.privateStateTitle}>{safeRevealSummary?.stateLabel}</Text>
-                    <Text style={styles.privateStateText}>{safeRevealSummary?.shortDescription}</Text>
-                  </>
-                )}
-              </View>
-            )}
+            <View style={styles.readingNote}>
+              <Text style={styles.readingNoteText}>
+                {getReadingNoteText(nameRevealed, revealStatus)}
+              </Text>
+            </View>
           </View>
-
-          <View style={styles.readingNote}>
-            <Text style={styles.readingNoteText}>
-              {getReadingNoteText(nameRevealed, revealStatus)}
-            </Text>
+        ) : (
+          <View style={styles.unreadSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>{readingSectionLabel}</Text>
+              <View style={styles.sectionLine} />
+            </View>
+            <View style={styles.unreadCard}>
+              <Text style={styles.unreadTitle}>No reading yet</Text>
+              <Text style={styles.unreadText}>
+                Stays private until both sides are in.
+              </Text>
+            </View>
           </View>
-        </View>
-      ) : (
-        <View style={styles.unreadSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>{readingSectionLabel}</Text>
-            <View style={styles.sectionLine} />
-          </View>
-          <View style={styles.unreadCard}>
-            <Text style={styles.unreadTitle}>No reading yet</Text>
-            <Text style={styles.unreadText}>
-              Stays private until both sides are in.
-            </Text>
-          </View>
-        </View>
+        )
       )}
 
       {assistedSuggestion ? (
@@ -525,7 +610,7 @@ export default function RelationDetailScreen() {
         </View>
       ) : null}
 
-      {!relation.archived && (
+      {!relation.archived && nextAction.ctaKind !== 'resend' && (
         <View style={styles.managementZone}>
           <Pressable onPress={handleArchive} style={styles.archiveAction}>
             <Text style={styles.archiveActionText}>Archive relationship</Text>
@@ -533,6 +618,7 @@ export default function RelationDetailScreen() {
         </View>
       )}
     </ScrollView>
+    </>
   );
 }
 
@@ -947,6 +1033,56 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontSize: 16,
     fontWeight: '700',
+  },
+  primaryActionCardPending: {
+    borderColor: colors.accent.warmGold + '33',
+    backgroundColor: colors.background.secondary,
+  },
+  pendingKicker: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 2.5,
+    textTransform: 'uppercase',
+    color: colors.accent.warmGold,
+  },
+  resendTreeBtn: {
+    alignSelf: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.xs,
+    gap: spacing.xs,
+  },
+  baoTreeIcon: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  baoTreeCrown: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  baoLeaf: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: colors.accent.leafGreen,
+  },
+  baoLeafCenter: {
+    marginBottom: 4,
+  },
+  baoTrunk: {
+    width: 4,
+    height: 10,
+    borderRadius: 2,
+    backgroundColor: colors.accent.warmGold,
+  },
+  resendTreeLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.text.muted,
   },
 
   reconciliationCard: {

@@ -16,7 +16,8 @@
         "applinks:getbaobab.app"
       ],
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["whatsapp"]
       },
       "buildNumber": "24"
     },
