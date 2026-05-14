@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { colors } from '../../constants/colors';
+import { normalizePhoneForAnchor } from '../../lib/phone-normalize';
 import { radius, spacing } from '../../constants/spacing';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
@@ -80,11 +81,20 @@ export default function InviteByNumberScreen() {
         setScreenState('no_phone');
         return;
       }
+      // Normalise to E.164 when the contact provides a country code.
+      // countryCode is lowercase ('us', 'fr') — libphonenumber-js expects uppercase.
+      // Falls back to raw number when absent or when normalization fails (local number
+      // without international prefix). tryRegisterPhoneAnchorSilently handles both cases.
+      const normalizedE164 = normalizePhoneForAnchor(
+        firstPhone.number,
+        firstPhone.countryCode?.toUpperCase(),
+      )?.e164;
+      const anchorPhone = normalizedE164 ?? firstPhone.number;
       const contactName =
         contact.name ||
         [contact.firstName, contact.lastName].filter(Boolean).join(' ') ||
         '';
-      createRelationAndStart(firstPhone.number, contactName);
+      createRelationAndStart(anchorPhone, contactName);
     } catch {
       // Native error (e.g. concurrent picker call that slipped through) — ignore silently.
     } finally {
