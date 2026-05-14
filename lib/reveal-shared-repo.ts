@@ -143,6 +143,22 @@ export async function openSharedReveal(
   return runSharedLifecycleAction('open_shared_reveal', relationshipId);
 }
 
+// phoneE164 must never be logged — raw phone number must not appear in any log or error payload.
+export async function registerPhoneInviteAnchorForCurrentUser(
+  relationshipId: string,
+  phoneE164: string,
+): Promise<void> {
+  await getAuthenticatedUserId();
+  const { error } = await supabase.rpc('register_phone_invite_anchor', {
+    p_relationship_id: relationshipId,
+    p_phone_e164: phoneE164,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
 // Backward-compatible aliases while Day 2 remains helper-only.
 export const getSharedRevealRecord = getSharedRevealRecordForCurrentUser;
 export const upsertSharedRevealRecord = upsertSharedRevealRecordForCurrentUser;
