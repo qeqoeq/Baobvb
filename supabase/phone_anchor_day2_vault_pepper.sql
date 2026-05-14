@@ -33,10 +33,17 @@
 --
 -- Verification after setup (does not reveal the value):
 --   SELECT
---     (SELECT count(*) = 1 FROM vault.decrypted_secrets
---      WHERE name = 'baobab_phone_hash_pepper') AS secret_exists,
---     length((SELECT decrypted_secret FROM vault.decrypted_secrets
---             WHERE name = 'baobab_phone_hash_pepper')) >= 64 AS length_ok;
+--     EXISTS (
+--       SELECT 1
+--       FROM vault.decrypted_secrets
+--       WHERE name = 'baobab_phone_hash_pepper'
+--     ) AS secret_exists,
+--     (
+--       SELECT length(decrypted_secret) >= 64
+--       FROM vault.decrypted_secrets
+--       WHERE name = 'baobab_phone_hash_pepper'
+--       LIMIT 1
+--     ) AS length_ok;
 --   Expected: secret_exists = true, length_ok = true (64 = hex length of 32 bytes).
 --
 -- Scope:
