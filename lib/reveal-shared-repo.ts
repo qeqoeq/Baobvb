@@ -7,6 +7,7 @@ import type {
   SharedRevealRecordUpsertInput,
 } from './reveal-shared-types';
 import { getAuthenticatedUserId } from './supabase-auth';
+import { normalizePhoneForAnchor } from './phone-normalize';
 import type { RelationshipSideKey } from '../store/useRelationsStore';
 
 const TABLE = 'shared_relationship_reveals';
@@ -156,6 +157,22 @@ export async function registerPhoneInviteAnchorForCurrentUser(
 
   if (error) {
     throw error;
+  }
+}
+
+// Normalises rawPhone and registers a phone anchor for the given relationship.
+// Additive and silent: failure — including normalisation failure for local numbers
+// without an international prefix — is swallowed. Must never block invite delivery.
+export async function tryRegisterPhoneAnchorSilently(
+  relationshipId: string,
+  rawPhone: string,
+): Promise<void> {
+  const normalized = normalizePhoneForAnchor(rawPhone);
+  if (!normalized) return;
+  try {
+    await registerPhoneInviteAnchorForCurrentUser(relationshipId, normalized.e164);
+  } catch {
+    // Additive — anchor registration failure must never block invite delivery.
   }
 }
 

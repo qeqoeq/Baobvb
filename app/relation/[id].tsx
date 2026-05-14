@@ -29,6 +29,7 @@ import {
   getSharedRevealRecordForCurrentUser,
   markSharedRevealReadyIfUnlocked,
   openSharedReveal,
+  tryRegisterPhoneAnchorSilently,
 } from '../../lib/reveal-shared-repo';
 import {
   getReadingCardVariant,
@@ -284,6 +285,7 @@ export default function RelationDetailScreen() {
 
       // For phone-anchored relations, offer targeted channels instead of the generic sheet.
       if (relation.source === 'invite_number' && relation.anchorValue) {
+        void tryRegisterPhoneAnchorSilently(canonicalId, relation.anchorValue);
         showPhoneInviteSheet({
           rawPhone: relation.anchorValue,
           privateLabel: relationIdentity.privateLabel,

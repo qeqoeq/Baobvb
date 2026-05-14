@@ -19,6 +19,7 @@ import {
   createRelationshipInviteForCurrentUser,
   getSharedRevealRecordForCurrentUser,
   startSharedCookingRevealIfReady,
+  tryRegisterPhoneAnchorSilently,
 } from '../../../lib/reveal-shared-repo';
 import { getAuthenticatedUserId } from '../../../lib/supabase-auth';
 import type { RelationshipSideKey } from '../../../store/useRelationsStore';
@@ -145,6 +146,7 @@ export default function EvaluateScreen() {
           } catch {
             // Additive — invite delivery is not blocked by a failed reading attach.
           }
+          void tryRegisterPhoneAnchorSilently(canonicalId, relation.anchorValue);
           const { message, url } = getRelationshipInviteMessage({
             relationId: canonicalId,
             inviteToken: invite.invite_token,
