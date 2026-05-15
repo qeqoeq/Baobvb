@@ -37,8 +37,6 @@ export default function InviteArrivalScreen() {
     me?.handle?.trim(),
   );
 
-  // Stable exit: back if there's a stack to return to, otherwise Garden.
-  // Covers cold opens (deep link, post-auth redirect) where back() would be a no-op.
   const exitInviteFlow = () => {
     if (router.canGoBack()) {
       router.back();
@@ -47,8 +45,6 @@ export default function InviteArrivalScreen() {
     }
   };
 
-  // If the relation appears in the store while the unresolved card is visible,
-  // navigate automatically — no retry needed, no false success.
   useEffect(() => {
     if (!showUnresolvedContinuation || !relation) return;
     router.push({ pathname: '/relation/[id]', params: { id: relation.id } });
@@ -70,8 +66,6 @@ export default function InviteArrivalScreen() {
         return;
       }
 
-      // No token and no local relation: the link is structurally broken.
-      // Nothing can be claimed or resolved.
       if (!token?.trim() && !relation) {
         setBrokenLink(true);
         return;
@@ -120,17 +114,10 @@ export default function InviteArrivalScreen() {
           return;
         }
 
-        router.push({
-          pathname: '/relation/[id]',
-          params: { id: relation.id },
-        });
+        router.push({ pathname: '/relation/[id]', params: { id: relation.id } });
         return;
       }
 
-      // Cold invite: claim succeeded but no local relation exists yet.
-      // If we have a canonical relation ID (UUID, not a legacy localDraftId),
-      // navigate to the add flow so the user can name the person and materialize
-      // a proper local relation anchored on this canonicalRelationId.
       if (claimedCanonicalId && !isLocalDraftId(claimedCanonicalId)) {
         if (claimResult) {
           putClaimRecord(claimedCanonicalId, claimResult);
@@ -145,8 +132,7 @@ export default function InviteArrivalScreen() {
         });
         return;
       }
-      // Legacy or broken claim: canonical ID absent or non-UUID.
-      // Fall back to the unresolved continuation message.
+
       setShowUnresolvedContinuation(true);
     } finally {
       setIsSubmitting(false);
@@ -159,18 +145,22 @@ export default function InviteArrivalScreen() {
     }
     return (
       <View style={styles.screen}>
-        <View style={styles.card}>
-          <Text style={styles.title}>Invalid invite link</Text>
-          <Text style={styles.body}>
-            This link does not include a relationship id. Ask your partner to share the invite again.
-          </Text>
-          {__DEV__ ? (
-            <Text style={styles.devHint}>
-              Dev: baobab://invite/RELATION_ID?token=… (replace RELATION_ID)
+        <View style={styles.stage}>
+          <View style={styles.textZone}>
+            <Text style={styles.title}>{'Invalid invite link'}</Text>
+            <Text style={styles.body}>
+              {'This link does not include a relationship id. Ask your partner to share the invite again.'}
             </Text>
-          ) : null}
+            {__DEV__ ? (
+              <Text style={styles.devHint}>
+                {'Dev: baobab://invite/RELATION_ID?token=… (replace RELATION_ID)'}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+        <View style={styles.actionZone}>
           <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Go back</Text>
+            <Text style={styles.primaryButtonText}>{'Go back'}</Text>
           </Pressable>
         </View>
       </View>
@@ -179,53 +169,65 @@ export default function InviteArrivalScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Join this relationship on Baobab</Text>
-        <Text style={styles.body}>
-          Someone added you on Baobab. Add your side to continue — your reading stays private until both sides are complete.
-        </Text>
+      {/* Atmospheric background warmth — non-interactive */}
+      <View pointerEvents="none" style={styles.atmosphereTop} />
+      <View pointerEvents="none" style={styles.atmosphereBottom} />
 
-        <View style={styles.reassuranceBlock}>
-          <Text style={styles.reassuranceText}>There is no public score.</Text>
-          <Text style={styles.reassuranceText}>You can answer in under a minute.</Text>
+      {/* Central composition: orb + identity text */}
+      <View style={styles.stage}>
+        {/* Organic orb — layered concentric rings */}
+        <View style={styles.orbZone}>
+          <View style={styles.orbRing3} />
+          <View style={styles.orbRing2} />
+          <View style={styles.orbRing1} />
+          <View style={styles.orbCore} />
         </View>
 
+        {/* Text zone */}
+        <View style={styles.textZone}>
+          <Text style={styles.kicker}>{'BAOBAB'}</Text>
+          <Text style={styles.title}>{'A private link\nis waiting'}</Text>
+          <Text style={styles.body}>
+            {'Someone opened a private space with you.\nNothing is public. Nothing is ranked.'}
+          </Text>
+        </View>
+      </View>
+
+      {/* Action zone — anchored at bottom */}
+      <View style={styles.actionZone}>
         {brokenLink ? (
-          <View style={styles.stateCard}>
-            <Text style={styles.stateTitle}>This invite link is incomplete</Text>
+          <>
+            <Text style={styles.stateTitle}>{'This invite link is incomplete'}</Text>
             <Text style={styles.stateBody}>
-              The link is missing information needed to continue. Ask for a fresh invite link.
+              {'The link is missing information needed to continue. Ask for a fresh invite link.'}
             </Text>
             <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Done</Text>
+              <Text style={styles.primaryButtonText}>{'Done'}</Text>
             </Pressable>
-          </View>
+          </>
         ) : claimError ? (
-          <View style={styles.stateCard}>
-            <Text style={styles.stateTitle}>Couldn't claim this invitation</Text>
+          <>
+            <Text style={styles.stateTitle}>{"Couldn't claim this invitation"}</Text>
             <Text style={styles.stateBody}>
-              This invitation may have expired or already been used. Ask your partner to share a new one.
+              {'This invitation may have expired or already been used. Ask your partner to share a new one.'}
             </Text>
             <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Done</Text>
+              <Text style={styles.primaryButtonText}>{'Done'}</Text>
             </Pressable>
-            <Pressable
-              onPress={() => setClaimError(null)}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonText}>Try again</Text>
+            <Pressable onPress={() => setClaimError(null)} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>{'Try again'}</Text>
             </Pressable>
-          </View>
+          </>
         ) : showUnresolvedContinuation ? (
-          <View style={styles.stateCard}>
-            <Text style={styles.stateTitle}>You've joined this invite</Text>
+          <>
+            <Text style={styles.stateTitle}>{"You've joined this invite"}</Text>
             <Text style={styles.stateBody}>
-              Your participation has been recorded. This relationship is not available in your Garden yet.
+              {'Your participation has been recorded. This relationship is not available in your Garden yet.'}
             </Text>
             <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Done</Text>
+              <Text style={styles.primaryButtonText}>{'Done'}</Text>
             </Pressable>
-          </View>
+          </>
         ) : (
           <>
             <Pressable
@@ -233,11 +235,11 @@ export default function InviteArrivalScreen() {
               style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
             >
               <Text style={styles.primaryButtonText}>
-                {isSubmitting ? 'Claiming…' : 'Add my side'}
+                {isSubmitting ? 'Continuing…' : 'Continue privately'}
               </Text>
             </Pressable>
             <Pressable onPress={exitInviteFlow} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Not now</Text>
+              <Text style={styles.secondaryButtonText}>{'Maybe later'}</Text>
             </Pressable>
           </>
         )}
@@ -249,56 +251,139 @@ export default function InviteArrivalScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background.primary,
-    padding: spacing.lg,
+    backgroundColor: '#111A15',
+  },
+
+  // ── Atmospheric background glows ─────────────────────────────────────────────
+  atmosphereTop: {
+    position: 'absolute',
+    top: -60,
+    left: -80,
+    right: -80,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: colors.accent.dustyRose + '18',
+  },
+  atmosphereBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: -60,
+    right: -60,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: colors.accent.warmGold + '18',
+  },
+
+  // ── Stage — orb + text, vertically centered ──────────────────────────────────
+  stage: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.xl + spacing.sm,
+  },
+
+  // ── Organic orb ──────────────────────────────────────────────────────────────
+  orbZone: {
+    width: 164,
+    height: 164,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  card: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: radius.lg,
+  orbRing3: {
+    position: 'absolute',
+    width: 164,
+    height: 164,
+    borderRadius: 82,
     borderWidth: 1,
-    borderColor: colors.border.soft,
-    padding: spacing.lg,
+    borderColor: colors.accent.warmGold + '2C',
+    backgroundColor: colors.accent.dustyRose + '07',
+  },
+  orbRing2: {
+    position: 'absolute',
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    borderWidth: 1,
+    borderColor: colors.accent.dustyRose + '70',
+  },
+  orbRing1: {
+    position: 'absolute',
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + '80',
+    backgroundColor: colors.accent.warmGold + '18',
+  },
+  orbCore: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.accent.warmGold + '60',
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + 'AA',
+    shadowColor: colors.accent.warmGold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+  },
+
+  // ── Text zone ─────────────────────────────────────────────────────────────────
+  textZone: {
+    alignItems: 'center',
     gap: spacing.md,
   },
+  kicker: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 3,
+    color: colors.accent.warmGold,
+    textAlign: 'center',
+  },
   title: {
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 30,
+    lineHeight: 38,
     fontWeight: '700',
     color: colors.text.primary,
+    textAlign: 'center',
+    letterSpacing: -0.3,
   },
   body: {
     fontSize: 14,
-    lineHeight: 21,
+    lineHeight: 22,
     color: colors.text.secondary,
+    textAlign: 'center',
   },
-  reassuranceBlock: {
-    backgroundColor: colors.background.tertiary,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  reassuranceText: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.text.secondary,
+
+  // ── Action zone — bottom anchored ────────────────────────────────────────────
+  actionZone: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxl,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
   },
   primaryButton: {
-    marginTop: spacing.xs,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent.deepTeal,
+    borderRadius: radius.pill,
+    backgroundColor: '#B8796A',
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + '50',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.md + 2,
+    shadowColor: '#C4704A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 7,
   },
   primaryButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   primaryButtonText: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.text.primary,
+    letterSpacing: 0.2,
   },
   secondaryButton: {
     alignItems: 'center',
@@ -306,31 +391,30 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: colors.text.secondary,
+    fontWeight: '500',
+    color: colors.text.muted,
   },
-  stateCard: {
-    backgroundColor: colors.background.tertiary,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
+
+  // ── State messages (error / unresolved) ───────────────────────────────────────
   stateTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: colors.text.primary,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
   },
   stateBody: {
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 19,
     color: colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
+
   devHint: {
     fontSize: 11,
     lineHeight: 16,
     color: colors.text.muted,
-    fontFamily: 'System',
+    textAlign: 'center',
   },
 });

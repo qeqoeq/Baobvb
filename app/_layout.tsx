@@ -287,7 +287,7 @@ export default function RootLayout() {
           headerShadowVisible: false,
         }}
       />
-      <Stack.Screen name="invite/[relationId]" options={{ title: 'Reveal together' }} />
+      <Stack.Screen name="invite/[relationId]" options={{ title: 'Baobab', headerBackTitle: '' }} />
       <Stack.Screen
         name="invite/identity/[relationId]"
         options={{ title: 'Create your card', presentation: 'modal' }}
