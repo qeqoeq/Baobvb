@@ -52,3 +52,6 @@ supabase/.temp/
 .claude/
 _bmad/
 _bmad-output/
+
+# Local validation exports
+exports/
