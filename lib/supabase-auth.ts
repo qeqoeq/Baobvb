@@ -77,6 +77,52 @@ export async function signInWithApple(): Promise<User | null> {
   return data.user;
 }
 
+function mapEmailOtpError(err: unknown): Error {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  if (msg.includes('rate limit')) {
+    return new Error('Wait a moment before asking for a new code.');
+  }
+  if (msg.includes('invalid') || msg.includes('expired')) {
+    return new Error('This code didn\'t work. Try again.');
+  }
+  return new Error('We couldn\'t sign you in. Try again.');
+}
+
+/**
+ * Sends a one-time sign-in code to the given email address.
+ * Creates a new Supabase account if none exists for this email.
+ * The email is never surfaced as a public identity — it is used only for session auth.
+ * Throws on network error or invalid email format.
+ */
+export async function requestEmailOtp(rawEmail: string): Promise<void> {
+  const email = rawEmail.trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error('Please enter a valid email address.');
+  }
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true },
+  });
+  if (error) throw mapEmailOtpError(error);
+}
+
+/**
+ * Verifies the 6-digit OTP code sent to email.
+ * On success: onAuthStateChange in _layout.tsx handles navigation.
+ * Returns the authenticated User, or throws on invalid/expired code.
+ */
+export async function verifyEmailOtp(rawEmail: string, token: string): Promise<User> {
+  const email = rawEmail.trim().toLowerCase();
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token: token.trim(),
+    type: 'email',
+  });
+  if (error) throw mapEmailOtpError(error);
+  if (!data.user) throw new Error('We couldn\'t sign you in. Try again.');
+  return data.user;
+}
+
 export async function ensureAuthenticatedUser(): Promise<User> {
   const existingUser = await getCurrentAuthenticatedUser();
   if (existingUser) return existingUser;
