@@ -225,8 +225,11 @@ export default function GardenScreen() {
               const revealStatus = entry.relation.localState.revealSnapshot.status;
               const signal = isRevealed ? getGardenMicroSignal(entry) : null;
               const unread = entry.readingStatus === 'Unread';
+              const mutualTierLabel = isRevealed
+                ? (entry.relation.localState.revealSnapshot.tier ?? null)
+                : null;
               const accent = isRevealed
-                ? (entry.linkTier ? getTierAccent(entry.linkTier) : colors.accent.mutedSage)
+                ? (mutualTierLabel ? getTierAccent(mutualTierLabel) : colors.accent.mutedSage)
                 : revealStatus === 'reveal_ready'
                   ? colors.accent.deepTeal
                   : revealStatus === 'cooking_reveal'
@@ -235,7 +238,9 @@ export default function GardenScreen() {
                       ? colors.accent.warmGold
                       : colors.text.muted;
               const mappingLine = entry.readingStatus === 'Read'
-                ? (isRevealed ? entry.badgeLabel : 'Private reading saved')
+                ? (isRevealed
+                    ? (mutualTierLabel ?? 'Shared reading open')
+                    : 'Private reading saved')
                 : 'No reading yet';
               const signalText = isRevealed
                 ? signal?.text ?? 'Stable'
