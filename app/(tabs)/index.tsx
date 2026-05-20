@@ -192,9 +192,9 @@ export default function CircleScreen() {
                   router.push('../relation/add');
                 }}
               >
-                <Text style={styles.emptyPromptHeadline}>{'Begin with one person.'}</Text>
-                <Text style={styles.emptyPromptSupport}>{'Let Bao begin with someone you trust.'}</Text>
-                <Text style={styles.emptyPromptAction}>{'Add'}</Text>
+                <Text style={styles.emptyPromptHeadline}>{'Start with someone who matters.'}</Text>
+                <Text style={styles.emptyPromptSupport}>{'A private reading. Nothing opens until both sides are ready.'}</Text>
+                <Text style={styles.emptyPromptAction}>{'Begin a reading'}</Text>
               </Pressable>
             )}
 
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     alignItems: 'center',
     gap: spacing.xs,
-    top: '63%',
+    top: '58%',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: radius.md,
