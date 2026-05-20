@@ -296,22 +296,17 @@ export default function AddRelationScreen() {
         <View pointerEvents="none" style={styles.glowAccent} />
         <View style={styles.card}>
           <Text style={styles.hubKicker}>{'BAOBAB'}</Text>
-          <Text style={styles.title}>{'Add someone'}</Text>
+          <Text style={styles.title}>{'Start a private reading'}</Text>
 
-          <View style={styles.actionList}>
-            <Pressable
-              style={styles.actionRow}
-              onPress={() => router.push('/me/invite-by-number' as never)}
-            >
-              <View style={styles.actionBody}>
-                <Text style={styles.actionLabel}>{'Invite'}</Text>
-              </View>
-              <Text style={styles.actionChevron}>{'›'}</Text>
-            </Pressable>
-          </View>
+          <Pressable style={styles.button} onPress={() => setMode('private')}>
+            <Text style={styles.buttonText}>{'Start a reading'}</Text>
+          </Pressable>
 
-          <Pressable style={styles.addPrivatelyBtn} onPress={() => setMode('private')}>
-            <Text style={styles.addPrivatelyText}>{'Start a reading'}</Text>
+          <Pressable
+            style={styles.addPrivatelyBtn}
+            onPress={() => router.push('/me/invite-by-number' as never)}
+          >
+            <Text style={styles.addPrivatelyText}>{'Invite by phone instead'}</Text>
           </Pressable>
 
           <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
