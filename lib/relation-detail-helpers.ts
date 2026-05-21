@@ -309,6 +309,15 @@ export function getRelationNextAction(input: {
       };
     }
 
+    if (input.relation.source === 'claim') {
+      return {
+        title: 'Reading saved',
+        body: 'Preparing the shared view.',
+        ctaLabel: null,
+        ctaKind: null,
+      };
+    }
+
     return {
       title: isInviteNumber
         ? 'Reading saved'
