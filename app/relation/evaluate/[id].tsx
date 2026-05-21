@@ -174,8 +174,9 @@ export default function EvaluateScreen() {
 
     try {
       // Final-path rule: shared attach only runs after invite-driven binding exists.
+      const canonicalId = relation.canonicalRelationId ?? relation.id;
       const currentUserId = await getAuthenticatedUserId();
-      const sharedRecord = await getSharedRevealRecordForCurrentUser(relation.id);
+      const sharedRecord = await getSharedRevealRecordForCurrentUser(canonicalId);
       const ownsTargetSide =
         targetSide === 'sideA'
           ? sharedRecord?.side_a_user_id === currentUserId
@@ -183,12 +184,12 @@ export default function EvaluateScreen() {
 
       if (sharedRecord && ownsTargetSide) {
         await attachSharedPrivateReadingReferenceForCurrentUser(
-          relation.id,
+          canonicalId,
           targetSide,
           evaluation.id,
           finalRatings,
         );
-        await startSharedCookingRevealIfReady(relation.id);
+        await startSharedCookingRevealIfReady(canonicalId);
       }
     } catch {
       // Shared backend remains additive; local-first flow stays primary if shared call fails.
