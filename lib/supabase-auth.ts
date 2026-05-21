@@ -120,6 +120,7 @@ export async function verifyEmailOtp(rawEmail: string, token: string): Promise<U
   });
   if (error) throw mapEmailOtpError(error);
   if (!data.user) throw new Error('We couldn\'t sign you in. Try again.');
+  if (!data.session) throw new Error('We couldn\'t complete sign-in. Please request a new code and try again.');
   return data.user;
 }
 
