@@ -12,7 +12,6 @@ import {
 } from '../lib/push-notifications';
 import { getOrCreatePublicProfileId } from '../lib/public-profile';
 import { resolvePostAuthDestination, resolveSignInRedirectTarget } from '../lib/auth-routing';
-import { getCurrentAuthenticatedUser } from '../lib/supabase-auth';
 import { supabase } from '../lib/supabase';
 import { useRelationsStore } from '../store/useRelationsStore';
 
@@ -33,9 +32,11 @@ export default function RootLayout() {
   useEffect(() => {
     void (async () => {
       try {
-        const user = await getCurrentAuthenticatedUser();
-        setIsAuthenticated(Boolean(user));
-        setAuthIdentity(user?.id ?? null);
+        const { data, error } = await supabase.auth.getSession();
+        setIsAuthenticated(Boolean(data.session?.user));
+        setAuthIdentity(data.session?.user?.id ?? null);
+      } catch (err) {
+        // getSession failed — auth gate will redirect to sign-in.
       } finally {
         setAuthResolved(true);
       }
