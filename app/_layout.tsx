@@ -36,7 +36,7 @@ export default function RootLayout() {
         setIsAuthenticated(Boolean(data.session?.user));
         setAuthIdentity(data.session?.user?.id ?? null);
       } catch (err) {
-        // getSession failed — auth gate will redirect to sign-in.
+        // getSession failed - auth gate will redirect to sign-in.
       } finally {
         setAuthResolved(true);
       }
