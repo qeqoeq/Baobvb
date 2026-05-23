@@ -182,7 +182,11 @@ export default function EvaluateScreen() {
           ? sharedRecord?.side_a_user_id === currentUserId
           : sharedRecord?.side_b_user_id === currentUserId;
 
-      if (sharedRecord && ownsTargetSide) {
+      // For claim source: the invite token already proved side ownership server-side.
+      // Call attach directly without requiring a pre-existing record (attach is an upsert).
+      // For other sources: require the record to exist and confirm the user owns the side.
+      const claimOwnershipProven = relation.source === 'claim';
+      if (claimOwnershipProven || (sharedRecord !== null && ownsTargetSide)) {
         await attachSharedPrivateReadingReferenceForCurrentUser(
           canonicalId,
           targetSide,

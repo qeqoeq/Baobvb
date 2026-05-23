@@ -1278,6 +1278,10 @@ function finalizeCookingStartInState(relationId: string): boolean {
   const readingA = state.evaluations.find((item) => item.id === readingAId);
   const readingB = state.evaluations.find((item) => item.id === readingBId);
   if (!readingA || !readingB) return false;
+  // Both sides pointing to the same evaluation means sideB's eval leaked into the sideA
+  // slot via buildDefaultRelationshipLocalState (happens for claim-source relations where
+  // sideA has no local evaluation). A mutual score computed from identical ratings is invalid.
+  if (readingA.id === readingB.id) return false;
 
   const mutual = computeMutualRelationshipScore(readingA.ratings, readingB.ratings);
   const cookingStartedAt = new Date().toISOString();
