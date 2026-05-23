@@ -173,7 +173,8 @@ export default function EvaluateScreen() {
     if (__DEV__) console.log('[evaluate:save] shared-backed → canonical', relation.canonicalRelationId);
 
     try {
-      // Final-path rule: shared attach only runs after invite-driven binding exists.
+      // Shared attach only runs after the server has already bound this user to the
+      // claimed side. The client must not bootstrap shared_relationship_reveals here.
       const canonicalId = relation.canonicalRelationId ?? relation.id;
       const currentUserId = await getAuthenticatedUserId();
       const sharedRecord = await getSharedRevealRecordForCurrentUser(canonicalId);
@@ -182,21 +183,31 @@ export default function EvaluateScreen() {
           ? sharedRecord?.side_a_user_id === currentUserId
           : sharedRecord?.side_b_user_id === currentUserId;
 
-      // For claim source: the invite token already proved side ownership server-side.
-      // Call attach directly without requiring a pre-existing record (attach is an upsert).
-      // For other sources: require the record to exist and confirm the user owns the side.
-      const claimOwnershipProven = relation.source === 'claim';
-      if (claimOwnershipProven || (sharedRecord !== null && ownsTargetSide)) {
-        await attachSharedPrivateReadingReferenceForCurrentUser(
-          canonicalId,
-          targetSide,
-          evaluation.id,
-          finalRatings,
-        );
-        await startSharedCookingRevealIfReady(canonicalId);
+      if (sharedRecord === null) {
+        throw new Error('shared reveal record missing on server');
       }
-    } catch {
-      // Shared backend remains additive; local-first flow stays primary if shared call fails.
+      if (!ownsTargetSide) {
+        throw new Error(`server-side shared reveal is not bound to caller as ${targetSide}`);
+      }
+
+      await attachSharedPrivateReadingReferenceForCurrentUser(
+        canonicalId,
+        targetSide,
+        evaluation.id,
+        finalRatings,
+      );
+      await startSharedCookingRevealIfReady(canonicalId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown shared sync error';
+      console.warn('[shared-reveal-sync] foundational reading saved locally but shared sync failed', {
+        source: relation.source,
+        side: targetSide,
+        message,
+      });
+      Alert.alert(
+        'Reading saved locally',
+        'Shared sync did not complete. Mutual reveal stays locked until the server confirms your side.',
+      );
     }
 
     router.replace({ pathname: '/relation/[id]', params: { id: relation.id } });
