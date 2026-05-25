@@ -159,6 +159,7 @@ export default function InviteArrivalScreen() {
           setClaimError('This invitation could not be completed. Please try again.');
           return;
         }
+        resolveInvitedSideB(created.id);
         router.replace({
           pathname: '/relation/evaluate/[id]',
           params: { id: created.id, side: claimedSide },
