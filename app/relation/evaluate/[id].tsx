@@ -95,7 +95,12 @@ export default function EvaluateScreen() {
   );
   const progress = completedCount / PILLARS.length;
   const isInviteNumberRelation = relation?.source === 'invite_number';
-  const sourceLabel = relation?.source === 'scan' ? 'Added by scan' : 'Added manually';
+  const sourceLabel =
+    relation?.source === 'scan'
+      ? 'Added by scan'
+      : relation?.source === 'claim'
+        ? 'Joined by invite'
+        : 'Added manually';
   const sourceSubtext = relation?.source === 'scan' && relation.sourceHandle
     ? `Scanned from ${relation.sourceHandle}`
     : null;
