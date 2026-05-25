@@ -6,16 +6,15 @@ import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { devLogLinking } from '../../lib/dev-linking-log';
 import { isLocalDraftId } from '../../lib/identity';
-import { putClaimRecord } from '../../lib/claim-shared-record-handoff';
 import { claimRelationshipInviteForCurrentUser } from '../../lib/reveal-shared-repo';
 import type { SharedInviteClaimResult } from '../../lib/reveal-shared-types';
-import type { RelationshipSideKey } from '../../store/useRelationsStore';
+import type { RelationshipSideKey, SharedRelationBootstrapInput } from '../../store/useRelationsStore';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function InviteArrivalScreen() {
   const { relationId, token } = useLocalSearchParams<{ relationId: string; token?: string }>();
   const relationIdTrim = typeof relationId === 'string' ? relationId.trim() : '';
-  const { me, relations, resolveInvitedSideB } = useRelationsStore();
+  const { me, relations, resolveInvitedSideB, addRelation } = useRelationsStore();
   const [showUnresolvedContinuation, setShowUnresolvedContinuation] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [brokenLink, setBrokenLink] = useState(false);
@@ -119,16 +118,50 @@ export default function InviteArrivalScreen() {
       }
 
       if (claimedCanonicalId && !isLocalDraftId(claimedCanonicalId)) {
-        if (claimResult) {
-          putClaimRecord(claimedCanonicalId, claimResult);
+        if (!claimResult) {
+          setClaimError('This invitation could not be completed. Please try again.');
+          return;
         }
-        router.push({
-          pathname: '/relation/add',
-          params: {
-            fromClaim: '1',
-            claimedSide,
-            canonicalRelationId: claimedCanonicalId,
-          },
+        const existingByClaim = relations.find((r) => r.canonicalRelationId === claimedCanonicalId);
+        if (existingByClaim) {
+          router.replace({
+            pathname: '/relation/evaluate/[id]',
+            params: { id: existingByClaim.id, side: claimedSide },
+          });
+          return;
+        }
+        const claimSharedRecord: SharedRelationBootstrapInput = {
+          relationship_id: claimedCanonicalId,
+          status: claimResult.status,
+          my_side: claimResult.claimed_side,
+          side_a_present: claimResult.side_a_present,
+          side_b_present: claimResult.side_b_present,
+          side_a_reading_id: claimResult.side_a_reading_id,
+          side_b_reading_id: claimResult.side_b_reading_id,
+          cooking_started_at: claimResult.cooking_started_at,
+          unlock_at: claimResult.unlock_at,
+          ready_at: claimResult.ready_at,
+          revealed_at: claimResult.revealed_at,
+          relationship_name_revealed: claimResult.relationship_name_revealed,
+          counterpart_public_profile_id: claimResult.counterpart_public_profile_id,
+        };
+        const created = addRelation('Private connection', {
+          source: 'claim',
+          privateLabel: 'Private connection',
+          anchorMode: 'claim',
+          avatarSeed: '?',
+          canonicalRelationId: claimedCanonicalId,
+          claimSharedRecord,
+          anchorValue: null,
+          relationDepth: 'known',
+        });
+        if (!created) {
+          setClaimError('This invitation could not be completed. Please try again.');
+          return;
+        }
+        router.replace({
+          pathname: '/relation/evaluate/[id]',
+          params: { id: created.id, side: claimedSide },
         });
         return;
       }
