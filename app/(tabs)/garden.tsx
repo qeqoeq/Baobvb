@@ -6,6 +6,7 @@ import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { getTierAccent } from '../../lib/evaluation';
 import { getFoundationalReadings, getGardenMicroSignal } from '../../lib/foundational-reading';
+import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 type GardenFilterKey = 'active' | 'read' | 'unread' | 'toNurture' | 'archived' | 'ready' | 'forming';
@@ -223,6 +224,7 @@ export default function GardenScreen() {
             {filteredEntries.map((entry) => {
               const isRevealed = entry.relation.localState.revealSnapshot.status === 'revealed';
               const revealStatus = entry.relation.localState.revealSnapshot.status;
+              const relationIdentity = getRelationSheetIdentity({ relation: entry.relation });
               const signal = isRevealed ? getGardenMicroSignal(entry) : null;
               const unread = entry.readingStatus === 'Unread';
               const mutualTierLabel = isRevealed
@@ -279,7 +281,7 @@ export default function GardenScreen() {
                     </Text>
                   </View>
                   <View style={styles.mappingBody}>
-                    <Text style={styles.mappingName}>{entry.relation.name}</Text>
+                    <Text style={styles.mappingName}>{relationIdentity.primaryTitle}</Text>
                     {entry.relation.handle ? (
                       <Text style={styles.mappingMeta}>{entry.relation.handle}</Text>
                     ) : null}
