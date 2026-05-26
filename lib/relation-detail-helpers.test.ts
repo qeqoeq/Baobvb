@@ -5,6 +5,7 @@ import {
   getReadingCardVariant,
   getReadingNoteText,
   getVisibleTierLabel,
+  getRelationNextAction,
 } from './relation-detail-helpers';
 
 // ── getRelationContextCard ──────────────────────────────────────────────────
@@ -170,5 +171,40 @@ describe('getReadingCardVariant', () => {
     expect(
       getReadingCardVariant({ hasEvaluation: false, nameRevealed: true, revealStatus: 'revealed' }),
     ).toBe('unread');
+  });
+});
+
+// ── getRelationNextAction ───────────────────────────────────────────────────
+
+const baseRelation = {
+  archived: false,
+  source: 'manual' as const,
+  canonicalRelationId: 'some-uuid',
+  anchorMode: undefined,
+};
+
+describe('getRelationNextAction', () => {
+  it('cooking_reveal leads with "Both sides are in"', () => {
+    const result = getRelationNextAction({
+      relation: baseRelation,
+      hasEvaluation: true,
+      revealStatus: 'cooking_reveal',
+      nameRevealed: false,
+      deliveryChannelOpened: false,
+    });
+    expect(result.title).toBe('Both sides are in');
+    expect(result.body).toBe('The reveal is being prepared.');
+  });
+
+  it('claim + waiting_other_side shows accurate waiting copy', () => {
+    const result = getRelationNextAction({
+      relation: { ...baseRelation, source: 'claim' as const },
+      hasEvaluation: true,
+      revealStatus: 'waiting_other_side',
+      nameRevealed: false,
+      deliveryChannelOpened: false,
+    });
+    expect(result.title).toBe('Reading private');
+    expect(result.body).toBe('Saved on your side. The reveal waits for both.');
   });
 });

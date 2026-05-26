@@ -541,7 +541,7 @@ export default function RelationDetailScreen() {
                     <>
                       <Text style={styles.privateStateTitle}>Private reading saved</Text>
                       <Text style={styles.privateStateText}>
-                        Both sides in. Preparing.
+                        Locked until the reveal opens.
                       </Text>
                     </>
                   ) : (

@@ -290,8 +290,8 @@ export function getRelationNextAction(input: {
 
   if (input.revealStatus === 'cooking_reveal') {
     return {
-      title: 'Preparing',
-      body: 'Both sides are in.',
+      title: 'Both sides are in',
+      body: 'The reveal is being prepared.',
       ctaLabel: null,
       ctaKind: null,
     };
@@ -311,8 +311,8 @@ export function getRelationNextAction(input: {
 
     if (input.relation.source === 'claim') {
       return {
-        title: 'Reading saved',
-        body: 'Preparing the shared view.',
+        title: 'Reading private',
+        body: 'Saved on your side. The reveal waits for both.',
         ctaLabel: null,
         ctaKind: null,
       };
