@@ -145,9 +145,9 @@ export default function InviteArrivalScreen() {
           relationship_name_revealed: claimResult.relationship_name_revealed,
           counterpart_public_profile_id: claimResult.counterpart_public_profile_id,
         };
-        const created = addRelation('Private connection', {
+        const created = addRelation('Private link', {
           source: 'claim',
-          privateLabel: 'Private connection',
+          privateLabel: 'Private link',
           anchorMode: 'claim',
           avatarSeed: '?',
           canonicalRelationId: claimedCanonicalId,
