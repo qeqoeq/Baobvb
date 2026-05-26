@@ -8,6 +8,7 @@ import { colors } from '../../constants/colors';
 import { spacing } from '../../constants/spacing';
 import EgoGraph from '../../components/ui/EgoGraph';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
+import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
 import {
   deriveGatewayAccessState,
   deriveGatewayPowerBand,
@@ -38,7 +39,7 @@ export default function ThroughScreen() {
     () => new Map(
       readings
         .filter((r) => !r.relation.archived)
-        .map((r) => [r.relation.id, r.relation.name]),
+        .map((r) => [r.relation.id, getRelationSheetIdentity({ relation: r.relation }).primaryTitle]),
     ),
     [readings],
   );
@@ -46,6 +47,11 @@ export default function ThroughScreen() {
   const gateway = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
     [relations, id],
+  );
+
+  const gatewayTitle = useMemo(
+    () => (gateway ? getRelationSheetIdentity({ relation: gateway }).primaryTitle : '…'),
+    [gateway],
   );
 
   // Members reached primarily through this gateway.
@@ -60,9 +66,10 @@ export default function ThroughScreen() {
       })
       .map((r) => {
         const gatewayPowerBand = deriveGatewayPowerBand(r);
+        const relationIdentity = getRelationSheetIdentity({ relation: r.relation });
         return {
           id: r.relation.id,
-          name: r.relation.name,
+          name: relationIdentity.primaryTitle,
           status: getCircleNodeStatus(r),
           avatarSeed: r.relation.avatarSeed,
           proximityBand: 'outer' as const,
@@ -79,12 +86,12 @@ export default function ThroughScreen() {
   // Center = gateway person, warmGold — visually distinct from "me" in World
   const gatewayCenter = useMemo(
     () => ({
-      displayName: gateway?.name ?? '…',
+      displayName: gatewayTitle,
       avatarSeed:
         gateway?.avatarSeed ||
         (gateway?.name?.trim().charAt(0).toUpperCase() ?? '?'),
     }),
-    [gateway],
+    [gateway, gatewayTitle],
   );
 
   const gatewayInitial =
@@ -124,7 +131,7 @@ export default function ThroughScreen() {
           <Text style={styles.gatewayInitial}>{gatewayInitial}</Text>
         </View>
         <Text style={styles.gatewayName} numberOfLines={1}>
-          {gateway?.name ?? '…'}
+          {gatewayTitle}
         </Text>
         {memberCount > 0 && (
           <View style={styles.opensRow}>
@@ -148,7 +155,7 @@ export default function ThroughScreen() {
           onCenterTap={handleCenterTap}
           centerRadius={30}
           centerColor={colors.accent.warmGold}
-          emptyText={`No connections through ${gateway?.name ?? '…'} yet.`}
+          emptyText={`No connections through ${gatewayTitle} yet.`}
         />
         <Text style={styles.brandWatermark}>{'BAOBAB'}</Text>
       </View>

@@ -9,6 +9,7 @@ import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import EgoGraph from '../../components/ui/EgoGraph';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
+import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
 import {
   deriveGatewayAccessState,
   deriveGatewayPowerBand,
@@ -38,7 +39,7 @@ export default function CircleScreen() {
     () => new Map(
       readings
         .filter((r) => !r.relation.archived)
-        .map((r) => [r.relation.id, r.relation.name]),
+        .map((r) => [r.relation.id, getRelationSheetIdentity({ relation: r.relation }).primaryTitle]),
     ),
     [readings],
   );
@@ -50,10 +51,11 @@ export default function CircleScreen() {
       .filter((r) => r.relation.localState.revealSnapshot.status === 'revealed')
       .map((r) => {
         const gatewayPowerBand = deriveGatewayPowerBand(r);
+        const relationIdentity = getRelationSheetIdentity({ relation: r.relation });
         const viaState = deriveViaState(r, activeRelationsById);
         return {
           id: r.relation.id,
-          name: r.relation.name,
+          name: relationIdentity.primaryTitle,
           status: getCircleNodeStatus(r),
           avatarSeed: r.relation.avatarSeed,
           proximityBand: deriveProximityBand(r),
