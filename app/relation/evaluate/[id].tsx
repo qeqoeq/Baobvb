@@ -98,6 +98,8 @@ export default function EvaluateScreen() {
   const sourceLabel =
     relation?.source === 'scan'
       ? 'Added by scan'
+      : relation?.source === 'invite_number'
+        ? 'Invited by number'
       : relation?.source === 'claim'
         ? 'Joined by invite'
         : 'Added manually';
