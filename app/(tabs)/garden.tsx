@@ -65,6 +65,14 @@ export default function GardenScreen() {
     [entries],
   );
 
+  const readyMomentEntry = useMemo(
+    () =>
+      [...entries]
+        .filter((entry) => entry.relation.localState.revealSnapshot.status === 'reveal_ready')
+        .sort((a, b) => b.recentDate.localeCompare(a.recentDate))[0] ?? null,
+    [entries],
+  );
+
   const filteredEntries = useMemo(() => {
     const sortedActive = [...entries].sort((a, b) => b.recentDate.localeCompare(a.recentDate));
     const sortedArchived = [...archivedEntries].sort((a, b) => b.recentDate.localeCompare(a.recentDate));
@@ -118,6 +126,14 @@ export default function GardenScreen() {
     if (entries.length === 0) return 'Not yet mapped';
     return toNurtureCount > 0 ? 'Trust in motion' : 'Trust growing';
   }, [entries.length, toNurtureCount]);
+
+  const readyMomentIdentity = readyMomentEntry
+    ? getRelationSheetIdentity({ relation: readyMomentEntry.relation })
+    : null;
+
+  const readyMomentTitle = readyMomentIdentity?.primaryTitle?.trim()
+    ? `${readyMomentIdentity.primaryTitle} is ready`
+    : 'Private link is ready';
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -186,6 +202,27 @@ export default function GardenScreen() {
           <Text style={styles.pulseChipLabel}>Forming</Text>
         </Pressable>
       </View>
+
+      {readyMomentEntry && readyMomentIdentity ? (
+        <Pressable
+          onPress={() => router.push(`/relation/${readyMomentEntry.relation.id}`)}
+          style={styles.readyMomentCard}
+        >
+          <View style={styles.readyMomentBadge}>
+            <Text style={styles.readyMomentBadgeText}>READY TO OPEN</Text>
+          </View>
+          <View style={styles.readyMomentBody}>
+            <Text style={styles.readyMomentTitle}>{readyMomentTitle}</Text>
+            <Text style={styles.readyMomentText}>
+              {'A shared reading just opened. Continue the moment.'}
+            </Text>
+          </View>
+          <View style={styles.readyMomentFooter}>
+            <Text style={styles.readyMomentCTA}>Open reveal</Text>
+            <Text style={styles.readyMomentChevron}>›</Text>
+          </View>
+        </Pressable>
+      ) : null}
 
       {/* ── Relationship list ──────────────────────────────────────────────────── */}
       <View style={styles.section}>
@@ -423,6 +460,66 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
+  },
+
+  readyMomentCard: {
+    backgroundColor: colors.accent.deepTeal + '12',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accent.deepTeal + '4D',
+    padding: spacing.lg,
+    gap: spacing.md,
+    shadowColor: colors.accent.deepTeal,
+    shadowOpacity: 0.10,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  readyMomentBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.accent.deepTeal + '55',
+    backgroundColor: colors.accent.deepTeal + '1A',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 6,
+  },
+  readyMomentBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.accent.deepTeal,
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+  },
+  readyMomentBody: {
+    gap: spacing.xs,
+  },
+  readyMomentTitle: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700',
+    color: colors.text.primary,
+    letterSpacing: -0.4,
+  },
+  readyMomentText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.text.secondary,
+  },
+  readyMomentFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  readyMomentCTA: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.accent.deepTeal,
+    letterSpacing: 0.2,
+  },
+  readyMomentChevron: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.accent.deepTeal,
   },
 
   // ── Section ─────────────────────────────────────────────────────────────────
