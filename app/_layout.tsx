@@ -283,6 +283,7 @@ export default function RootLayout() {
         options={{
           title: '',
           headerBackTitle: '',
+          headerBackButtonDisplayMode: 'minimal',
           headerStyle: { backgroundColor: colors.background.primary },
           headerTintColor: colors.text.primary,
           headerShadowVisible: false,

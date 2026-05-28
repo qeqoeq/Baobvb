@@ -404,7 +404,13 @@ export default function RelationDetailScreen() {
 
   return (
     <>
-    <Stack.Screen options={{ title: getHeaderTitle(relationIdentity.privateLabel, nextAction.ctaKind), headerBackTitle: '' }} />
+    <Stack.Screen
+      options={{
+        title: getHeaderTitle(relationIdentity.privateLabel, nextAction.ctaKind),
+        headerBackTitle: '',
+        headerBackButtonDisplayMode: 'minimal',
+      }}
+    />
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: headerAccent + '14', borderColor: headerAccent + '44' }]}>

@@ -9,9 +9,9 @@ import { getFoundationalReadings, getGardenMicroSignal } from '../../lib/foundat
 import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
-type GardenFilterKey = 'active' | 'read' | 'unread' | 'toNurture' | 'archived' | 'ready' | 'forming';
+type GardenFilterKey = 'active' | 'recent' | 'read' | 'unread' | 'toNurture' | 'archived' | 'ready' | 'forming';
 
-const VALID_FILTER_KEYS: GardenFilterKey[] = ['active', 'read', 'unread', 'toNurture', 'archived', 'ready', 'forming'];
+const VALID_FILTER_KEYS: GardenFilterKey[] = ['active', 'recent', 'read', 'unread', 'toNurture', 'archived', 'ready', 'forming'];
 
 export default function GardenScreen() {
   const params = useLocalSearchParams<{ filter?: string }>();
@@ -70,6 +70,8 @@ export default function GardenScreen() {
     const sortedArchived = [...archivedEntries].sort((a, b) => b.recentDate.localeCompare(a.recentDate));
 
     switch (selectedFilter) {
+      case 'recent':
+        return sortedActive;
       case 'read':
         return sortedActive.filter((entry) => entry.readingStatus === 'Read');
       case 'unread':
@@ -100,6 +102,7 @@ export default function GardenScreen() {
 
   const filterLabel = useMemo(() => {
     switch (selectedFilter) {
+      case 'recent':      return 'recent';
       case 'read':        return 'read';
       case 'unread':      return 'unread';
       case 'toNurture':   return 'to nurture';
@@ -139,6 +142,13 @@ export default function GardenScreen() {
         >
           <Text style={styles.pulseChipValue}>{activeRelations.length}</Text>
           <Text style={styles.pulseChipLabel}>Active</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setSelectedFilter('recent')}
+          style={[styles.pulseChip, selectedFilter === 'recent' && styles.pulseChipActive]}
+        >
+          <Text style={styles.pulseChipValue}>{entries.length}</Text>
+          <Text style={styles.pulseChipLabel}>Recent</Text>
         </Pressable>
         <Pressable
           onPress={() => setSelectedFilter('read')}
@@ -183,6 +193,8 @@ export default function GardenScreen() {
           <Text style={styles.sectionLabel}>
             {selectedFilter === 'archived'
               ? 'Archived'
+              : selectedFilter === 'recent'
+                ? 'Recent'
               : selectedFilter === 'ready'
                 ? 'Ready'
                 : selectedFilter === 'forming'
