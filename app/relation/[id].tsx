@@ -68,6 +68,7 @@ export default function RelationDetailScreen() {
   // Prevents refreshSharedReveal from fetching an incomplete backend record
   // during the invite creation window, which would override local state.
   const isInviteFlowActiveRef = useRef(false);
+  const revealUnlockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const relation = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
@@ -152,6 +153,57 @@ export default function RelationDetailScreen() {
       syncRevealReadyState(relation.id);
     }
   }, [relation, effectiveRelation, sharedReveal, syncRevealReadyState, refreshSharedReveal]);
+
+  useEffect(() => {
+    if (revealUnlockTimeoutRef.current) {
+      clearTimeout(revealUnlockTimeoutRef.current);
+      revealUnlockTimeoutRef.current = null;
+    }
+
+    if (!relation || !sharedReveal || !effectiveRelation) return;
+    if (sharedReveal.status !== 'cooking_reveal') return;
+
+    const unlockAt = effectiveRelation.localState.revealSnapshot.unlockAt;
+    if (!unlockAt) return;
+
+    const unlockAtMs = Date.parse(unlockAt);
+    if (!Number.isFinite(unlockAtMs)) return;
+
+    const relationshipId = relation.canonicalRelationId ?? relation.id;
+    const delayMs = Math.max(0, unlockAtMs - Date.now()) + 500;
+    let cancelled = false;
+
+    const markReadyAndRefresh = async () => {
+      try {
+        await markSharedRevealReadyIfUnlocked(relationshipId);
+        if (!cancelled) {
+          await refreshSharedReveal();
+        }
+      } catch {
+        // Keep the last confirmed server state visible until a later refresh succeeds.
+      }
+    };
+
+    if (Date.now() >= unlockAtMs) {
+      void markReadyAndRefresh();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    revealUnlockTimeoutRef.current = setTimeout(() => {
+      revealUnlockTimeoutRef.current = null;
+      void markReadyAndRefresh();
+    }, delayMs);
+
+    return () => {
+      cancelled = true;
+      if (revealUnlockTimeoutRef.current) {
+        clearTimeout(revealUnlockTimeoutRef.current);
+        revealUnlockTimeoutRef.current = null;
+      }
+    };
+  }, [relation, sharedReveal, effectiveRelation, refreshSharedReveal]);
 
   if (!relation) {
     return (
