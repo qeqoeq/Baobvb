@@ -236,7 +236,7 @@ export function getRelationSheetIdentity(input: {
     primaryTitle: privateLabel,
     titleEyebrow: 'Private label',
     supportingText: null,
-    stateLabel: relation.archived ? 'Archived' : 'Private only',
+    stateLabel: relation.archived ? 'Archived' : 'Private',
     relationDepth,
     relationDepthLabel,
     anchorLabel: 'Anchored by',
@@ -261,15 +261,6 @@ export function getRelationNextAction(input: {
     };
   }
 
-  if (!input.hasEvaluation) {
-    return {
-      title: 'Start with a private reading',
-      body: 'Stays private until both sides are in.',
-      ctaLabel: 'Read this relationship',
-      ctaKind: 'evaluate',
-    };
-  }
-
   if (input.nameRevealed) {
     return {
       title: 'Shared reading open',
@@ -279,12 +270,23 @@ export function getRelationNextAction(input: {
     };
   }
 
+  // reveal_ready is checked before hasEvaluation: the server confirms both sides submitted
+  // readings, even when no local evaluation exists (bootstrap / claim relations).
   if (input.revealStatus === 'reveal_ready') {
     return {
       title: 'Reveal is ready',
       body: 'Both sides are in.',
-      ctaLabel: 'Reveal now',
+      ctaLabel: 'Open reveal',
       ctaKind: 'reveal',
+    };
+  }
+
+  if (!input.hasEvaluation) {
+    return {
+      title: 'Start with a private reading',
+      body: 'Stays private until both sides are in.',
+      ctaLabel: 'Read this relationship',
+      ctaKind: 'evaluate',
     };
   }
 
@@ -361,10 +363,33 @@ export function getReadingCardVariant(input: {
   nameRevealed: boolean;
   revealStatus: RevealStatus;
 }): ReadingCardVariant {
-  if (!input.hasEvaluation) return 'unread';
   if (input.nameRevealed) return 'revealed';
+  if (!input.hasEvaluation) return 'unread';
   if (input.revealStatus === 'reveal_ready') return 'reveal_ready';
   if (input.revealStatus === 'waiting_other_side') return 'waiting_other_side';
   if (input.revealStatus === 'cooking_reveal') return 'cooking';
   return 'private_fallback';
+}
+
+export type SharedRevealDisplayState =
+  | { kind: 'score'; score: number; tier: string }
+  | { kind: 'pending' }
+  | { kind: 'hidden' };
+
+/**
+ * Determines how the shared reading score section renders after mutual reveal.
+ * 'score'   — mutual (or private-fallback) score is available; show it.
+ * 'pending' — revealed but server has not yet returned a score.
+ * 'hidden'  — reveal has not happened; do not show shared score.
+ */
+export function getSharedRevealDisplayState(input: {
+  nameRevealed: boolean;
+  visibleScore: number | null;
+  revealedTier: string | null;
+}): SharedRevealDisplayState {
+  if (!input.nameRevealed) return { kind: 'hidden' };
+  if (input.visibleScore !== null) {
+    return { kind: 'score', score: input.visibleScore, tier: input.revealedTier ?? 'Shared link' };
+  }
+  return { kind: 'pending' };
 }

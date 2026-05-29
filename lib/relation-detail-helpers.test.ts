@@ -6,6 +6,7 @@ import {
   getReadingNoteText,
   getVisibleTierLabel,
   getRelationNextAction,
+  getSharedRevealDisplayState,
 } from './relation-detail-helpers';
 
 // ── getRelationContextCard ──────────────────────────────────────────────────
@@ -166,11 +167,11 @@ describe('getReadingCardVariant', () => {
     ).toBe('private_fallback');
   });
 
-  it('unread takes priority over nameRevealed', () => {
-    // No evaluation — always unread even if nameRevealed were somehow true
+  it('nameRevealed takes priority over missing evaluation', () => {
+    // Mutual reveal wins even without local evaluation (bootstrap / claim relations have no local eval)
     expect(
       getReadingCardVariant({ hasEvaluation: false, nameRevealed: true, revealStatus: 'revealed' }),
-    ).toBe('unread');
+    ).toBe('revealed');
   });
 });
 
@@ -206,5 +207,66 @@ describe('getRelationNextAction', () => {
     });
     expect(result.title).toBe('Reading private');
     expect(result.body).toBe('Saved on your side. The reveal waits for both.');
+  });
+
+  it('reveal_ready without local evaluation shows Open reveal (bootstrap / claim relations)', () => {
+    const result = getRelationNextAction({
+      relation: { ...baseRelation, source: 'bootstrap' as const },
+      hasEvaluation: false,
+      revealStatus: 'reveal_ready',
+      nameRevealed: false,
+      deliveryChannelOpened: false,
+    });
+    expect(result.ctaKind).toBe('reveal');
+    expect(result.ctaLabel).toBe('Open reveal');
+  });
+});
+
+// ── getSharedRevealDisplayState ─────────────────────────────────────────────
+
+describe('getSharedRevealDisplayState', () => {
+  it('returns hidden when not revealed', () => {
+    const result = getSharedRevealDisplayState({ nameRevealed: false, visibleScore: 82, revealedTier: 'Anchor' });
+    expect(result.kind).toBe('hidden');
+  });
+
+  it('returns score when revealed with score and tier', () => {
+    const result = getSharedRevealDisplayState({ nameRevealed: true, visibleScore: 82, revealedTier: 'Anchor' });
+    expect(result.kind).toBe('score');
+    if (result.kind === 'score') {
+      expect(result.score).toBe(82);
+      expect(result.tier).toBe('Anchor');
+    }
+  });
+
+  it('uses "Shared link" as tier fallback when revealedTier is null', () => {
+    const result = getSharedRevealDisplayState({ nameRevealed: true, visibleScore: 65, revealedTier: null });
+    expect(result.kind).toBe('score');
+    if (result.kind === 'score') {
+      expect(result.tier).toBe('Shared link');
+    }
+  });
+
+  it('returns pending when revealed but score is null — no "Private reading" fallback', () => {
+    // This is the bootstrap/claim case: server returned status revealed but mutual_score: null
+    const result = getSharedRevealDisplayState({ nameRevealed: true, visibleScore: null, revealedTier: null });
+    expect(result.kind).toBe('pending');
+  });
+
+  it('returns score when revealed with score even if tier is null', () => {
+    const result = getSharedRevealDisplayState({ nameRevealed: true, visibleScore: 45, revealedTier: null });
+    expect(result.kind).toBe('score');
+    if (result.kind === 'score') {
+      expect(result.score).toBe(45);
+      expect(result.tier).toBe('Shared link');
+    }
+  });
+
+  it('returns pending when revealed + visibleScore null + revealedTier null — bootstrap before score loads', () => {
+    // Bootstrap/claim relations have no local evaluation and my_shared_relationships() does not
+    // return mutual_score. If the reveal is opened before the full shared record is fetched,
+    // visibleScore is null and the display must show pending, not a fabricated score.
+    const result = getSharedRevealDisplayState({ nameRevealed: true, visibleScore: null, revealedTier: null });
+    expect(result.kind).toBe('pending');
   });
 });
