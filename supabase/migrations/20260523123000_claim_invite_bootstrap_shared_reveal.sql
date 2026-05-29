@@ -5,6 +5,12 @@
 -- durable shared row bound to inviter + claimer, without relying on the client
 -- to create that row later through attach_shared_private_reading_reference().
 
+-- DROP required before CREATE OR REPLACE: the return type changes from the Day 6
+-- signature (returns table with a shared_record composite column) to an explicit
+-- column list that includes counterpart_public_profile_id. Postgres refuses
+-- CREATE OR REPLACE when the return type differs; DROP + recreate is the only path.
+drop function if exists public.claim_relationship_invite(text);
+
 create or replace function public.claim_relationship_invite(
   p_invite_token text
 )
