@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { devLogLinking, maskIdForLog } from '../../lib/dev-linking-log';
@@ -29,6 +29,7 @@ import {
   getSharedRevealRecordForCurrentUser,
   markSharedRevealReadyIfUnlocked,
   openSharedReveal,
+  startSharedCookingRevealIfReady,
   tryRegisterPhoneAnchorSilently,
 } from '../../lib/reveal-shared-repo';
 import {
@@ -36,6 +37,7 @@ import {
   getReadingNoteText,
   getRelationNextAction,
   getRelationSheetIdentity,
+  getSharedRevealDisplayState,
 } from '../../lib/relation-detail-helpers';
 import { showPhoneInviteSheet } from '../../lib/phone-invite-sheet';
 import { useRelationsStore } from '../../store/useRelationsStore';
@@ -69,6 +71,9 @@ export default function RelationDetailScreen() {
   // during the invite creation window, which would override local state.
   const isInviteFlowActiveRef = useRef(false);
   const revealUnlockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const revealTreeScale = useRef(new Animated.Value(0)).current;
+  const revealOverlayOpacity = useRef(new Animated.Value(0)).current;
+  const [isRevealing, setIsRevealing] = useState(false);
 
   const relation = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
@@ -243,6 +248,11 @@ export default function RelationDetailScreen() {
     ? getRelationshipLexiconEntry(revealedTier)
     : null;
   const revealStatus = relationForDisplay.localState.revealSnapshot.status;
+  const revealAwaitingLoad =
+    Boolean(relation.canonicalRelationId) &&
+    sharedReveal === null &&
+    revealStatus === 'reveal_ready' &&
+    relationForDisplay.localState.revealSnapshot.mutualScore === undefined;
   const readingVariant = getReadingCardVariant({ hasEvaluation: Boolean(evaluation), nameRevealed, revealStatus });
   const relationIdentity = getRelationSheetIdentity({
     relation,
@@ -258,11 +268,9 @@ export default function RelationDetailScreen() {
     deliveryChannelOpened,
   });
   const readingSectionLabel = nameRevealed ? 'Shared reading' : 'Private reading';
-  // visibleScore / visibleScoreTier are derived from the revealed source of truth.
+  // visibleScore is the revealed source of truth: mutual when available, private as fallback.
   const visibleScore = revealedScore;
-  const visibleScoreTier = nameRevealed
-    ? (revealedTier ?? 'Private reading')
-    : 'Private reading';
+  const sharedRevealDisplay = getSharedRevealDisplayState({ nameRevealed, visibleScore, revealedTier });
   const safeRevealSummary = getSafeRelationshipRevealSummary(
     buildRelationshipRevealInput({
       relation: relationForDisplay,
@@ -271,24 +279,94 @@ export default function RelationDetailScreen() {
   );
 
   const handleOpenReveal = async () => {
-    if (sharedReveal) {
-      try {
-        const relationshipId = relation.canonicalRelationId ?? relation.id;
-        const updated = await openSharedReveal(relationshipId);
-        setSharedReveal(updated);
-        if (!updated || updated.status !== 'revealed') {
-          Alert.alert('Reveal not ready', 'Baobab is still preparing this reveal.');
-        }
-        return;
-      } catch {
-        Alert.alert('Reveal unavailable', 'Shared reveal is not available right now.');
-        return;
-      }
+    if (isRevealing) return;
+    setIsRevealing(true);
+    revealTreeScale.setValue(0);
+    revealOverlayOpacity.setValue(0);
+    if (process.env.EXPO_OS === 'ios') {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
 
-    const opened = revealMutualRelationship(relation.id);
-    if (!opened) {
+    // Grow animation acts as a minimum-duration floor — server call runs in parallel.
+    const growPromise = new Promise<void>((resolve) => {
+      Animated.parallel([
+        Animated.timing(revealOverlayOpacity, { toValue: 1, duration: 280, useNativeDriver: true }),
+        Animated.timing(revealTreeScale, { toValue: 1, duration: 820, useNativeDriver: true }),
+      ]).start(() => resolve());
+    });
+
+    let updatedRecord: typeof sharedReveal = null;
+    let revealError = false;
+    let notReady = false;
+
+    const serverCall = sharedReveal
+      ? (async () => {
+          try {
+            const relationshipId = relation.canonicalRelationId ?? relation.id;
+            updatedRecord = await openSharedReveal(relationshipId);
+            if (!updatedRecord || updatedRecord.status !== 'revealed') notReady = true;
+          } catch {
+            revealError = true;
+          }
+        })()
+      : Promise.resolve().then(() => {
+          const opened = revealMutualRelationship(relation.id);
+          if (!opened) notReady = true;
+        });
+
+    await Promise.all([growPromise, serverCall]);
+
+    // Fade overlay out before showing result.
+    await new Promise<void>((resolve) => {
+      Animated.timing(revealOverlayOpacity, {
+        toValue: 0,
+        duration: 320,
+        useNativeDriver: true,
+      }).start(() => resolve());
+    });
+
+    setIsRevealing(false);
+
+    if (revealError) {
+      Alert.alert('Reveal unavailable', 'Shared reveal is not available right now.');
+      return;
+    }
+    if (notReady) {
       Alert.alert('Reveal not ready', 'Baobab is still preparing this reveal.');
+      return;
+    }
+    if (sharedReveal) {
+      setSharedReveal(updatedRecord);
+      // Always re-fetch to ensure mutual_score is present (RPC may return it async).
+      void refreshSharedReveal();
+      // Recovery: if the reading payload was never uploaded during the invite flow,
+      // re-attach it and re-trigger cooking. Both RPCs are idempotent — they exit early
+      // when the payload is already present or the record is already beyond cooking state.
+      const localEval = evaluation;
+      if (localEval) {
+        const relationshipId = relation.canonicalRelationId ?? relation.id;
+        void (async () => {
+          try {
+            await attachSharedPrivateReadingReferenceForCurrentUser(
+              relationshipId,
+              'sideA',
+              localEval.id,
+              localEval.ratings,
+            );
+            await startSharedCookingRevealIfReady(relationshipId);
+            void refreshSharedReveal();
+          } catch {
+            // Best-effort: pending state stays until a future load resolves it.
+          }
+        })();
+      }
+    } else if (relation.canonicalRelationId) {
+      // Local reveal path can happen before the shared record finishes loading.
+      // Refresh the backend record so the computed mutual score can hydrate the display.
+      void refreshSharedReveal();
+    }
+    if (process.env.EXPO_OS === 'ios') {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
 
@@ -461,13 +539,15 @@ export default function RelationDetailScreen() {
 
         {nextAction.ctaKind !== 'resend' && (
           <>
-            <View style={styles.anchorCard}>
-              <Text style={styles.anchorCardLabel}>{relationIdentity.anchorLabel}</Text>
-              <Text style={styles.anchorCardValue}>{relationIdentity.anchorValue}</Text>
-              {relationIdentity.anchorHint ? (
-                <Text style={styles.anchorCardHint}>{relationIdentity.anchorHint}</Text>
-              ) : null}
-            </View>
+            {relation.source !== 'manual' && (
+              <View style={styles.anchorCard}>
+                <Text style={styles.anchorCardLabel}>{relationIdentity.anchorLabel}</Text>
+                <Text style={styles.anchorCardValue}>{relationIdentity.anchorValue}</Text>
+                {relationIdentity.anchorHint ? (
+                  <Text style={styles.anchorCardHint}>{relationIdentity.anchorHint}</Text>
+                ) : null}
+              </View>
+            )}
 
             <View style={styles.depthRow}>
               <Text style={styles.depthLabel}>Depth</Text>
@@ -502,14 +582,43 @@ export default function RelationDetailScreen() {
             <Text style={styles.resendTreeLabel}>Send again</Text>
           </Pressable>
         ) : nextAction.ctaLabel ? (
-          <Pressable onPress={handlePrimaryAction} style={styles.ctaButton}>
-            <Text style={styles.ctaButtonText}>{nextAction.ctaLabel}</Text>
+          <Pressable onPress={handlePrimaryAction} style={styles.ctaButton} disabled={isRevealing || revealAwaitingLoad}>
+            <Text style={styles.ctaButtonText}>{revealAwaitingLoad ? 'Preparing reveal…' : nextAction.ctaLabel}</Text>
           </Pressable>
+        ) : null}
+
+        {isRevealing ? (
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFillObject,
+              styles.revealOverlay,
+              { opacity: revealOverlayOpacity },
+            ]}
+          >
+            <Animated.View
+              style={[
+                styles.revealTree,
+                {
+                  transform: [
+                    {
+                      scale: revealTreeScale.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.05, 1],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <View style={styles.revealCanopy} />
+              <View style={styles.revealTrunk} />
+            </Animated.View>
+          </Animated.View>
         ) : null}
       </View>
 
       {nextAction.ctaKind !== 'resend' && (
-        evaluation ? (
+        (evaluation || nameRevealed) ? (
           <View style={styles.readingSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>{readingSectionLabel}</Text>
@@ -518,67 +627,82 @@ export default function RelationDetailScreen() {
 
             <View style={styles.readingCard}>
               {readingVariant === 'revealed' ? (
-                <>
-                  <View style={styles.scoreRow}>
-                    <Text style={[styles.scoreValue, { color: readingAccent }]}>
-                      {visibleScore ?? '--'}
-                    </Text>
-                    <View style={styles.scoreMeta}>
-                      <View style={styles.scoreMetaRow}>
-                        <Text style={[styles.scoreTier, { color: readingAccent }]}>
-                          {visibleScoreTier}
-                        </Text>
-                        {tierLexicon ? (
-                          <Pressable onPress={openTierInfo} style={styles.infoButton}>
-                            <Text style={styles.infoButtonText}>i</Text>
-                          </Pressable>
-                        ) : null}
-                      </View>
-                      <Text style={styles.scoreDate}>
-                        {new Date(evaluation.createdAt).toLocaleDateString()}
+                sharedRevealDisplay.kind === 'score' ? (
+                  <>
+                    <View style={styles.scoreRow}>
+                      <Text style={[styles.scoreValue, { color: readingAccent }]}>
+                        {sharedRevealDisplay.score}
                       </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.pillarsSection}>
-                    {PILLAR_ORDER.map((key) => {
-                      const dots = reading?.pillarDots?.[key] ?? [];
-                      return (
-                        <View key={key} style={styles.pillarRow}>
-                          <Text style={styles.pillarLabel}>{getPillarLabel(key)}</Text>
-                          <View style={styles.pillarDots}>
-                            {dots.map((isFilled, idx) => (
-                              <View
-                                key={idx}
-                                style={[
-                                  styles.pillarDot,
-                                  isFilled
-                                    ? { backgroundColor: readingAccent }
-                                    : { backgroundColor: colors.border.soft },
-                                ]}
-                              />
-                            ))}
-                          </View>
+                      <View style={styles.scoreMeta}>
+                        <View style={styles.scoreMetaRow}>
+                          <Text style={[styles.scoreTier, { color: readingAccent }]}>
+                            {sharedRevealDisplay.tier}
+                          </Text>
+                          {tierLexicon ? (
+                            <Pressable onPress={openTierInfo} style={styles.infoButton}>
+                              <Text style={styles.infoButtonText}>i</Text>
+                            </Pressable>
+                          ) : null}
                         </View>
-                      );
-                    })}
+                        <Text style={styles.scoreDate}>
+                          {evaluation?.createdAt ? new Date(evaluation.createdAt).toLocaleDateString() : null}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {evaluation ? (
+                      <View style={styles.pillarsSection}>
+                        {PILLAR_ORDER.map((key) => {
+                          const dots = reading?.pillarDots?.[key] ?? [];
+                          return (
+                            <View key={key} style={styles.pillarRow}>
+                              <Text style={styles.pillarLabel}>{getPillarLabel(key)}</Text>
+                              <View style={styles.pillarDots}>
+                                {dots.map((isFilled, idx) => (
+                                  <View
+                                    key={idx}
+                                    style={[
+                                      styles.pillarDot,
+                                      isFilled
+                                        ? { backgroundColor: readingAccent }
+                                        : { backgroundColor: colors.border.soft },
+                                    ]}
+                                  />
+                                ))}
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ) : null}
+                    {revealedTier ? (
+                      <View style={styles.narrativeCard}>
+                        {evaluation ? (
+                          <>
+                            <Text style={styles.narrativeLine}>
+                              <Text style={styles.narrativeKey}>Where it's strong:</Text> {strongestLabel}
+                            </Text>
+                            <Text style={styles.narrativeLine}>
+                              <Text style={styles.narrativeKey}>Where it can grow:</Text> {weakestLabel}
+                            </Text>
+                          </>
+                        ) : null}
+                        <Text style={styles.narrativeReading}>
+                          {tierNarrative}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </>
+                ) : (
+                  <View style={styles.privateStateCard}>
+                    <Text style={styles.privateStateTitle}>Shared link open</Text>
+                    <Text style={styles.privateStateText}>Score is being finalized.</Text>
                   </View>
-                  <View style={styles.narrativeCard}>
-                    <Text style={styles.narrativeLine}>
-                      <Text style={styles.narrativeKey}>Where it's strong:</Text> {strongestLabel}
-                    </Text>
-                    <Text style={styles.narrativeLine}>
-                      <Text style={styles.narrativeKey}>Where it can grow:</Text> {weakestLabel}
-                    </Text>
-                    <Text style={styles.narrativeReading}>
-                      {tierNarrative}
-                    </Text>
-                  </View>
-                </>
+                )
               ) : readingVariant === 'reveal_ready' ? (
                 <View style={styles.revealReadyCard}>
                   <Text style={styles.privateStateDate}>
-                    Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
+                    Saved on {evaluation?.createdAt ? new Date(evaluation.createdAt).toLocaleDateString() : null}
                   </Text>
                   <Text style={styles.revealReadyTitle}>Shared reading ready</Text>
                   <Text style={styles.privateStateText}>
@@ -588,7 +712,7 @@ export default function RelationDetailScreen() {
               ) : (
                 <View style={styles.privateStateCard}>
                   <Text style={styles.privateStateDate}>
-                    Saved on {new Date(evaluation.createdAt).toLocaleDateString()}
+                    Saved on {evaluation?.createdAt ? new Date(evaluation.createdAt).toLocaleDateString() : null}
                   </Text>
                   {readingVariant === 'waiting_other_side' ? (
                     <>
@@ -892,6 +1016,35 @@ const styles = StyleSheet.create({
     borderColor: colors.accent.deepTeal + '44',
     padding: spacing.lg,
     gap: spacing.sm,
+    overflow: 'hidden',
+  },
+  revealOverlay: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  revealTree: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  revealCanopy: {
+    width: 76,
+    height: 56,
+    borderRadius: 38,
+    backgroundColor: colors.accent.leafGreen + '66',
+    borderWidth: 2,
+    borderColor: colors.accent.leafGreen + 'BB',
+    shadowColor: colors.accent.leafGreen,
+    shadowOpacity: 0.75,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  revealTrunk: {
+    width: 10,
+    height: 26,
+    borderRadius: 5,
+    backgroundColor: colors.accent.warmGold + 'CC',
   },
   primaryActionCardHighlight: {
     borderColor: colors.accent.warmGold + '55',
