@@ -487,11 +487,13 @@ export default function RelationDetailScreen() {
     <Stack.Screen
       options={{
         title: getHeaderTitle(relationIdentity.privateLabel, nextAction.ctaKind),
-        headerBackTitle: '',
-        headerBackButtonDisplayMode: 'minimal',
+        headerShown: false,
       }}
     />
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Pressable onPress={navigateAway} style={styles.backRow} hitSlop={8}>
+        <Text style={styles.backRowText}>‹ Back</Text>
+      </Pressable>
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: headerAccent + '14', borderColor: headerAccent + '44' }]}>
           <Text style={[styles.avatarText, { color: headerAccent }]}>
@@ -823,8 +825,20 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
+    paddingTop: 52,
     paddingBottom: spacing.lg * 2,
     gap: spacing.lg,
+  },
+  backRow: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+    paddingRight: spacing.md,
+    marginTop: -spacing.xs,
+  },
+  backRowText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text.muted,
   },
   unavailableWrap: {
     flex: 1,
