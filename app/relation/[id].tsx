@@ -370,14 +370,6 @@ export default function RelationDetailScreen() {
     }
   };
 
-  const openTierInfo = () => {
-    if (!tierLexicon) return;
-    Alert.alert(
-      tierLexicon.canonicalName,
-      `Color: ${tierLexicon.colorLabel}\n\n${tierLexicon.definition}`,
-    );
-  };
-
   const handleInviteToReveal = async () => {
     if (isInviteFlowActiveRef.current) return;
     isInviteFlowActiveRef.current = true;
@@ -629,29 +621,28 @@ export default function RelationDetailScreen() {
               {readingVariant === 'revealed' ? (
                 sharedRevealDisplay.kind === 'score' ? (
                   <>
-                    <View style={styles.scoreRow}>
-                      <Text style={[styles.scoreValue, { color: readingAccent }]}>
-                        {sharedRevealDisplay.score}
-                      </Text>
-                      <View style={styles.scoreMeta}>
-                        <View style={styles.scoreMetaRow}>
-                          <Text style={[styles.scoreTier, { color: readingAccent }]}>
-                            {sharedRevealDisplay.tier}
-                          </Text>
-                          {tierLexicon ? (
-                            <Pressable onPress={openTierInfo} style={styles.infoButton}>
-                              <Text style={styles.infoButtonText}>i</Text>
-                            </Pressable>
-                          ) : null}
-                        </View>
-                        <Text style={styles.scoreDate}>
-                          {evaluation?.createdAt ? new Date(evaluation.createdAt).toLocaleDateString() : null}
+                    <View style={styles.tierHeader}>
+                      <View style={styles.tierTitleRow}>
+                        <Text style={[styles.tierName, { color: readingAccent }]}>
+                          {sharedRevealDisplay.tier}
+                        </Text>
+                        <Text style={[styles.tierScore, { color: readingAccent }]}>
+                          {sharedRevealDisplay.score}
                         </Text>
                       </View>
+                      {tierLexicon ? (
+                        <Text style={styles.tierDefinition}>{tierLexicon.definition}</Text>
+                      ) : null}
+                      {evaluation?.createdAt ? (
+                        <Text style={styles.tierDate}>
+                          Read together on {new Date(evaluation.createdAt).toLocaleDateString()}
+                        </Text>
+                      ) : null}
                     </View>
 
                     {evaluation ? (
                       <View style={styles.pillarsSection}>
+                        <Text style={styles.signalsEyebrow}>Signals</Text>
                         {PILLAR_ORDER.map((key) => {
                           const dots = reading?.pillarDots?.[key] ?? [];
                           return (
@@ -695,8 +686,8 @@ export default function RelationDetailScreen() {
                   </>
                 ) : (
                   <View style={styles.privateStateCard}>
-                    <Text style={styles.privateStateTitle}>Shared link open</Text>
-                    <Text style={styles.privateStateText}>Score is being finalized.</Text>
+                    <Text style={styles.privateStateTitle}>Shared view unlocked</Text>
+                    <Text style={styles.privateStateText}>Reading appears in a moment.</Text>
                   </View>
                 )
               ) : readingVariant === 'reveal_ready' ? (
@@ -914,22 +905,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
-  infoButton: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    backgroundColor: colors.background.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoButtonText: {
-    fontSize: 12,
-    color: colors.text.muted,
-    fontWeight: '700',
-    lineHeight: 14,
-  },
   metaZone: {
     gap: spacing.xs,
   },
@@ -1098,30 +1073,43 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.lg,
   },
-  scoreRow: {
+  tierHeader: {
+    gap: spacing.sm,
+  },
+  tierTitleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
     gap: spacing.md,
   },
-  scoreValue: {
-    fontSize: 40,
+  tierName: {
+    fontSize: 26,
     fontWeight: '700',
+    letterSpacing: -0.4,
   },
-  scoreMeta: {
-    gap: 2,
-  },
-  scoreMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  scoreTier: {
-    fontSize: 16,
+  tierScore: {
+    fontSize: 32,
     fontWeight: '700',
+    letterSpacing: -1,
   },
-  scoreDate: {
-    fontSize: 12,
+  tierDefinition: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.text.secondary,
+  },
+  tierDate: {
+    fontSize: 10,
+    fontWeight: '700',
     color: colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  signalsEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
   pillarsSection: {
     gap: spacing.md,

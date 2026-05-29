@@ -220,6 +220,20 @@ describe('getRelationNextAction', () => {
     expect(result.ctaKind).toBe('reveal');
     expect(result.ctaLabel).toBe('Open reveal');
   });
+
+  it('nameRevealed shows the shared view unlocked message with no CTA', () => {
+    const result = getRelationNextAction({
+      relation: baseRelation,
+      hasEvaluation: true,
+      revealStatus: 'revealed',
+      nameRevealed: true,
+      deliveryChannelOpened: false,
+    });
+    expect(result.title).toBe('Shared view unlocked');
+    expect(result.body).toBe('You can now read this connection together.');
+    expect(result.ctaKind).toBeNull();
+    expect(result.ctaLabel).toBeNull();
+  });
 });
 
 // ── getSharedRevealDisplayState ─────────────────────────────────────────────
@@ -239,11 +253,11 @@ describe('getSharedRevealDisplayState', () => {
     }
   });
 
-  it('uses "Shared link" as tier fallback when revealedTier is null', () => {
+  it('uses "Shared reading" as tier fallback when revealedTier is null', () => {
     const result = getSharedRevealDisplayState({ nameRevealed: true, visibleScore: 65, revealedTier: null });
     expect(result.kind).toBe('score');
     if (result.kind === 'score') {
-      expect(result.tier).toBe('Shared link');
+      expect(result.tier).toBe('Shared reading');
     }
   });
 
@@ -258,7 +272,7 @@ describe('getSharedRevealDisplayState', () => {
     expect(result.kind).toBe('score');
     if (result.kind === 'score') {
       expect(result.score).toBe(45);
-      expect(result.tier).toBe('Shared link');
+      expect(result.tier).toBe('Shared reading');
     }
   });
 

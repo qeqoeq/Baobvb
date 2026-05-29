@@ -263,8 +263,8 @@ export function getRelationNextAction(input: {
 
   if (input.nameRevealed) {
     return {
-      title: 'Shared reading open',
-      body: 'See it below.',
+      title: 'Shared view unlocked',
+      body: 'You can now read this connection together.',
       ctaLabel: null,
       ctaKind: null,
     };
@@ -389,7 +389,7 @@ export function getSharedRevealDisplayState(input: {
 }): SharedRevealDisplayState {
   if (!input.nameRevealed) return { kind: 'hidden' };
   if (input.visibleScore !== null) {
-    return { kind: 'score', score: input.visibleScore, tier: input.revealedTier ?? 'Shared link' };
+    return { kind: 'score', score: input.visibleScore, tier: input.revealedTier ?? 'Shared reading' };
   }
   return { kind: 'pending' };
 }
