@@ -33,6 +33,7 @@ import {
   tryRegisterPhoneAnchorSilently,
 } from '../../lib/reveal-shared-repo';
 import {
+  getDeeperSignal,
   getReadingCardVariant,
   getReadingNoteText,
   getRelationNextAction,
@@ -271,6 +272,15 @@ export default function RelationDetailScreen() {
   // visibleScore is the revealed source of truth: mutual when available, private as fallback.
   const visibleScore = revealedScore;
   const sharedRevealDisplay = getSharedRevealDisplayState({ nameRevealed, visibleScore, revealedTier });
+  // Deeper Signal — derived from the local user's own Trust + Affinity ratings.
+  // Only available when the user has a local evaluation. Bootstrap/claim relations
+  // without a local reading do not render this layer (privacy by design).
+  const deeperSignal = nameRevealed && evaluation
+    ? getDeeperSignal({
+        trust: evaluation.ratings.trust,
+        affinity: evaluation.ratings.affinity,
+      })
+    : null;
   const safeRevealSummary = getSafeRelationshipRevealSummary(
     buildRelationshipRevealInput({
       relation: relationForDisplay,
@@ -681,6 +691,15 @@ export default function RelationDetailScreen() {
                         <Text style={styles.narrativeReading}>
                           {tierNarrative}
                         </Text>
+                      </View>
+                    ) : null}
+                    {deeperSignal ? (
+                      <View style={styles.deeperSignalBlock}>
+                        <Text style={styles.deeperSignalEyebrow}>Private deeper signal</Text>
+                        {deeperSignal.lines.map((line, idx) => (
+                          <Text key={idx} style={styles.deeperSignalLine}>{line}</Text>
+                        ))}
+                        <Text style={styles.deeperSignalAttribution}>Based on your private read.</Text>
                       </View>
                     ) : null}
                   </>
@@ -1154,6 +1173,28 @@ const styles = StyleSheet.create({
   narrativeKey: {
     fontWeight: '700',
     color: colors.text.primary,
+  },
+  deeperSignalBlock: {
+    gap: spacing.xs,
+    paddingTop: spacing.xs,
+  },
+  deeperSignalEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  deeperSignalLine: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.text.primary,
+  },
+  deeperSignalAttribution: {
+    fontSize: 11,
+    color: colors.text.muted,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
   },
   privateStateCard: {
     backgroundColor: colors.background.tertiary,

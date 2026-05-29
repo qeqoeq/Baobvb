@@ -7,6 +7,7 @@ import {
   getVisibleTierLabel,
   getRelationNextAction,
   getSharedRevealDisplayState,
+  getDeeperSignal,
 } from './relation-detail-helpers';
 
 // ── getRelationContextCard ──────────────────────────────────────────────────
@@ -282,5 +283,55 @@ describe('getSharedRevealDisplayState', () => {
     // visibleScore is null and the display must show pending, not a fabricated score.
     const result = getSharedRevealDisplayState({ nameRevealed: true, visibleScore: null, revealedTier: null });
     expect(result.kind).toBe('pending');
+  });
+});
+
+// ── getDeeperSignal ─────────────────────────────────────────────────────────
+
+describe('getDeeperSignal', () => {
+  it('high trust + high affinity → safe_and_natural', () => {
+    const result = getDeeperSignal({ trust: 5, affinity: 5 });
+    expect(result.kind).toBe('safe_and_natural');
+    expect(result.lines[0]).toBe('This connection feels both safe and natural.');
+    expect(result.lines.length).toBe(2);
+  });
+
+  it('high trust + low affinity → safer_than_intimate', () => {
+    const result = getDeeperSignal({ trust: 5, affinity: 2 });
+    expect(result.kind).toBe('safer_than_intimate');
+    expect(result.lines[1]).toBe('It may be safer than it is intimate.');
+  });
+
+  it('low trust + high affinity → resonance_without_trust', () => {
+    const result = getDeeperSignal({ trust: 2, affinity: 5 });
+    expect(result.kind).toBe('resonance_without_trust');
+    expect(result.lines[0]).toBe('There is resonance here, but trust is still proving itself.');
+    expect(result.lines[1]).toBe('Baobab would keep this connection private for now.');
+  });
+
+  it('high trust + medium affinity → trust_as_anchor', () => {
+    const result = getDeeperSignal({ trust: 5, affinity: 3 });
+    expect(result.kind).toBe('trust_as_anchor');
+    expect(result.lines[0]).toBe('Trust is the strongest layer here.');
+  });
+
+  it('medium trust + high affinity → ease_without_proof', () => {
+    const result = getDeeperSignal({ trust: 3, affinity: 5 });
+    expect(result.kind).toBe('ease_without_proof');
+  });
+
+  it('medium trust + medium affinity falls back to still_finding_shape', () => {
+    const result = getDeeperSignal({ trust: 3, affinity: 3 });
+    expect(result.kind).toBe('still_finding_shape');
+    expect(result.lines[1]).toBe('Baobab needs more shared evidence before opening deeper signals.');
+  });
+
+  it('low trust + low affinity falls back to still_finding_shape', () => {
+    const result = getDeeperSignal({ trust: 1, affinity: 1 });
+    expect(result.kind).toBe('still_finding_shape');
+  });
+
+  it('high trust threshold is rating === 4', () => {
+    expect(getDeeperSignal({ trust: 4, affinity: 4 }).kind).toBe('safe_and_natural');
   });
 });

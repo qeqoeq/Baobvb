@@ -393,3 +393,109 @@ export function getSharedRevealDisplayState(input: {
   }
   return { kind: 'pending' };
 }
+
+// ── Deeper Signal v0.1 ───────────────────────────────────────────────────────
+//
+// Physiorhythmic Link Reading — first deterministic layer.
+// Reads Trust + Affinity from the local user's evaluation and produces a short
+// editorial interpretation of the link's texture.
+//
+// Internal thresholds (never surfaced to the user):
+//   high   = rating >= 4
+//   low    = rating <= 2
+//   medium = rating === 3
+//
+// Architectural constraints:
+//   - Local-only: derived from the current user's own ratings.
+//   - The other side's ratings are never exposed to the client (privacy by design).
+//   - Pure, deterministic, no LLM, no network.
+//   - Returns prose only; never reveals the underlying ratings or thresholds.
+
+export type DeeperSignalKind =
+  | 'safe_and_natural'        // high trust + high affinity
+  | 'safer_than_intimate'     // high trust + low affinity
+  | 'resonance_without_trust' // low trust + high affinity
+  | 'trust_as_anchor'         // high trust + medium affinity
+  | 'ease_without_proof'      // medium trust + high affinity
+  | 'still_finding_shape';    // everything else
+
+export type DeeperSignal = {
+  kind: DeeperSignalKind;
+  lines: string[];
+};
+
+function classifyPillar(rating: number): 'high' | 'medium' | 'low' {
+  if (rating >= 4) return 'high';
+  if (rating <= 2) return 'low';
+  return 'medium';
+}
+
+/**
+ * Returns a Deeper Signal reading from Trust + Affinity ratings.
+ * Pure — no I/O, no randomness, no time dependency.
+ */
+export function getDeeperSignal(input: {
+  trust: number;
+  affinity: number;
+}): DeeperSignal {
+  const t = classifyPillar(input.trust);
+  const a = classifyPillar(input.affinity);
+
+  if (t === 'high' && a === 'high') {
+    return {
+      kind: 'safe_and_natural',
+      lines: [
+        'This connection feels both safe and natural.',
+        'Trust holds, and being together does not ask for much translation.',
+      ],
+    };
+  }
+
+  if (t === 'high' && a === 'low') {
+    return {
+      kind: 'safer_than_intimate',
+      lines: [
+        'This link is reliable, even if it does not feel especially close.',
+        'It may be safer than it is intimate.',
+      ],
+    };
+  }
+
+  if (t === 'low' && a === 'high') {
+    return {
+      kind: 'resonance_without_trust',
+      lines: [
+        'There is resonance here, but trust is still proving itself.',
+        'Baobab would keep this connection private for now.',
+      ],
+    };
+  }
+
+  if (t === 'high' && a === 'medium') {
+    return {
+      kind: 'trust_as_anchor',
+      lines: [
+        'Trust is the strongest layer here.',
+        'The connection may deepen with more shared rhythm.',
+      ],
+    };
+  }
+
+  if (t === 'medium' && a === 'high') {
+    return {
+      kind: 'ease_without_proof',
+      lines: [
+        'There is ease here, but the deeper layer is not fully proven yet.',
+        'Trust may follow with more shared rhythm.',
+      ],
+    };
+  }
+
+  return {
+    kind: 'still_finding_shape',
+    lines: [
+      'This connection is still finding its shape.',
+      'Baobab needs more shared evidence before opening deeper signals.',
+    ],
+  };
+}
