@@ -194,6 +194,13 @@ export default function GardenScreen() {
   const isBucketFilter = selectedFilter === 'sharedStrong' || selectedFilter === 'sharedGood' || selectedFilter === 'sharedFragile' || selectedFilter === 'sharedNeedsCare';
   const isGroupFilter = isBucketFilter || selectedFilter === 'attention';
 
+  const bucketLabelInfo: { label: SharedLinkStrengthLabel; accent: string } | null =
+    selectedFilter === 'sharedStrong'    ? { label: 'Strong',     accent: colors.accent.leafGreen }
+      : selectedFilter === 'sharedGood'      ? { label: 'Good',       accent: colors.accent.mutedSage }
+        : selectedFilter === 'sharedFragile'   ? { label: 'Fragile',    accent: colors.accent.warmGold }
+          : selectedFilter === 'sharedNeedsCare' ? { label: 'Needs care', accent: colors.accent.dustyRose }
+            : null;
+
   const filteredEntries = useMemo(() => {
     const sortedActive = [...entries].sort((a, b) => b.recentDate.localeCompare(a.recentDate));
     const sortedArchived = [...archivedEntries].sort((a, b) => b.recentDate.localeCompare(a.recentDate));
@@ -613,14 +620,31 @@ export default function GardenScreen() {
       ) : (
         <>
           <View style={styles.filterSection}>
-            <View style={styles.filterBackRow}>
-              <Pressable
-                onPress={() => setSelectedFilter('active')}
-                style={styles.filterBackButton}
-              >
-                <Text style={styles.filterBackText}>‹ Garden</Text>
-              </Pressable>
-            </View>
+            {isBucketFilter && bucketLabelInfo ? (
+              <View style={styles.bucketHeader}>
+                <Pressable
+                  onPress={() => setSelectedFilter('active')}
+                  style={styles.bucketBack}
+                >
+                  <Text style={styles.bucketBackText}>‹ Garden</Text>
+                </Pressable>
+                <Text style={[styles.bucketTitle, { color: bucketLabelInfo.accent }]}>
+                  {bucketLabelInfo.label}
+                </Text>
+                <Text style={styles.bucketMetric}>
+                  {filteredEntries.length} shared link{filteredEntries.length === 1 ? '' : 's'}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.filterBackRow}>
+                <Pressable
+                  onPress={() => setSelectedFilter('active')}
+                  style={styles.filterBackButton}
+                >
+                  <Text style={styles.filterBackText}>‹ Garden</Text>
+                </Pressable>
+              </View>
+            )}
             {!isGroupFilter ? (
               <View style={styles.secondaryFilterRow}>
                 <Pressable
@@ -669,29 +693,23 @@ export default function GardenScreen() {
           </View>
 
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionLabel}>
-                {selectedFilter === 'attention'
-                  ? 'Attention'
-                  : selectedFilter === 'archived'
-                    ? 'Archived'
-                    : selectedFilter === 'recent'
-                      ? 'Recent'
-                      : selectedFilter === 'sharedStrong'
-                        ? 'Strong'
-                        : selectedFilter === 'sharedGood'
-                          ? 'Good'
-                          : selectedFilter === 'sharedFragile'
-                            ? 'Fragile'
-                            : selectedFilter === 'sharedNeedsCare'
-                              ? 'Needs care'
-                              : 'Nurture'}
-              </Text>
-              <View style={styles.sectionLine} />
-              {filteredEntries.length > 0 ? (
-                <Text style={styles.sectionSupportText}>{filteredEntries.length} {filterLabel.toLowerCase()}</Text>
-              ) : null}
-            </View>
+            {!isBucketFilter ? (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionLabel}>
+                  {selectedFilter === 'attention'
+                    ? 'Attention'
+                    : selectedFilter === 'archived'
+                      ? 'Archived'
+                      : selectedFilter === 'recent'
+                        ? 'Recent'
+                        : 'Nurture'}
+                </Text>
+                <View style={styles.sectionLine} />
+                {filteredEntries.length > 0 ? (
+                  <Text style={styles.sectionSupportText}>{filteredEntries.length} {filterLabel.toLowerCase()}</Text>
+                ) : null}
+              </View>
+            ) : null}
 
             {filteredEntries.length === 0 ? (
               <View style={styles.emptyCard}>
@@ -803,6 +821,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.accent.mutedSage,
+  },
+  bucketHeader: {
+    gap: 6,
+    marginBottom: spacing.xs,
+  },
+  bucketBack: {
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+  },
+  bucketBackText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.muted,
+  },
+  bucketTitle: {
+    fontSize: 30,
+    fontWeight: '700',
+    letterSpacing: -0.6,
+    marginTop: spacing.xs,
+  },
+  bucketMetric: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
   secondaryFilterRow: {
     flexDirection: 'row',
