@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import * as Linking from 'expo-linking';
 import { Stack, router, useGlobalSearchParams, usePathname } from 'expo-router';
 
 import { colors } from '../constants/colors';
 import { devLogLinking, maskIdForLog } from '../lib/dev-linking-log';
 import { fetchMySharedRelationships } from '../lib/bootstrap-shared-relations';
+import { parseInviteDeepLink } from '../lib/parse-invite-deep-link';
 import {
   addRevealReadyNotificationResponseListener,
   configureNotificationPresentation,
@@ -232,6 +234,52 @@ export default function RootLayout() {
       removeListener();
     };
   }, [isAuthenticated]);
+
+  // Deep link router for invite URLs.
+  // expo-router does not always pick up custom-scheme URLs when the app is launched
+  // via the dev-client launcher (launchMode: "launcher"). We therefore wire both
+  // cold-start (getInitialURL) and runtime (addEventListener) ourselves and route
+  // to /invite/[relationId] explicitly. The auth gate already handles the rest.
+  const lastHandledInviteUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    const route = (url: string | null | undefined, origin: 'initial' | 'runtime') => {
+      if (!url) return;
+      if (lastHandledInviteUrlRef.current === url) return;
+      if (url.includes('expo-development-client')) {
+        devLogLinking('linking: ignored dev-client url', { origin });
+        return;
+      }
+      const parsed = parseInviteDeepLink(url);
+      if (!parsed) {
+        devLogLinking('linking: non-invite url', { origin });
+        return;
+      }
+      lastHandledInviteUrlRef.current = url;
+      devLogLinking('linking: invite route', {
+        origin,
+        relationId: maskIdForLog(parsed.relationId),
+        hasToken: Boolean(parsed.token),
+      });
+      router.push({
+        pathname: '/invite/[relationId]',
+        params: { relationId: parsed.relationId, token: parsed.token },
+      });
+    };
+
+    void Linking.getInitialURL()
+      .then((url) => route(url, 'initial'))
+      .catch(() => {
+        // Best-effort: ignore failures, listener still active for runtime URLs.
+      });
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      route(url, 'runtime');
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   return (
     <Stack>
