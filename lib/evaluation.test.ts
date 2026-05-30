@@ -70,6 +70,25 @@ describe('computeScore', () => {
   it('all ratings 5 → score 100 (max)', () => {
     expect(computeScore(ALL_FIVES)).toBe(100);
   });
+
+  // PRE-CAP behavior.
+  // This test documents the current private-score weakness:
+  // affinity/support can compensate low trust.
+  // It should be updated when the private trust gate is introduced.
+  //
+  // Inputs: trust=2 (low) + interactions/affinity/support/sharedNetwork=5.
+  // With PRIVATE_RATING_TO_SCORE[2]=25, [5]=100 and weights
+  // {trust:0.30, interactions:0.25, affinity:0.20, support:0.15, sharedNetwork:0.10},
+  // raw = 25*0.30 + 100*0.25 + 100*0.20 + 100*0.15 + 100*0.10 = 77.5 → round = 78.
+  // The score never drops below the Anchor private threshold (70) despite low Trust.
+  it('PRE-CAP baseline: trust=2 + other pillars=5 → score=78 (Anchor private tier)', () => {
+    const ratings: Record<PillarKey, PillarRating> = {
+      trust: 2, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
+    };
+    const score = computeScore(ratings);
+    expect(score).toBe(78);
+    expect(getTier(score)).toBe('Anchor');
+  });
 });
 
 // ── computeMutualRelationshipScore — cap rules ──────────────────────────────
@@ -101,5 +120,42 @@ describe('computeMutualRelationshipScore', () => {
     const result = computeMutualRelationshipScore(sideA, ALL_FIVES);
     expect(result.finalScore).toBe(64);
     expect(result.tier).toBe('Thrill');
+  });
+
+  // ── Trust gate — explicit invariants at the trust≤2 boundary ─────────────
+  // These tests fix the contract Trust acts as a gate, not as a weighted pillar.
+  // They protect the TS parity layer that mirrors the SQL compute_shared_mutual_result.
+  //
+  // Trust=2 is the boundary itself: the rule is "trust ≤ 2 caps the final score at 59",
+  // so both trust=1 and trust=2 must yield the same ceiling.
+
+  it('trust gate: sideA trust=2 + everything else 5 → finalScore ≤ 59 (cap active at the boundary)', () => {
+    const sideA: Record<PillarKey, PillarRating> = {
+      trust: 2, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
+    };
+    const result = computeMutualRelationshipScore(sideA, ALL_FIVES);
+    expect(result.finalScore).toBeLessThanOrEqual(59);
+  });
+
+  it('trust gate: both sides trust=2 + everything else 5 → finalScore ≤ 59', () => {
+    const sideA: Record<PillarKey, PillarRating> = {
+      trust: 2, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
+    };
+    const sideB: Record<PillarKey, PillarRating> = {
+      trust: 2, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
+    };
+    const result = computeMutualRelationshipScore(sideA, sideB);
+    expect(result.finalScore).toBeLessThanOrEqual(59);
+  });
+
+  it('trust gate: both sides trust=3 + everything else 5 → cap inactive, finalScore > 59', () => {
+    const sideA: Record<PillarKey, PillarRating> = {
+      trust: 3, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
+    };
+    const sideB: Record<PillarKey, PillarRating> = {
+      trust: 3, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
+    };
+    const result = computeMutualRelationshipScore(sideA, sideB);
+    expect(result.finalScore).toBeGreaterThan(59);
   });
 });
