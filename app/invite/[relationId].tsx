@@ -11,6 +11,112 @@ import type { SharedInviteClaimResult } from '../../lib/reveal-shared-types';
 import type { RelationshipSideKey, SharedRelationBootstrapInput } from '../../store/useRelationsStore';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
+// ── Error normalization ────────────────────────────────────────────────────
+// Supabase JS v2 throws PostgrestError objects (plain objects with
+// { message, details, hint, code }) that do NOT inherit from Error. Naïve
+// String(error) on these objects produces "[object Object]", which collapses
+// every backend failure into the "unknown" bucket downstream.
+// This helper drains any reasonable string field, then falls back to JSON.
+
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, unknown>;
+    const candidates = [record.message, record.details, record.hint, record.code, record.error];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim().length > 0) return candidate;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+  return 'This invitation could not be claimed.';
+}
+
+// ── Claim error classification ─────────────────────────────────────────────
+// Maps RPC error strings from claim_relationship_invite() to a small product
+// vocabulary. The previous UI displayed a single generic message for every
+// failure, which lied to the user (e.g. self-claim was framed as "expired").
+// Source of truth for the RPC strings:
+// supabase/migrations/20260523123000_claim_invite_bootstrap_shared_reveal.sql
+
+export type ClaimErrorKind =
+  | 'self_claim'
+  | 'expired'
+  | 'already_claimed'
+  | 'invalid'
+  | 'auth_required'
+  | 'unknown';
+
+export function getClaimErrorKind(message: string | null | undefined): ClaimErrorKind {
+  if (!message) return 'unknown';
+  const m = message.toLowerCase();
+  if (m.includes('cannot claim both sides')) return 'self_claim';
+  if (m.includes('already claimed') || m.includes('already been claimed')) return 'already_claimed';
+  if (m.includes('expired')) return 'expired';
+  if (m.includes('authenticated user required') || m.includes('sign in')) return 'auth_required';
+  if (m.includes('invalid') || m.includes('token is required')) return 'invalid';
+  return 'unknown';
+}
+
+type ClaimErrorCopy = {
+  title: string;
+  body: string;
+  primaryLabel: string;
+  showRetry: boolean;
+};
+
+function getClaimErrorCopy(kind: ClaimErrorKind): ClaimErrorCopy {
+  switch (kind) {
+    case 'self_claim':
+      return {
+        title: 'You opened your own invite',
+        body: 'Share this link with the other person — Baobab needs both sides to be different.',
+        primaryLabel: 'Done',
+        showRetry: false,
+      };
+    case 'expired':
+      return {
+        title: 'This invitation expired',
+        body: 'Ask your partner to share a fresh invite.',
+        primaryLabel: 'Done',
+        showRetry: true,
+      };
+    case 'already_claimed':
+      return {
+        title: 'This invitation has already been used',
+        body: 'Each invite link works once. Ask your partner to share a new one.',
+        primaryLabel: 'Done',
+        showRetry: false,
+      };
+    case 'invalid':
+      return {
+        title: 'This invite link is invalid',
+        body: 'The token is not recognized. Ask your partner to share a fresh invite.',
+        primaryLabel: 'Done',
+        showRetry: true,
+      };
+    case 'auth_required':
+      return {
+        title: 'Sign in required',
+        body: 'Sign in with Apple to claim this invitation.',
+        primaryLabel: 'Continue',
+        showRetry: true,
+      };
+    case 'unknown':
+    default:
+      return {
+        title: "Couldn't claim this invitation",
+        body: 'Something went wrong while opening this private link. Try again or ask for a fresh invite.',
+        primaryLabel: 'Done',
+        showRetry: true,
+      };
+  }
+}
+
 export default function InviteArrivalScreen() {
   const { relationId, token } = useLocalSearchParams<{ relationId: string; token?: string }>();
   const relationIdTrim = typeof relationId === 'string' ? relationId.trim() : '';
@@ -80,14 +186,11 @@ export default function InviteArrivalScreen() {
           claimedCanonicalId = claim.relationship_id;
           claimResult = claim;
         } catch (error) {
+          const errorMessage = getErrorMessage(error);
           if (__DEV__) {
-            devLogLinking('invite: claim failed', {
-              error: error instanceof Error ? error.message : String(error),
-            });
+            devLogLinking('invite: claim failed', { error: errorMessage });
           }
-          setClaimError(
-            error instanceof Error ? error.message : 'This invitation could not be claimed.',
-          );
+          setClaimError(errorMessage);
           return;
         }
       }
@@ -240,18 +343,27 @@ export default function InviteArrivalScreen() {
             </Pressable>
           </>
         ) : claimError ? (
-          <>
-            <Text style={styles.stateTitle}>{"Couldn't claim this invitation"}</Text>
-            <Text style={styles.stateBody}>
-              {'This invitation may have expired or already been used. Ask your partner to share a new one.'}
-            </Text>
-            <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>{'Done'}</Text>
-            </Pressable>
-            <Pressable onPress={() => setClaimError(null)} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>{'Try again'}</Text>
-            </Pressable>
-          </>
+          (() => {
+            const claimErrorKind = getClaimErrorKind(claimError);
+            const claimErrorCopy = getClaimErrorCopy(claimErrorKind);
+            return (
+              <>
+                <Text style={styles.stateTitle}>{claimErrorCopy.title}</Text>
+                <Text style={styles.stateBody}>{claimErrorCopy.body}</Text>
+                {__DEV__ && claimErrorKind === 'unknown' ? (
+                  <Text style={styles.devHint}>{claimError}</Text>
+                ) : null}
+                <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
+                  <Text style={styles.primaryButtonText}>{claimErrorCopy.primaryLabel}</Text>
+                </Pressable>
+                {claimErrorCopy.showRetry ? (
+                  <Pressable onPress={() => setClaimError(null)} style={styles.secondaryButton}>
+                    <Text style={styles.secondaryButtonText}>{'Try again'}</Text>
+                  </Pressable>
+                ) : null}
+              </>
+            );
+          })()
         ) : showUnresolvedContinuation ? (
           <>
             <Text style={styles.stateTitle}>{"You've joined this invite"}</Text>
