@@ -272,6 +272,17 @@ export default function RelationDetailScreen() {
   // visibleScore is the revealed source of truth: mutual when available, private as fallback.
   const visibleScore = revealedScore;
   const sharedRevealDisplay = getSharedRevealDisplayState({ nameRevealed, visibleScore, revealedTier });
+  // The primary action card stays as long as it carries a moment.
+  // It is suppressed only once the real shared reading is on screen — at that point
+  // the reading itself carries the meaning, and any "Next" banner becomes admin noise.
+  // Intermediate states (waiting, cooking, reveal_ready, revealed-pending-score) keep the
+  // card so the user always has either a CTA, an animation, or a clear message.
+  const hasSharedReadingContent = sharedRevealDisplay.kind === 'score';
+  const shouldShowPrimaryActionCard =
+    !hasSharedReadingContent ||
+    nextAction.ctaLabel !== null ||
+    nextAction.ctaKind === 'resend' ||
+    justCreated === '1';
   // Deeper Signal — derived from the local user's own Trust + Affinity ratings.
   // Only available when the user has a local evaluation. Bootstrap/claim relations
   // without a local reading do not render this layer (privacy by design).
@@ -561,65 +572,67 @@ export default function RelationDetailScreen() {
         )}
       </View>
 
-      <View style={[
-        styles.primaryActionCard,
-        nextAction.ctaKind === 'resend' && styles.primaryActionCardPending,
-        justCreated === '1' && !evaluation && nextAction.ctaKind !== 'resend' && styles.primaryActionCardHighlight,
-      ]}>
-        {nextAction.ctaKind === 'resend' ? (
-          <Text style={styles.pendingKicker}>Baobab</Text>
-        ) : (
-          <Text style={styles.primaryActionEyebrow}>Next</Text>
-        )}
-        <Text style={styles.primaryActionTitle}>{nextAction.title}</Text>
-        <Text style={styles.primaryActionBody}>{nextAction.body}</Text>
-        {nextAction.ctaKind === 'resend' ? (
-          <Pressable onPress={handlePrimaryAction} style={styles.resendTreeBtn}>
-            <View style={styles.baoTreeIcon}>
-              <View style={styles.baoTreeCrown}>
-                <View style={styles.baoLeaf} />
-                <View style={[styles.baoLeaf, styles.baoLeafCenter]} />
-                <View style={styles.baoLeaf} />
+      {shouldShowPrimaryActionCard ? (
+        <View style={[
+          styles.primaryActionCard,
+          nextAction.ctaKind === 'resend' && styles.primaryActionCardPending,
+          justCreated === '1' && !evaluation && nextAction.ctaKind !== 'resend' && styles.primaryActionCardHighlight,
+        ]}>
+          {nextAction.ctaKind === 'resend' ? (
+            <Text style={styles.pendingKicker}>Baobab</Text>
+          ) : (
+            <Text style={styles.primaryActionEyebrow}>Next</Text>
+          )}
+          <Text style={styles.primaryActionTitle}>{nextAction.title}</Text>
+          <Text style={styles.primaryActionBody}>{nextAction.body}</Text>
+          {nextAction.ctaKind === 'resend' ? (
+            <Pressable onPress={handlePrimaryAction} style={styles.resendTreeBtn}>
+              <View style={styles.baoTreeIcon}>
+                <View style={styles.baoTreeCrown}>
+                  <View style={styles.baoLeaf} />
+                  <View style={[styles.baoLeaf, styles.baoLeafCenter]} />
+                  <View style={styles.baoLeaf} />
+                </View>
+                <View style={styles.baoTrunk} />
               </View>
-              <View style={styles.baoTrunk} />
-            </View>
-            <Text style={styles.resendTreeLabel}>Send again</Text>
-          </Pressable>
-        ) : nextAction.ctaLabel ? (
-          <Pressable onPress={handlePrimaryAction} style={styles.ctaButton} disabled={isRevealing || revealAwaitingLoad}>
-            <Text style={styles.ctaButtonText}>{revealAwaitingLoad ? 'Preparing reveal…' : nextAction.ctaLabel}</Text>
-          </Pressable>
-        ) : null}
+              <Text style={styles.resendTreeLabel}>Send again</Text>
+            </Pressable>
+          ) : nextAction.ctaLabel ? (
+            <Pressable onPress={handlePrimaryAction} style={styles.ctaButton} disabled={isRevealing || revealAwaitingLoad}>
+              <Text style={styles.ctaButtonText}>{revealAwaitingLoad ? 'Preparing reveal…' : nextAction.ctaLabel}</Text>
+            </Pressable>
+          ) : null}
 
-        {isRevealing ? (
-          <Animated.View
-            style={[
-              StyleSheet.absoluteFillObject,
-              styles.revealOverlay,
-              { opacity: revealOverlayOpacity },
-            ]}
-          >
+          {isRevealing ? (
             <Animated.View
               style={[
-                styles.revealTree,
-                {
-                  transform: [
-                    {
-                      scale: revealTreeScale.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.05, 1],
-                      }),
-                    },
-                  ],
-                },
+                StyleSheet.absoluteFillObject,
+                styles.revealOverlay,
+                { opacity: revealOverlayOpacity },
               ]}
             >
-              <View style={styles.revealCanopy} />
-              <View style={styles.revealTrunk} />
+              <Animated.View
+                style={[
+                  styles.revealTree,
+                  {
+                    transform: [
+                      {
+                        scale: revealTreeScale.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.05, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <View style={styles.revealCanopy} />
+                <View style={styles.revealTrunk} />
+              </Animated.View>
             </Animated.View>
-          </Animated.View>
-        ) : null}
-      </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {nextAction.ctaKind !== 'resend' && (
         (evaluation || nameRevealed) ? (
