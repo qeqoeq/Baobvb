@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
@@ -89,11 +89,35 @@ function labelToBucketFilter(label: SharedLinkStrengthLabel): GardenFilterKey {
   }
 }
 
+// ── Search helpers ───────────────────────────────────────────────────────────
+// Normalize for natural matching: lowercase + trim + strip diacritics.
+function normalizeForSearch(s: string): string {
+  return s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+// Rank model (lower = better match):
+//   0 = exact match
+//   1 = field starts with query
+//   2 = any token in the field starts with query
+//   3 = field contains query, only when query.length >= 3
+// Returns null when no match. The 3-char floor for "contains" prevents short queries
+// like "th" from matching mid-word (e.g. "Mathieu" should not surface on "th").
+function getSearchRank(field: string, query: string): number | null {
+  if (!field || !query) return null;
+  if (field === query) return 0;
+  if (field.startsWith(query)) return 1;
+  const tokens = field.split(/\s+/).filter(Boolean);
+  if (tokens.some((t) => t.startsWith(query))) return 2;
+  if (query.length >= 3 && field.includes(query)) return 3;
+  return null;
+}
+
 export default function GardenScreen() {
   const params = useLocalSearchParams<{ filter?: string }>();
   const { activeRelations, archivedRelations, evaluations } = useRelationsStore();
   const [selectedFilter, setSelectedFilter] = useState<GardenFilterKey>('active');
   const [bucketSort, setBucketSort] = useState<GardenSortKey>('strength');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Sync incoming filter param from deep-link (e.g. from World hint taps).
   // Also resets to 'active' when params.filter is cleared (tab press via listener in _layout.tsx).
@@ -102,6 +126,8 @@ export default function GardenScreen() {
       setSelectedFilter(params.filter as GardenFilterKey);
     } else {
       setSelectedFilter('active');
+      // Tab press to Garden = fresh start; clear any leftover search query too.
+      setSearchQuery('');
     }
   }, [params.filter]);
 
@@ -274,6 +300,58 @@ export default function GardenScreen() {
     }
   }, [entries, archivedEntries, selectedFilter, bucketSort, needsAttentionEntries]);
 
+  // ── Local search ───────────────────────────────────────────────────────────
+  // Composable with the current view: results are scoped to the active context.
+  // - Overview → searches across active entries (all visible Garden relations).
+  // - Archived → searches across archivedEntries.
+  // - Any list/group/bucket → searches within filteredEntries (respects sort + filter).
+  const isSearching = searchQuery.trim().length > 0;
+  const searchResults = useMemo(() => {
+    if (!isSearching) return [];
+    const q = normalizeForSearch(searchQuery);
+    if (!q) return [];
+    const pool =
+      selectedFilter === 'archived' ? archivedEntries
+        : isOverviewMode ? entries
+          : filteredEntries;
+    // Rank entries against the query; sort by rank asc, preserving pool order on ties.
+    const ranked: { entry: (typeof pool)[number]; rank: number; idx: number }[] = [];
+    pool.forEach((entry, idx) => {
+      const r = entry.relation;
+      const primaryTitle = getRelationSheetIdentity({ relation: r }).primaryTitle ?? '';
+      const fields = [r.privateLabel ?? '', r.name ?? '', r.handle ?? '', primaryTitle]
+        .map(normalizeForSearch);
+      let bestRank: number | null = null;
+      for (const field of fields) {
+        const rank = getSearchRank(field, q);
+        if (rank !== null && (bestRank === null || rank < bestRank)) bestRank = rank;
+        if (bestRank === 0) break;
+      }
+      if (bestRank !== null) ranked.push({ entry, rank: bestRank, idx });
+    });
+    ranked.sort((a, b) => a.rank - b.rank || a.idx - b.idx);
+    return ranked.map((x) => x.entry);
+  }, [isSearching, searchQuery, selectedFilter, isOverviewMode, entries, archivedEntries, filteredEntries]);
+
+  // Homonymy detection on visible results only — when two or more matches share
+  // the same normalized primaryTitle, surface a short disambiguation subline.
+  const searchResultsView = useMemo(() => {
+    const titleCounts = new Map<string, number>();
+    const enriched = searchResults.map((entry) => {
+      const identity = getRelationSheetIdentity({ relation: entry.relation });
+      const titleKey = normalizeForSearch(identity.primaryTitle ?? '');
+      titleCounts.set(titleKey, (titleCounts.get(titleKey) ?? 0) + 1);
+      return { entry, identity, titleKey };
+    });
+    return enriched.map(({ entry, identity, titleKey }) => ({
+      entry,
+      homonymSubline:
+        (titleCounts.get(titleKey) ?? 0) >= 2
+          ? `${identity.relationDepthLabel} link · ${identity.stateLabel}`
+          : undefined,
+    }));
+  }, [searchResults]);
+
   const filterLabel = useMemo(() => {
     switch (selectedFilter) {
       case 'recent':          return 'recent';
@@ -320,7 +398,10 @@ export default function GardenScreen() {
     router.push('/reveals');
   };
 
-  const renderRelationCard = (entry: (typeof entries)[number]) => {
+  const renderRelationCard = (
+    entry: (typeof entries)[number],
+    options?: { homonymSubline?: string },
+  ) => {
     const isRevealed = entry.relation.localState.revealSnapshot.status === 'revealed';
     const revealStatus = entry.relation.localState.revealSnapshot.status;
     const relationIdentity = getRelationSheetIdentity({ relation: entry.relation });
@@ -395,6 +476,9 @@ export default function GardenScreen() {
         </View>
         <View style={styles.mappingBody}>
           <Text style={styles.mappingName}>{relationIdentity.primaryTitle}</Text>
+          {options?.homonymSubline ? (
+            <Text style={styles.mappingHomonymSubline}>{options.homonymSubline}</Text>
+          ) : null}
           {entry.relation.handle ? (
             <Text style={styles.mappingMeta}>{entry.relation.handle}</Text>
           ) : null}
@@ -431,7 +515,50 @@ export default function GardenScreen() {
         </View>
       </View>
 
-      {isOverviewMode ? (
+      {/* ── Search ────────────────────────────────────────────────────────────── */}
+      <View style={styles.searchRow}>
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search your Garden"
+          placeholderTextColor={colors.text.muted}
+          style={styles.searchInput}
+          autoCorrect={false}
+          autoCapitalize="none"
+          returnKeyType="search"
+          clearButtonMode="never"
+        />
+        {isSearching ? (
+          <Pressable onPress={() => setSearchQuery('')} style={styles.searchClear} hitSlop={8}>
+            <Text style={styles.searchClearText}>×</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {isSearching ? (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionLabel}>Results</Text>
+            <View style={styles.sectionLine} />
+            {searchResultsView.length > 0 ? (
+              <Text style={styles.sectionSupportText}>
+                {searchResultsView.length} {searchResultsView.length === 1 ? 'match' : 'matches'}
+              </Text>
+            ) : null}
+          </View>
+          {searchResultsView.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No link found.</Text>
+            </View>
+          ) : (
+            <View style={styles.mappingList}>
+              {searchResultsView.map(({ entry, homonymSubline }) =>
+                renderRelationCard(entry, { homonymSubline }),
+              )}
+            </View>
+          )}
+        </View>
+      ) : isOverviewMode ? (
         <>
           {/* ── Reveal card ──────────────────────────────────────────────────────── */}
           {readyEntries.length > 0 ? (
@@ -804,6 +931,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text.primary,
     letterSpacing: -0.3,
+  },
+
+  // ── Search ─────────────────────────────────────────────────────────────────
+
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    paddingHorizontal: spacing.sm + 4,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.text.primary,
+    paddingVertical: spacing.sm + 2,
+  },
+  searchClear: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  searchClearText: {
+    fontSize: 20,
+    color: colors.text.muted,
+    fontWeight: '600',
+    lineHeight: 20,
   },
 
   // ── Filter chips ────────────────────────────────────────────────────────────
@@ -1248,6 +1403,11 @@ const styles = StyleSheet.create({
   mappingMeta: {
     fontSize: 11,
     color: colors.text.muted,
+  },
+  mappingHomonymSubline: {
+    fontSize: 11,
+    color: colors.text.muted,
+    fontStyle: 'italic',
   },
   mappingReadingLine: {
     fontSize: 12,
