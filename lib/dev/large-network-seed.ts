@@ -11,7 +11,7 @@
  * Only imported inside a __DEV__ guard in the store.
  */
 
-import { computeScore, getTier, type Evaluation, type PillarKey, type PillarRating } from '../evaluation';
+import { computePrivateLinkScore, getTier, type Evaluation, type PillarKey, type PillarRating } from '../evaluation';
 
 // ─── Minimal inline types (avoids circular import with the store) ─────────────
 
@@ -377,7 +377,7 @@ function buildEval(spec: PersonSpec, evalId: string, idx: number): Evaluation {
     ratings = { trust: 3, interactions: 3, affinity: 3, support: 2, sharedNetwork: sn };
   }
 
-  const score = computeScore(ratings);
+  const score = computePrivateLinkScore(ratings);
   return {
     id: evalId,
     relationId: spec.id,

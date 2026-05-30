@@ -179,12 +179,33 @@ export function computeMutualRelationshipScore(
 }
 
 // Private reading score: keep behavior stable for existing app flows.
+// Raw weighted sum, no gate. Kept for historical parity and tests.
+// Prefer computePrivateLinkScore for any new code path that represents
+// the perceived quality of a private link.
 export function computeScore(ratings: Record<PillarKey, PillarRating>): number {
   let score = 0;
   for (const key of Object.keys(PRIVATE_PILLAR_WEIGHTS) as PillarKey[]) {
     score += PRIVATE_RATING_TO_SCORE[ratings[key]] * PRIVATE_PILLAR_WEIGHTS[key];
   }
   return Math.round(score);
+}
+
+// Private link score with Trust gate.
+//
+// Rule: Trust is a gate, not a weighted pillar.
+//   - trust <= 1 → score capped at 39 (cannot leave the Spark band)
+//   - trust === 2 → score capped at 59 (cannot enter the Vibrant band)
+//   - trust >= 3 → no cap; the raw weighted sum stands
+//
+// This mirrors, on the private side, the Trust ceiling already enforced
+// server-side for the mutual score. It prevents Affinity / Support /
+// Interactions / SharedNetwork from compensating low Trust on a private
+// link reading — the foundational invariant of Baobab.
+export function computePrivateLinkScore(ratings: Record<PillarKey, PillarRating>): number {
+  const baseScore = computeScore(ratings);
+  if (ratings.trust <= 1) return Math.min(baseScore, 39);
+  if (ratings.trust === 2) return Math.min(baseScore, 59);
+  return baseScore;
 }
 
 export function getTier(score: number): Tier {

@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 import {
   computeMutualRelationshipScore,
-  computeScore,
+  computePrivateLinkScore,
   getTier,
   type Evaluation,
   type PillarKey,
@@ -234,7 +234,7 @@ function buildEvaluation(
   ratings: Record<PillarKey, PillarRating>,
   createdAt: string,
 ): Evaluation {
-  const score = computeScore(ratings);
+  const score = computePrivateLinkScore(ratings);
   return { id, relationId, ratings, score, tier: getTier(score), createdAt };
 }
 

@@ -5,7 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { colors } from '../../../constants/colors';
 import { radius, spacing } from '../../../constants/spacing';
 import {
-  computeScore,
+  computePrivateLinkScore,
   getTier,
   type Evaluation,
   type PillarKey,
@@ -117,7 +117,7 @@ export default function EvaluateScreen() {
     setIsSubmitting(true);
 
     const finalRatings = ratings as Record<PillarKey, PillarRating>;
-    const score = computeScore(finalRatings);
+    const score = computePrivateLinkScore(finalRatings);
 
     const evaluation: Evaluation = {
       id: `eval-${relation.id}-${Date.now()}`,

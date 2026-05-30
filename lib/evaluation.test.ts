@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   computeMutualRelationshipScore,
+  computePrivateLinkScore,
   computeScore,
   getMutualTier,
   getTier,
@@ -71,23 +72,89 @@ describe('computeScore', () => {
     expect(computeScore(ALL_FIVES)).toBe(100);
   });
 
-  // PRE-CAP behavior.
-  // This test documents the current private-score weakness:
-  // affinity/support can compensate low trust.
-  // It should be updated when the private trust gate is introduced.
+  // computeScore is intentionally kept raw (no Trust gate) for historical parity
+  // and for callers that need the bare weighted sum.
+  // The trust-gated private score lives in computePrivateLinkScore.
   //
   // Inputs: trust=2 (low) + interactions/affinity/support/sharedNetwork=5.
   // With PRIVATE_RATING_TO_SCORE[2]=25, [5]=100 and weights
   // {trust:0.30, interactions:0.25, affinity:0.20, support:0.15, sharedNetwork:0.10},
   // raw = 25*0.30 + 100*0.25 + 100*0.20 + 100*0.15 + 100*0.10 = 77.5 → round = 78.
-  // The score never drops below the Anchor private threshold (70) despite low Trust.
-  it('PRE-CAP baseline: trust=2 + other pillars=5 → score=78 (Anchor private tier)', () => {
+  it('computeScore stays raw: trust=2 + other pillars=5 → score=78 (no gate, historical baseline)', () => {
     const ratings: Record<PillarKey, PillarRating> = {
       trust: 2, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
     };
     const score = computeScore(ratings);
     expect(score).toBe(78);
     expect(getTier(score)).toBe('Anchor');
+  });
+});
+
+// ── computePrivateLinkScore — Trust gate ────────────────────────────────────
+// Non-negotiable: Trust is a gate, not a weighted pillar.
+// Affinity / Support / Interactions / SharedNetwork cannot lift a low-trust link
+// out of the bands they would otherwise reach.
+
+describe('computePrivateLinkScore — Trust gate', () => {
+  it('trust=1 + all other pillars=5 → score ≤ 39 (cannot leave Spark band)', () => {
+    const ratings: Record<PillarKey, PillarRating> = {
+      trust: 1, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
+    };
+    const score = computePrivateLinkScore(ratings);
+    expect(score).toBeLessThanOrEqual(39);
+  });
+
+  it('trust=2 + all other pillars=5 → score ≤ 59 (cannot enter Vibrant band)', () => {
+    const ratings: Record<PillarKey, PillarRating> = {
+      trust: 2, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
+    };
+    const score = computePrivateLinkScore(ratings);
+    expect(score).toBeLessThanOrEqual(59);
+  });
+
+  it('trust=3 + all other pillars=5 → score > 59 (cap inactive at the boundary)', () => {
+    const ratings: Record<PillarKey, PillarRating> = {
+      trust: 3, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
+    };
+    const score = computePrivateLinkScore(ratings);
+    expect(score).toBeGreaterThan(59);
+  });
+
+  it('trust=5 + all other pillars=5 → score === 100 (cap is the only ceiling at the top)', () => {
+    expect(computePrivateLinkScore(ALL_FIVES)).toBe(100);
+  });
+
+  it('trust=1, every other rating 1..5 → never exceeds 39 (Affinity/Support cannot compensate)', () => {
+    for (let v = 1; v <= 5; v++) {
+      const rating = v as PillarRating;
+      const ratings: Record<PillarKey, PillarRating> = {
+        trust: 1, interactions: rating, affinity: rating, support: rating, sharedNetwork: rating,
+      };
+      expect(
+        computePrivateLinkScore(ratings),
+        `trust=1, others=${v}`,
+      ).toBeLessThanOrEqual(39);
+    }
+  });
+
+  it('trust=2, every other rating 1..5 → never exceeds 59', () => {
+    for (let v = 1; v <= 5; v++) {
+      const rating = v as PillarRating;
+      const ratings: Record<PillarKey, PillarRating> = {
+        trust: 2, interactions: rating, affinity: rating, support: rating, sharedNetwork: rating,
+      };
+      expect(
+        computePrivateLinkScore(ratings),
+        `trust=2, others=${v}`,
+      ).toBeLessThanOrEqual(59);
+    }
+  });
+
+  it('trust=3 leaves the raw computeScore unchanged', () => {
+    const ratings: Record<PillarKey, PillarRating> = {
+      trust: 3, interactions: 4, affinity: 3, support: 5, sharedNetwork: 2,
+    };
+    expect(computePrivateLinkScore(ratings)).toBe(computeScore(ratings));
   });
 });
 

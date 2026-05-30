@@ -492,6 +492,28 @@ describe('K: deriveLinkQualityBand', () => {
     (reading as any).foundationalScore = 65;
     expect(deriveLinkQualityBand(reading)).toBe('faint');
   });
+
+  // ── Pre-reveal safety: private score never leaks into the visual band ────
+  // Without this gate, a strong private foundationalScore would render a
+  // pre-reveal node as 'strong' on the Map, leaking private quality.
+
+  it('K08 — pre-reveal (waiting_other_side) + foundationalScore=75 → faint (no leak)', () => {
+    const reading = makeReading({ revealStatus: 'waiting_other_side' });
+    (reading as any).foundationalScore = 75;
+    expect(deriveLinkQualityBand(reading)).toBe('faint');
+  });
+
+  it('K09 — pre-reveal (cooking_reveal) + foundationalScore=82 → faint (no leak)', () => {
+    const reading = makeReading({ revealStatus: 'cooking_reveal' });
+    (reading as any).foundationalScore = 82;
+    expect(deriveLinkQualityBand(reading)).toBe('faint');
+  });
+
+  it('K10 — pre-reveal (reveal_ready) + foundationalScore=95 → faint (no leak)', () => {
+    const reading = makeReading({ revealStatus: 'reveal_ready' });
+    (reading as any).foundationalScore = 95;
+    expect(deriveLinkQualityBand(reading)).toBe('faint');
+  });
 });
 
 // ─── G: deriveProximityBand ───────────────────────────────────────────────────
@@ -773,14 +795,16 @@ describe('M: derivePresenceMode', () => {
     expect(derivePresenceMode(r, via)).toBe('primarily_via');
   });
 
-  it('M03 — via resolved + moderate quality → direct', () => {
-    const r = makeReading({ mutualScore: 55 });
+  it('M03 — revealed + via resolved + moderate quality → direct', () => {
+    // Quality band is only meaningful post-reveal; M03/M04 specify revealStatus explicitly
+    // so they validate the legitimate post-reveal case (was implicit before the pre-reveal gate).
+    const r = makeReading({ revealStatus: 'revealed', mutualScore: 55 });
     const via: import('./circle-node-state').ViaState = { kind: 'via', relId: 'lena-id', viaName: 'Lena' };
     expect(derivePresenceMode(r, via)).toBe('direct');
   });
 
-  it('M04 — via resolved + strong quality → direct', () => {
-    const r = makeReading({ mutualScore: 85 });
+  it('M04 — revealed + via resolved + strong quality → direct', () => {
+    const r = makeReading({ revealStatus: 'revealed', mutualScore: 85 });
     const via: import('./circle-node-state').ViaState = { kind: 'via', relId: 'lena-id', viaName: 'Lena' };
     expect(derivePresenceMode(r, via)).toBe('direct');
   });
