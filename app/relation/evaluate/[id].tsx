@@ -13,6 +13,7 @@ import {
 } from '../../../lib/evaluation';
 import { newCanonicalRelationId } from '../../../lib/identity';
 import { showPhoneInviteSheet } from '../../../lib/phone-invite-sheet';
+import { getProgressiveUnlocks, type ProgressiveCriterionKey } from '../../../lib/progressive-criteria';
 import { getRelationshipInviteMessage } from '../../../lib/relationship-invite';
 import {
   attachSharedPrivateReadingReferenceForCurrentUser,
@@ -82,6 +83,32 @@ export default function EvaluateScreen() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Tracks which pillar has its progressive layer expanded inline.
+  // Exclusive — only one layer can be open at a time, to keep the screen calm
+  // when several pillars are at 5. Local-only, never persisted.
+  const [expandedProgressiveLayer, setExpandedProgressiveLayer] = useState<PillarKey | null>(null);
+  const toggleProgressiveLayer = useCallback((key: PillarKey) => {
+    setExpandedProgressiveLayer((prev) => (prev === key ? null : key));
+  }, []);
+  // Child criterion ratings (v0.3). Strictly local-only: they are not stored,
+  // not sent to the server, not part of finalRatings. They live for the
+  // lifetime of this screen only. Future versions may use them to feed a
+  // capped "pillar confidence bonus" — but only when the parent pillar is 5.
+  const [progressiveChildRatings, setProgressiveChildRatings] = useState<
+    Partial<Record<PillarKey, Partial<Record<ProgressiveCriterionKey, 1 | 2 | 3 | 4 | 5>>>>
+  >({});
+  const setProgressiveChildRating = useCallback(
+    (parentPillar: PillarKey, criterionKey: ProgressiveCriterionKey, rating: 1 | 2 | 3 | 4 | 5) => {
+      setProgressiveChildRatings((prev) => ({
+        ...prev,
+        [parentPillar]: {
+          ...prev[parentPillar],
+          [criterionKey]: rating,
+        },
+      }));
+    },
+    [],
+  );
   // Prevents the sideAlreadyHasReading guard from calling router.back() after a successful save.
   const hasSavedReadingRef = useRef(false);
 
@@ -93,6 +120,11 @@ export default function EvaluateScreen() {
     () => Object.values(ratings).every((v) => v !== null),
     [ratings],
   );
+  // Progressive criteria — derived from current ratings.
+  // Local-only, never stored, never sent to the server. The criteria pills
+  // are visual hints that a private deeper layer is available; v0.2 does
+  // not capture answers for these criteria.
+  const progressiveUnlocks = useMemo(() => getProgressiveUnlocks(ratings), [ratings]);
   const progress = completedCount / PILLARS.length;
   const isInviteNumberRelation = relation?.source === 'invite_number';
   const sourceLabel =
@@ -116,6 +148,8 @@ export default function EvaluateScreen() {
 
     setIsSubmitting(true);
 
+    // Progressive child ratings are local-only in v0.3.
+    // They must not be included in finalRatings or shared payloads yet.
     const finalRatings = ratings as Record<PillarKey, PillarRating>;
     const score = computePrivateLinkScore(finalRatings);
 
@@ -300,6 +334,101 @@ export default function EvaluateScreen() {
                 <Text style={styles.ratingLegendText}>1 low</Text>
                 <Text style={styles.ratingLegendText}>5 high</Text>
               </View>
+              {(() => {
+                const unlock = progressiveUnlocks[key];
+                if (unlock.level === 'none') return null;
+                const isDeep = unlock.level === 'deep';
+                return (
+                  <View style={styles.unlockBlock}>
+                    <Text style={styles.unlockTitle}>
+                      {isDeep ? 'This layer can go deeper' : 'A few private signals are available'}
+                    </Text>
+                    <Text style={styles.unlockBody}>
+                      {isDeep
+                        ? 'Optional private signals are available.'
+                        : 'You can lightly refine this layer.'}
+                    </Text>
+                    <View style={styles.unlockPillsRow}>
+                      {unlock.criteria.map((c) => (
+                        <View key={c.key} style={styles.unlockPill}>
+                          <Text style={styles.unlockPillText}>{c.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    {(() => {
+                      const isExpanded = expandedProgressiveLayer === key;
+                      const chipLabel = isExpanded
+                        ? (isDeep ? 'Hide details' : 'Hide')
+                        : (isDeep ? 'Refine this layer' : 'Refine');
+                      return (
+                        <>
+                          <Pressable
+                            onPress={() => toggleProgressiveLayer(key)}
+                            accessibilityRole="button"
+                            style={({ pressed }) => [
+                              styles.unlockRefineChip,
+                              pressed && styles.unlockRefineChipPressed,
+                            ]}
+                            hitSlop={6}
+                          >
+                            <Text style={styles.unlockRefineChipText}>{chipLabel}</Text>
+                          </Pressable>
+                          {isExpanded ? (
+                            <View style={styles.unlockDetailsList}>
+                              {unlock.criteria.map((c, idx) => {
+                                const currentChildRating = progressiveChildRatings[key]?.[c.key];
+                                return (
+                                  <View
+                                    key={c.key}
+                                    style={[
+                                      styles.unlockDetailItem,
+                                      idx > 0 && styles.unlockDetailItemSpaced,
+                                    ]}
+                                  >
+                                    <Text style={styles.unlockDetailLabel}>{c.label}</Text>
+                                    <Text style={styles.unlockDetailHint}>{c.hint}</Text>
+                                    <View style={styles.unlockChildRatingRow}>
+                                      {RATING_OPTIONS.map((n) => {
+                                        const isSelected = currentChildRating === n;
+                                        return (
+                                          <Pressable
+                                            key={n}
+                                            onPress={() => setProgressiveChildRating(key, c.key, n)}
+                                            accessibilityRole="button"
+                                            style={[
+                                              styles.unlockChildRatingButton,
+                                              isSelected && styles.unlockChildRatingButtonActive,
+                                            ]}
+                                            hitSlop={4}
+                                          >
+                                            <Text
+                                              style={[
+                                                styles.unlockChildRatingText,
+                                                isSelected && styles.unlockChildRatingTextActive,
+                                              ]}
+                                            >
+                                              {n}
+                                            </Text>
+                                          </Pressable>
+                                        );
+                                      })}
+                                    </View>
+                                  </View>
+                                );
+                              })}
+                            </View>
+                          ) : null}
+                        </>
+                      );
+                    })()}
+                    <Text style={styles.unlockFooter}>
+                      {expandedProgressiveLayer === key
+                        ? 'Only for your private reading.'
+                        : 'Still private.'}
+                    </Text>
+                  </View>
+                );
+              })()}
             </View>
           );
         })}
@@ -495,6 +624,119 @@ const styles = StyleSheet.create({
   ratingLegendText: {
     fontSize: 11,
     color: colors.text.muted,
+  },
+
+  unlockBlock: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border.soft,
+  },
+  unlockTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.accent.warmGold,
+  },
+  unlockBody: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.text.secondary,
+  },
+  unlockPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  unlockPill: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.accent.softAmber + '55',
+    backgroundColor: colors.accent.softAmber + '0F',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs - 1,
+  },
+  unlockPillText: {
+    fontSize: 11,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  unlockRefineChip: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + 'AA',
+    backgroundColor: colors.accent.warmGold + '1F',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+  },
+  unlockRefineChipPressed: {
+    opacity: 0.7,
+  },
+  unlockRefineChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.accent.warmGold,
+    letterSpacing: 0.2,
+  },
+  unlockDetailsList: {
+    marginTop: spacing.sm,
+    paddingLeft: spacing.xs,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.accent.warmGold + '33',
+  },
+  unlockDetailItem: {
+    gap: 2,
+  },
+  unlockDetailItemSpaced: {
+    marginTop: spacing.xs + 2,
+  },
+  unlockDetailLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  unlockDetailHint: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.text.muted,
+  },
+  unlockChildRatingRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 4,
+  },
+  unlockChildRatingButton: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border.soft + '88',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unlockChildRatingButtonActive: {
+    borderColor: colors.accent.warmGold + 'AA',
+    backgroundColor: colors.accent.warmGold + '22',
+  },
+  unlockChildRatingText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.text.muted,
+  },
+  unlockChildRatingTextActive: {
+    color: colors.accent.warmGold,
+  },
+  unlockFooter: {
+    fontSize: 10,
+    fontStyle: 'italic',
+    color: colors.text.muted,
+    marginTop: 2,
   },
 
   submitButton: {
