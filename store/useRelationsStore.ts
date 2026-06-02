@@ -10,6 +10,12 @@ import {
   type Tier,
 } from '../lib/evaluation';
 import {
+  applyProgressivePrivateSignal,
+  type ProgressiveCriterionKey,
+  type ProgressivePrivateSignals,
+  type ProgressivePrivateSignalsByRelation,
+} from '../lib/progressive-criteria';
+import {
   normalizeRelationModelFields,
   type RelationAnchorMode,
   type RelationDepth,
@@ -206,11 +212,18 @@ export type MeProfileUpdate = {
   showBaobabCode?: boolean;
 };
 
+// Progressive private signals are local-only refinements of the base pillars.
+// They are stored device-only, keyed by the local relation.id, and are NEVER
+// included in any Supabase payload (finalRatings stays a 5-pillar Record).
+// Future versions may use them to feed a capped "pillar confidence bonus".
+// Types live in lib/progressive-criteria.ts (single source of truth).
+
 type StoreState = {
   me: MeProfile;
   relations: Relation[];
   evaluations: Evaluation[];
   places: Place[];
+  progressivePrivateSignals: ProgressivePrivateSignalsByRelation;
 };
 
 export type RelationshipSideKey = 'sideA' | 'sideB';
@@ -820,6 +833,7 @@ const state: StoreState = {
   relations: __DEV__ ? SEED_RELATIONS.map(applyNormalizedRelationModel) : [],
   evaluations: __DEV__ ? SEED_EVALUATIONS : [],
   places: SEED_PLACES,
+  progressivePrivateSignals: {},
 };
 
 let hydrated = false;
@@ -853,6 +867,10 @@ function getEvaluationsSnapshot() {
 
 function getPlacesSnapshot() {
   return state.places;
+}
+
+function getProgressivePrivateSignalsSnapshot() {
+  return state.progressivePrivateSignals;
 }
 
 function getHydratedSnapshot() {
@@ -1064,6 +1082,7 @@ function persist() {
     relations: state.relations,
     evaluations: state.evaluations,
     places: state.places,
+    progressivePrivateSignals: state.progressivePrivateSignals,
     seedVersion: SEED_VERSION,
   });
 }
@@ -1159,6 +1178,16 @@ loadPersistedState<PersistedState>().then((persisted) => {
           return acc;
         }, [])
       : [];
+    // Progressive private signals: load if present, else keep empty.
+    // No schema validation here — the writer is the only entry point and
+    // is type-safe. Older installs simply start with an empty map.
+    if (
+      persisted.progressivePrivateSignals &&
+      typeof persisted.progressivePrivateSignals === 'object' &&
+      !Array.isArray(persisted.progressivePrivateSignals)
+    ) {
+      state.progressivePrivateSignals = persisted.progressivePrivateSignals;
+    }
   } else {
     // No persisted state, or stale seed version — reset to fresh seed.
     persistState<PersistedState>({
@@ -1166,6 +1195,7 @@ loadPersistedState<PersistedState>().then((persisted) => {
       relations: state.relations,
       evaluations: state.evaluations,
       places: state.places,
+      progressivePrivateSignals: state.progressivePrivateSignals,
       seedVersion: SEED_VERSION,
     });
   }
@@ -1484,6 +1514,30 @@ export type PlaceUpdateInput = {
   rating: 1 | 2 | 3 | 4 | 5;
   impression?: string;
 };
+
+// ── progressive private signals ────────────────────────────────────────
+// Local-only refinements per relation. Persisted in AsyncStorage via the
+// global persist(). NEVER serialized into any Supabase payload — the
+// computePrivateLinkScore / mutual reveal flow does not read this map.
+
+function writeProgressivePrivateSignal(
+  relationId: string,
+  pillarKey: PillarKey,
+  criterionKey: ProgressiveCriterionKey,
+  rating: 1 | 2 | 3 | 4 | 5,
+): void {
+  const next = applyProgressivePrivateSignal(
+    state.progressivePrivateSignals,
+    relationId,
+    pillarKey,
+    criterionKey,
+    rating,
+  );
+  if (next === state.progressivePrivateSignals) return;
+  state.progressivePrivateSignals = next;
+  persist();
+  emitChange();
+}
 
 function pushPlace(input: PlaceCreateInput): Place | null {
   const cleanName = input.name.trim();
@@ -1929,6 +1983,7 @@ function resetDevStateToSeed() {
   state.relations = SEED_RELATIONS.map(applyNormalizedRelationModel);
   state.evaluations = [...SEED_EVALUATIONS];
   state.places = [...SEED_PLACES];
+  state.progressivePrivateSignals = {};
   hydrated = true;
   emitChange();
   void clearPersistedState().finally(() => {
@@ -1937,6 +1992,7 @@ function resetDevStateToSeed() {
       relations: state.relations,
       evaluations: state.evaluations,
       places: state.places,
+      progressivePrivateSignals: state.progressivePrivateSignals,
       seedVersion: SEED_VERSION,
     });
   });
@@ -1949,6 +2005,7 @@ function loadLargeNetworkSeedData() {
   state.relations = (relations as Parameters<typeof applyNormalizedRelationModel>[0][]).map(applyNormalizedRelationModel);
   state.evaluations = evaluations;
   state.places = [];
+  state.progressivePrivateSignals = {};
   hydrated = true;
   emitChange();
   void clearPersistedState().finally(() => {
@@ -1957,6 +2014,7 @@ function loadLargeNetworkSeedData() {
       relations: state.relations,
       evaluations: state.evaluations,
       places: state.places,
+      progressivePrivateSignals: state.progressivePrivateSignals,
       seedVersion: SEED_VERSION,
     });
   });
@@ -1969,6 +2027,11 @@ export function useRelationsStore() {
   const relations = useSyncExternalStore(subscribe, getRelationsSnapshot, getRelationsSnapshot);
   const evaluations = useSyncExternalStore(subscribe, getEvaluationsSnapshot, getEvaluationsSnapshot);
   const places = useSyncExternalStore(subscribe, getPlacesSnapshot, getPlacesSnapshot);
+  const progressivePrivateSignals = useSyncExternalStore(
+    subscribe,
+    getProgressivePrivateSignalsSnapshot,
+    getProgressivePrivateSignalsSnapshot,
+  );
   const isHydrated = useSyncExternalStore(subscribe, getHydratedSnapshot, getHydratedSnapshot);
 
   const activeRelations = relations.filter((r) => !r.archived);
@@ -2004,6 +2067,12 @@ export function useRelationsStore() {
   const markInviteDeliveryOpened = (id: string) => setInviteDeliveryOpened(id);
   const bootstrapSharedRelations = (rows: SharedRelationBootstrapInput[]) =>
     upsertBootstrappedSharedRelations(rows);
+  const setProgressivePrivateSignal = (
+    relationId: string,
+    pillarKey: PillarKey,
+    criterionKey: ProgressiveCriterionKey,
+    rating: 1 | 2 | 3 | 4 | 5,
+  ) => writeProgressivePrivateSignal(relationId, pillarKey, criterionKey, rating);
 
   const getAssistedReconciliationSuggestionForRelation = (relationId: string) =>
     findAssistedReconciliationSuggestionForRelation(relationId, relations);
@@ -2016,6 +2085,8 @@ export function useRelationsStore() {
     relations,
     evaluations,
     places,
+    progressivePrivateSignals,
+    setProgressivePrivateSignal,
     activeRelations,
     archivedRelations,
     archiveRelation,

@@ -145,3 +145,43 @@ export function getProgressiveUnlocks(
   }
   return out;
 }
+
+// ── Local persistence shape ────────────────────────────────────────────────
+// Used by the store to persist the user's private signal ratings keyed by
+// relation.id. Strictly local: NEVER serialized into a Supabase payload, NEVER
+// merged into Evaluation.ratings, NEVER read by computePrivateLinkScore.
+
+export type ProgressivePrivateSignalsRating = 1 | 2 | 3 | 4 | 5;
+
+export type ProgressivePrivateSignals =
+  Partial<Record<PillarKey, Partial<Record<ProgressiveCriterionKey, ProgressivePrivateSignalsRating>>>>;
+
+export type ProgressivePrivateSignalsByRelation =
+  Record<string, ProgressivePrivateSignals>;
+
+/**
+ * Pure mutation helper. Returns a new map with the given rating applied,
+ * preserving every other relation and every other (pillar, criterion) entry.
+ * Tested directly; the store wraps this and adds persist + emit side effects.
+ */
+export function applyProgressivePrivateSignal(
+  current: ProgressivePrivateSignalsByRelation,
+  relationId: string,
+  pillarKey: PillarKey,
+  criterionKey: ProgressiveCriterionKey,
+  rating: ProgressivePrivateSignalsRating,
+): ProgressivePrivateSignalsByRelation {
+  if (!relationId) return current;
+  const existing = current[relationId] ?? {};
+  const pillarBucket = existing[pillarKey] ?? {};
+  return {
+    ...current,
+    [relationId]: {
+      ...existing,
+      [pillarKey]: {
+        ...pillarBucket,
+        [criterionKey]: rating,
+      },
+    },
+  };
+}

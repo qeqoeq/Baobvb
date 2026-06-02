@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
-import { getProgressiveUnlocks } from './progressive-criteria';
+import {
+  applyProgressivePrivateSignal,
+  getProgressiveUnlocks,
+  type ProgressivePrivateSignalsByRelation,
+} from './progressive-criteria';
 import type { PillarKey } from './evaluation';
 
 const ZERO: Partial<Record<PillarKey, number | null | undefined>> = {
@@ -147,5 +151,88 @@ describe('getProgressiveUnlocks — determinism', () => {
     expect(u.affinity).toBeDefined();
     expect(u.support).toBeDefined();
     expect(u.sharedNetwork).toBeDefined();
+  });
+});
+
+// ── applyProgressivePrivateSignal ──────────────────────────────────────────
+// The store wraps this pure helper to mutate its persisted map. Each test
+// targets a privacy or isolation guarantee.
+
+describe('applyProgressivePrivateSignal', () => {
+  it('stores a rating under relationId/pillar/criterion', () => {
+    const next = applyProgressivePrivateSignal({}, 'rel-1', 'trust', 'reliability', 5);
+    expect(next['rel-1']?.trust?.reliability).toBe(5);
+  });
+
+  it('preserves siblings within the same pillar bucket', () => {
+    const start: ProgressivePrivateSignalsByRelation = {
+      'rel-1': { trust: { reliability: 5 } },
+    };
+    const next = applyProgressivePrivateSignal(start, 'rel-1', 'trust', 'discretion', 4);
+    expect(next['rel-1']?.trust?.reliability).toBe(5);
+    expect(next['rel-1']?.trust?.discretion).toBe(4);
+  });
+
+  it('preserves other pillars of the same relation', () => {
+    const start: ProgressivePrivateSignalsByRelation = {
+      'rel-1': { trust: { reliability: 5 }, affinity: { ease: 4 } },
+    };
+    const next = applyProgressivePrivateSignal(start, 'rel-1', 'trust', 'discretion', 3);
+    expect(next['rel-1']?.affinity?.ease).toBe(4);
+  });
+
+  it('relation A signals do not affect relation B', () => {
+    const start: ProgressivePrivateSignalsByRelation = {
+      'rel-A': { trust: { reliability: 5 } },
+    };
+    const next = applyProgressivePrivateSignal(start, 'rel-B', 'affinity', 'humor', 4);
+    expect(next['rel-A']?.trust?.reliability).toBe(5);
+    expect(next['rel-B']?.affinity?.humor).toBe(4);
+  });
+
+  it('updating an existing criterion overwrites in place', () => {
+    const start: ProgressivePrivateSignalsByRelation = {
+      'rel-1': { trust: { reliability: 3 } },
+    };
+    const next = applyProgressivePrivateSignal(start, 'rel-1', 'trust', 'reliability', 5);
+    expect(next['rel-1']?.trust?.reliability).toBe(5);
+  });
+
+  it('rejects an empty relationId by returning the same reference', () => {
+    const start: ProgressivePrivateSignalsByRelation = { 'rel-1': { trust: { reliability: 5 } } };
+    const next = applyProgressivePrivateSignal(start, '', 'trust', 'reliability', 4);
+    expect(next).toBe(start);
+  });
+
+  it('output is structurally a new object (does not mutate input)', () => {
+    const start: ProgressivePrivateSignalsByRelation = { 'rel-1': { trust: { reliability: 3 } } };
+    const next = applyProgressivePrivateSignal(start, 'rel-1', 'trust', 'reliability', 5);
+    expect(next).not.toBe(start);
+    expect(start['rel-1']?.trust?.reliability).toBe(3); // input unchanged
+  });
+
+  it('serialization shape contains no score/recommendation/network field', () => {
+    // Guard against accidental shape drift: the leaf is just the numeric rating.
+    // No "score", no "recommendable", no "shared", no "network" anywhere.
+    const next = applyProgressivePrivateSignal({}, 'rel-1', 'trust', 'reliability', 5);
+    const serialized = JSON.stringify(next);
+    expect(serialized).not.toMatch(/score/i);
+    expect(serialized).not.toMatch(/recommend/i);
+    expect(serialized).not.toMatch(/network/i);
+    expect(serialized).not.toMatch(/reputation/i);
+    expect(serialized).not.toMatch(/rank/i);
+  });
+
+  // Doctrine guard (v0.4.1): progressive private signals must never be averaged
+  // or aggregated into the parent pillar score. The persisted shape must stay
+  // a 3-level map (relationId → pillar → criterion → 1..5) with no derived
+  // aggregate field, so a future regression cannot silently introduce one.
+  it('persisted shape contains no average/bonus/final/mutual field (no-average doctrine)', () => {
+    const next = applyProgressivePrivateSignal({}, 'rel-1', 'trust', 'reliability', 5);
+    const serialized = JSON.stringify(next);
+    expect(serialized).not.toMatch(/average/i);
+    expect(serialized).not.toMatch(/bonus/i);
+    expect(serialized).not.toMatch(/final/i);
+    expect(serialized).not.toMatch(/mutual/i);
   });
 });
