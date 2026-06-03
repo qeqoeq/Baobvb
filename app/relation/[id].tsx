@@ -41,6 +41,10 @@ import {
   getSharedRevealDisplayState,
 } from '../../lib/relation-detail-helpers';
 import { showPhoneInviteSheet } from '../../lib/phone-invite-sheet';
+import {
+  getProgressiveCriteriaForPillar,
+  type ProgressiveCriterionKey,
+} from '../../lib/progressive-criteria';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 function getHeaderTitle(
@@ -64,7 +68,7 @@ const PILLAR_ORDER: PillarKey[] = [
 
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
-  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation } = useRelationsStore();
+  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation, progressivePrivateSignals } = useRelationsStore();
   const [sharedReveal, setSharedReveal] = useState<Awaited<
     ReturnType<typeof getSharedRevealRecordForCurrentUser>
   > | null>(null);
@@ -298,6 +302,49 @@ export default function RelationDetailScreen() {
       privateReadingA: evaluation,
     }),
   );
+
+  // Private layer readback — locally-saved progressive private signals for THIS
+  // relation, rendered without scoring, without average, without aggregation.
+  // - Read only from the store map keyed by relation.id (never cross-relation).
+  // - NEVER sent to the server (no derivation feeds finalRatings/score/reveal).
+  // - Empty list when nothing has been noted → block not rendered.
+  const privateLayerSections = useMemo(() => {
+    if (!relation) return [];
+    const relationSignals = progressivePrivateSignals[relation.id];
+    if (!relationSignals) return [];
+
+    type Section = {
+      pillar: PillarKey;
+      pillarLabel: string;
+      items: Array<{ key: ProgressiveCriterionKey; label: string; rating: 1 | 2 | 3 | 4 | 5 }>;
+    };
+    const sections: Section[] = [];
+
+    for (const pillar of PILLAR_ORDER) {
+      const pillarSignals = relationSignals[pillar];
+      if (!pillarSignals) continue;
+
+      // Iterate the catalog in stable order, not Object.entries (which reflects
+      // input order). This guarantees the readback layout matches the evaluate
+      // screen and does not depend on the user's rating sequence.
+      const items: Section['items'] = [];
+      for (const criterion of getProgressiveCriteriaForPillar(pillar)) {
+        const rating = pillarSignals[criterion.key];
+        if (!rating) continue;
+        items.push({
+          key: criterion.key,
+          label: criterion.label,
+          rating: rating as 1 | 2 | 3 | 4 | 5,
+        });
+      }
+
+      if (items.length > 0) {
+        sections.push({ pillar, pillarLabel: getPillarLabel(pillar), items });
+      }
+    }
+
+    return sections;
+  }, [progressivePrivateSignals, relation]);
 
   const handleOpenReveal = async () => {
     if (isRevealing) return;
@@ -760,6 +807,34 @@ export default function RelationDetailScreen() {
                 </View>
               )}
             </View>
+
+            {privateLayerSections.length > 0 ? (
+              <View style={styles.privateLayerBlock}>
+                <Text style={styles.privateLayerEyebrow}>Private layer</Text>
+                <Text style={styles.privateLayerSubtitle}>Only on this device. Not shared.</Text>
+                {privateLayerSections.map((section) => (
+                  <View key={section.pillar} style={styles.privateLayerSection}>
+                    <Text style={styles.privateLayerPillarLabel}>{section.pillarLabel}</Text>
+                    {section.items.map((item) => (
+                      <View key={item.key} style={styles.privateLayerRow}>
+                        <Text style={styles.privateLayerCriterionLabel}>{item.label}</Text>
+                        <View style={styles.privateLayerDots}>
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <View
+                              key={n}
+                              style={[
+                                styles.privateLayerDot,
+                                n <= item.rating && styles.privateLayerDotFilled,
+                              ]}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            ) : null}
 
             <View style={styles.readingNote}>
               <Text style={styles.readingNoteText}>
@@ -1268,6 +1343,63 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     lineHeight: 18,
+  },
+
+  privateLayerBlock: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border.soft,
+    gap: spacing.sm,
+  },
+  privateLayerEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.text.muted,
+  },
+  privateLayerSubtitle: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    color: colors.text.muted,
+  },
+  privateLayerSection: {
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  privateLayerPillarLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.text.secondary,
+    letterSpacing: 0.2,
+  },
+  privateLayerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingLeft: spacing.sm,
+  },
+  privateLayerCriterionLabel: {
+    fontSize: 12,
+    color: colors.text.primary,
+    flex: 1,
+  },
+  privateLayerDots: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  privateLayerDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.border.soft + '88',
+    backgroundColor: 'transparent',
+  },
+  privateLayerDotFilled: {
+    borderColor: colors.accent.warmGold + 'AA',
+    backgroundColor: colors.accent.warmGold + '55',
   },
 
   unreadSection: {

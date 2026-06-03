@@ -146,6 +146,20 @@ export function getProgressiveUnlocks(
   return out;
 }
 
+/**
+ * Returns the full catalog of criteria for a given pillar, in stable catalog
+ * order. The Relation Detail Readback iterates over this to render private
+ * signals in a deterministic order, independent of the user's input order.
+ *
+ * Pure read accessor. No IO, no store dependency. Returns a ReadonlyArray to
+ * make accidental mutation impossible.
+ */
+export function getProgressiveCriteriaForPillar(
+  pillarKey: PillarKey,
+): ReadonlyArray<ProgressiveCriterion> {
+  return DEEP_BY_PILLAR[pillarKey] ?? [];
+}
+
 // ── Local persistence shape ────────────────────────────────────────────────
 // Used by the store to persist the user's private signal ratings keyed by
 // relation.id. Strictly local: NEVER serialized into a Supabase payload, NEVER

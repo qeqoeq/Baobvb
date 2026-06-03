@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   applyProgressivePrivateSignal,
+  getProgressiveCriteriaForPillar,
   getProgressiveUnlocks,
   type ProgressivePrivateSignalsByRelation,
 } from './progressive-criteria';
@@ -234,5 +235,34 @@ describe('applyProgressivePrivateSignal', () => {
     expect(serialized).not.toMatch(/bonus/i);
     expect(serialized).not.toMatch(/final/i);
     expect(serialized).not.toMatch(/mutual/i);
+  });
+});
+
+// ── getProgressiveCriteriaForPillar ────────────────────────────────────────
+
+describe('getProgressiveCriteriaForPillar', () => {
+  it('returns the Trust catalog in a stable, catalog-driven order', () => {
+    const keys = getProgressiveCriteriaForPillar('trust').map((c) => c.key);
+    expect(keys).toEqual([
+      'reliability',
+      'discretion',
+      'boundaryRespect',
+      'repairCapacity',
+      'consistency',
+    ]);
+  });
+
+  it('returns the same order on repeated calls (deterministic)', () => {
+    const first = getProgressiveCriteriaForPillar('affinity').map((c) => c.key);
+    const second = getProgressiveCriteriaForPillar('affinity').map((c) => c.key);
+    expect(first).toEqual(second);
+  });
+
+  it('every criterion belongs to its requested pillar', () => {
+    for (const pillar of ['trust', 'interactions', 'affinity', 'support', 'sharedNetwork'] as PillarKey[]) {
+      for (const criterion of getProgressiveCriteriaForPillar(pillar)) {
+        expect(criterion.pillar).toBe(pillar);
+      }
+    }
   });
 });
