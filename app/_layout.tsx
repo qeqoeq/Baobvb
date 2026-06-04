@@ -343,7 +343,14 @@ export default function RootLayout() {
         options={{ title: 'Create your card', presentation: 'modal' }}
       />
       <Stack.Screen name="relation/lexicon" options={{ title: 'Relationship lexicon' }} />
-      <Stack.Screen name="relation/evaluate/[id]" options={{ title: 'Foundational reading' }} />
+      <Stack.Screen
+        name="relation/evaluate/[id]"
+        options={{
+          title: 'Foundational reading',
+          headerBackTitle: '',
+          headerBackButtonDisplayMode: 'minimal',
+        }}
+      />
       <Stack.Screen name="relation/archived" options={{ title: 'Archived relationships' }} />
       <Stack.Screen
         name="through/[id]"
