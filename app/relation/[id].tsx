@@ -804,6 +804,30 @@ export default function RelationDetailScreen() {
                       <Text style={styles.privateStateText}>{safeRevealSummary?.shortDescription}</Text>
                     </>
                   )}
+                  {evaluation && reading?.pillarDots ? (
+                    <View style={styles.privateReadbackBlock}>
+                      <Text style={styles.privateReadbackEyebrow}>Your reading</Text>
+                      {PILLAR_ORDER.map((key) => {
+                        const dots = reading.pillarDots?.[key] ?? [];
+                        return (
+                          <View key={key} style={styles.privateReadbackRow}>
+                            <Text style={styles.privateReadbackPillarLabel}>{getPillarLabel(key)}</Text>
+                            <View style={styles.privateReadbackDots}>
+                              {dots.map((isFilled, idx) => (
+                                <View
+                                  key={idx}
+                                  style={[
+                                    styles.privateReadbackDot,
+                                    isFilled && styles.privateReadbackDotFilled,
+                                  ]}
+                                />
+                              ))}
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : null}
                 </View>
               )}
             </View>
@@ -1400,6 +1424,52 @@ const styles = StyleSheet.create({
   privateLayerDotFilled: {
     borderColor: colors.accent.warmGold + 'AA',
     backgroundColor: colors.accent.warmGold + '55',
+  },
+
+  // Pre-reveal private pillar readback. Deep-teal so it does not compete with
+  // the warmGold progressive private layer block — two visual tones, two
+  // semantic layers: cool = your read of the link, warm = deeper signals.
+  privateReadbackBlock: {
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border.soft,
+    gap: 2,
+  },
+  privateReadbackEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.text.muted,
+    marginBottom: spacing.xs,
+  },
+  privateReadbackRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  privateReadbackPillarLabel: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    letterSpacing: 0.2,
+  },
+  privateReadbackDots: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  privateReadbackDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.border.soft + '88',
+    backgroundColor: 'transparent',
+  },
+  privateReadbackDotFilled: {
+    borderColor: colors.accent.deepTeal + 'AA',
+    backgroundColor: colors.accent.deepTeal + '55',
   },
 
   unreadSection: {
