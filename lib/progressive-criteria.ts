@@ -160,6 +160,79 @@ export function getProgressiveCriteriaForPillar(
   return DEEP_BY_PILLAR[pillarKey] ?? [];
 }
 
+/**
+ * Returns the deep criteria of a pillar that have NOT yet been rated, given the
+ * current set of progressive private signals for that pillar.
+ *
+ * Used by evaluate/[id].tsx to require deep signals when the parent rating is
+ * 5: the user cannot save a "5" reading until every deep criterion of that
+ * pillar carries a 1-5 child rating.
+ *
+ * Pure: no IO, no store, no scoring. Returns an empty array when the pillar
+ * is fully rated. Returns the full catalog when `pillarSignals` is undefined.
+ *
+ * Note: a child rating value can never be 0 or out of range — the store only
+ * accepts 1 | 2 | 3 | 4 | 5. A `falsy` check therefore correctly identifies
+ * "no rating yet".
+ */
+export function getMissingDeepSignalsForPillar(
+  pillarKey: PillarKey,
+  pillarSignals: Partial<Record<ProgressiveCriterionKey, ProgressivePrivateSignalsRating>> | undefined,
+): ReadonlyArray<ProgressiveCriterion> {
+  const catalog = DEEP_BY_PILLAR[pillarKey];
+  if (!catalog) return [];
+  if (!pillarSignals) return catalog;
+  return catalog.filter((criterion) => !pillarSignals[criterion.key]);
+}
+
+/**
+ * Returns the private signals of a pillar that are still required, based on
+ * its parent rating:
+ *   - parentRating === 5 → at least 2 deep criteria must be rated
+ *   - parentRating === 4 → at least 1 light criterion must be rated
+ *   - parentRating <= 3 (or null/undefined) → nothing required (returns [])
+ *
+ * Returns ReadonlyArray to forbid mutation:
+ *   - empty array → the threshold has been reached, pillar is unblocked
+ *   - non-empty → the pillar is still blocked. The returned items are the
+ *     UNRATED criteria of the relevant catalog (useful when future UI wants
+ *     to surface suggestions); only `.length > 0` matters for the gate.
+ *
+ * Pure: no IO, no store, no scoring. Falsy/0 rating slots are treated as
+ * "not rated" defensively (store type allows 1-5 only but historic patches
+ * may have left other values).
+ */
+export function getMissingRequiredSignalsForPillar(
+  pillarKey: PillarKey,
+  parentRating: number | null | undefined,
+  pillarSignals: Partial<Record<ProgressiveCriterionKey, ProgressivePrivateSignalsRating>> | undefined,
+): ReadonlyArray<ProgressiveCriterion> {
+  let catalog: ReadonlyArray<ProgressiveCriterion> | undefined;
+  let requiredCount: number;
+  if (parentRating === 5) {
+    catalog = DEEP_BY_PILLAR[pillarKey];
+    requiredCount = 2;
+  } else if (parentRating === 4) {
+    catalog = LIGHT_BY_PILLAR[pillarKey];
+    requiredCount = 1;
+  } else {
+    return [];
+  }
+  if (!catalog) return [];
+
+  let ratedCount = 0;
+  const unrated: ProgressiveCriterion[] = [];
+  for (const criterion of catalog) {
+    if (pillarSignals && pillarSignals[criterion.key]) {
+      ratedCount += 1;
+    } else {
+      unrated.push(criterion);
+    }
+  }
+  if (ratedCount >= requiredCount) return [];
+  return unrated;
+}
+
 // ── Local persistence shape ────────────────────────────────────────────────
 // Used by the store to persist the user's private signal ratings keyed by
 // relation.id. Strictly local: NEVER serialized into a Supabase payload, NEVER

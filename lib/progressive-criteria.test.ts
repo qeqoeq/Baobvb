@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 
 import {
   applyProgressivePrivateSignal,
+  getMissingDeepSignalsForPillar,
+  getMissingRequiredSignalsForPillar,
   getProgressiveCriteriaForPillar,
   getProgressiveUnlocks,
   type ProgressivePrivateSignalsByRelation,
@@ -263,6 +265,178 @@ describe('getProgressiveCriteriaForPillar', () => {
       for (const criterion of getProgressiveCriteriaForPillar(pillar)) {
         expect(criterion.pillar).toBe(pillar);
       }
+    }
+  });
+});
+
+// ── getMissingDeepSignalsForPillar ─────────────────────────────────────────
+
+describe('getMissingDeepSignalsForPillar', () => {
+  it('returns the entire Trust deep catalog when no signals are rated', () => {
+    const missing = getMissingDeepSignalsForPillar('trust', undefined);
+    const keys = missing.map((c) => c.key);
+    expect(keys).toEqual([
+      'reliability',
+      'discretion',
+      'boundaryRespect',
+      'repairCapacity',
+      'consistency',
+    ]);
+  });
+
+  it('returns the entire catalog when the pillarSignals object is empty', () => {
+    const missing = getMissingDeepSignalsForPillar('trust', {});
+    expect(missing).toHaveLength(5);
+  });
+
+  it('returns only the missing keys when partially rated', () => {
+    const missing = getMissingDeepSignalsForPillar('trust', {
+      reliability: 5,
+      discretion: 4,
+    });
+    const keys = missing.map((c) => c.key);
+    expect(keys).toEqual(['boundaryRespect', 'repairCapacity', 'consistency']);
+  });
+
+  it('returns empty array when every deep criterion is rated', () => {
+    const missing = getMissingDeepSignalsForPillar('trust', {
+      reliability: 5,
+      discretion: 4,
+      boundaryRespect: 3,
+      repairCapacity: 2,
+      consistency: 1,
+    });
+    expect(missing).toHaveLength(0);
+  });
+
+  it('treats a 0 / undefined rating slot as missing (falsy guard)', () => {
+    // Although the store type forbids 0, defensive: if some past corruption
+    // left a falsy value in the map, treat it as not rated.
+    const missing = getMissingDeepSignalsForPillar('affinity', {
+      ease: 5,
+      humor: 0 as unknown as 1, // simulate corrupted slot
+    });
+    const keys = missing.map((c) => c.key);
+    expect(keys).toContain('humor');
+    expect(keys).not.toContain('ease');
+  });
+
+  it('works independently for each pillar', () => {
+    const trustMissing = getMissingDeepSignalsForPillar('trust', { reliability: 5 });
+    const affinityMissing = getMissingDeepSignalsForPillar('affinity', undefined);
+    expect(trustMissing.every((c) => c.pillar === 'trust')).toBe(true);
+    expect(affinityMissing.every((c) => c.pillar === 'affinity')).toBe(true);
+  });
+
+  it('returned criteria carry catalog labels (no toxic vocabulary)', () => {
+    const missing = getMissingDeepSignalsForPillar('trust', undefined);
+    for (const c of missing) {
+      const lower = c.label.toLowerCase();
+      expect(lower).not.toMatch(/\b(score|rank|rating|missing|required|incomplete)\b/);
+    }
+  });
+});
+
+// ── getMissingRequiredSignalsForPillar ─────────────────────────────────────
+
+describe('getMissingRequiredSignalsForPillar (threshold semantics: 4 → ≥1 light, 5 → ≥2 deep)', () => {
+  it('rating <= 3 returns [] (no obligation)', () => {
+    for (const rating of [3, 2, 1, 0, null, undefined] as Array<number | null | undefined>) {
+      expect(getMissingRequiredSignalsForPillar('trust', rating, undefined)).toEqual([]);
+      expect(getMissingRequiredSignalsForPillar('trust', rating, { reliability: 5 })).toEqual([]);
+    }
+  });
+
+  it('rating === 4 + no signals → blocks (returns non-empty)', () => {
+    const missing = getMissingRequiredSignalsForPillar('trust', 4, undefined);
+    expect(missing.length).toBeGreaterThan(0);
+  });
+
+  it('rating === 4 + one light signal rated → passes (returns [])', () => {
+    const missing = getMissingRequiredSignalsForPillar('trust', 4, { reliability: 5 });
+    expect(missing).toEqual([]);
+  });
+
+  it('rating === 4 + a single light signal at any value 1..5 → passes', () => {
+    for (const v of [1, 2, 3, 4, 5] as const) {
+      expect(getMissingRequiredSignalsForPillar('trust', 4, { reliability: v })).toEqual([]);
+    }
+  });
+
+  it('rating === 4 + only a deep-only signal rated → still blocks (light gate not met)', () => {
+    // boundaryRespect is deep only, not in light. Light catalog = [reliability, consistency].
+    const missing = getMissingRequiredSignalsForPillar('trust', 4, { boundaryRespect: 5 });
+    expect(missing.length).toBeGreaterThan(0);
+  });
+
+  it('rating === 5 + no signals → blocks', () => {
+    const missing = getMissingRequiredSignalsForPillar('trust', 5, undefined);
+    expect(missing.length).toBeGreaterThan(0);
+  });
+
+  it('rating === 5 + one deep signal rated → still blocks (threshold is 2)', () => {
+    const missing = getMissingRequiredSignalsForPillar('trust', 5, { reliability: 5 });
+    expect(missing.length).toBeGreaterThan(0);
+  });
+
+  it('rating === 5 + two deep signals rated → passes', () => {
+    const missing = getMissingRequiredSignalsForPillar('trust', 5, {
+      reliability: 5,
+      discretion: 4,
+    });
+    expect(missing).toEqual([]);
+  });
+
+  it('rating === 5 + three or more deep signals rated → still passes', () => {
+    const missing = getMissingRequiredSignalsForPillar('trust', 5, {
+      reliability: 5,
+      discretion: 4,
+      boundaryRespect: 3,
+    });
+    expect(missing).toEqual([]);
+  });
+
+  it('rating === 5 + any two valid 1..5 deep ratings → passes', () => {
+    const missing = getMissingRequiredSignalsForPillar('trust', 5, {
+      reliability: 1,
+      consistency: 2,
+    });
+    expect(missing).toEqual([]);
+  });
+
+  it('treats a 0 / falsy rating slot as not rated', () => {
+    // Affinity light = [ease, sharedRhythm]. Only `ease` set to a corrupted 0
+    // and `sharedRhythm` unset → 0 counted, still blocks.
+    const missing = getMissingRequiredSignalsForPillar('affinity', 4, {
+      ease: 0 as unknown as 1,
+    });
+    expect(missing.length).toBeGreaterThan(0);
+  });
+
+  it('isolates across pillars: Trust signals do not unblock Affinity at 4', () => {
+    // Affinity at 4 needs at least 1 affinity light signal. Trust signals never satisfy it.
+    const missing = getMissingRequiredSignalsForPillar('affinity', 4, {
+      reliability: 5,
+      consistency: 5,
+    });
+    expect(missing.length).toBeGreaterThan(0);
+  });
+
+  it('returned criteria belong to the requested pillar', () => {
+    for (const pillar of ['trust', 'interactions', 'affinity', 'support', 'sharedNetwork'] as PillarKey[]) {
+      const missing5 = getMissingRequiredSignalsForPillar(pillar, 5, undefined);
+      const missing4 = getMissingRequiredSignalsForPillar(pillar, 4, undefined);
+      for (const c of [...missing5, ...missing4]) {
+        expect(c.pillar).toBe(pillar);
+      }
+    }
+  });
+
+  it('labels contain no toxic vocabulary', () => {
+    const missing = getMissingRequiredSignalsForPillar('support', 4, undefined);
+    for (const c of missing) {
+      const lower = c.label.toLowerCase();
+      expect(lower).not.toMatch(/\b(score|rank|rating|reputation|popularity|missing|required|incomplete)\b/);
     }
   });
 });

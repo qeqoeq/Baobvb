@@ -13,7 +13,11 @@ import {
 } from '../../../lib/evaluation';
 import { newCanonicalRelationId } from '../../../lib/identity';
 import { showPhoneInviteSheet } from '../../../lib/phone-invite-sheet';
-import { getProgressiveUnlocks, type ProgressiveCriterionKey } from '../../../lib/progressive-criteria';
+import {
+  getMissingRequiredSignalsForPillar,
+  getProgressiveUnlocks,
+  type ProgressiveCriterionKey,
+} from '../../../lib/progressive-criteria';
 import { getRelationshipInviteMessage } from '../../../lib/relationship-invite';
 import {
   attachSharedPrivateReadingReferenceForCurrentUser,
@@ -35,6 +39,19 @@ const PILLARS: { key: PillarKey; label: string; hint: string }[] = [
 ];
 
 const RATING_OPTIONS: PillarRating[] = [1, 2, 3, 4, 5];
+
+// Warm bronze→gold intensity for SELECTED child signal buttons only.
+// One warm family (no traffic-light, no red/green/violet). Higher values
+// glow slightly brighter; lower values stay deeper. Unselected stays neutral.
+const CHILD_RATING_TONES: Record<PillarRating, { bg: string; border: string; text: string }> = {
+  1: { bg: '#2E2014', border: '#6B4A2A', text: '#C9A26E' },
+  2: { bg: '#3B2918', border: '#8A5C30', text: '#D4B07A' },
+  3: { bg: '#4A3320', border: '#A36D2E', text: '#DDBC85' },
+  4: { bg: '#5A3F22', border: '#C28338', text: '#E8C68F' },
+  5: { bg: '#6B4A24', border: '#E0A53A', text: '#F2D89A' },
+};
+
+const getChildRatingTone = (n: PillarRating) => CHILD_RATING_TONES[n];
 
 export default function EvaluateScreen() {
   const { id, side } = useLocalSearchParams<{ id: string; side?: string }>();
@@ -127,6 +144,33 @@ export default function EvaluateScreen() {
   // not capture answers for these criteria.
   const progressiveUnlocks = useMemo(() => getProgressiveUnlocks(ratings), [ratings]);
   const progress = completedCount / PILLARS.length;
+
+  // Baobab requires private signals on any pillar with a strong parent rating:
+  //   - parent 5 → all deep private signals required
+  //   - parent 4 → all light private signals required
+  //   - parent <= 3 → no obligation
+  // The check is pure: reads only local state (ratings + progressiveChildRatings).
+  const pillarsRequiringPrivateSignals = useMemo(() => {
+    const incomplete: { pillarKey: PillarKey; pillarLabel: string }[] = [];
+    for (const { key, label } of PILLARS) {
+      const missing = getMissingRequiredSignalsForPillar(key, ratings[key], progressiveChildRatings[key]);
+      if (missing.length > 0) {
+        incomplete.push({ pillarKey: key, pillarLabel: label });
+      }
+    }
+    return incomplete;
+  }, [ratings, progressiveChildRatings]);
+  const allPrivateSignalsRated = pillarsRequiringPrivateSignals.length === 0;
+  const privateSignalsBlockingMessage = useMemo(() => {
+    if (pillarsRequiringPrivateSignals.length === 0) return null;
+    if (pillarsRequiringPrivateSignals.length === 1) {
+      return `Add a private signal for ${pillarsRequiringPrivateSignals[0].pillarLabel} before saving.`;
+    }
+    const labels = pillarsRequiringPrivateSignals.map((p) => p.pillarLabel);
+    const last = labels[labels.length - 1];
+    const head = labels.slice(0, -1).join(', ');
+    return `Add private signals for ${head} and ${last} before saving.`;
+  }, [pillarsRequiringPrivateSignals]);
   const isInviteNumberRelation = relation?.source === 'invite_number';
   const sourceLabel =
     relation?.source === 'scan'
@@ -365,6 +409,7 @@ export default function EvaluateScreen() {
                             <View style={styles.unlockChildRatingRow}>
                               {RATING_OPTIONS.map((n) => {
                                 const isSelected = currentChildRating === n;
+                                const tone = isSelected ? getChildRatingTone(n) : null;
                                 return (
                                   <Pressable
                                     key={n}
@@ -373,6 +418,7 @@ export default function EvaluateScreen() {
                                     style={[
                                       styles.unlockChildRatingButton,
                                       isSelected && styles.unlockChildRatingButtonActive,
+                                      tone && { backgroundColor: tone.bg, borderColor: tone.border },
                                     ]}
                                     hitSlop={4}
                                   >
@@ -380,6 +426,7 @@ export default function EvaluateScreen() {
                                       style={[
                                         styles.unlockChildRatingText,
                                         isSelected && styles.unlockChildRatingTextActive,
+                                        tone && { color: tone.text },
                                       ]}
                                     >
                                       {n}
@@ -401,22 +448,27 @@ export default function EvaluateScreen() {
         })}
       </View>
 
-      <Pressable
-        onPress={() => void handleSubmit()}
-        disabled={!allRated || isSubmitting}
-        style={[
-          styles.submitButton,
-          (!allRated || isSubmitting) && styles.submitButtonDisabled,
-        ]}
-      >
-        <Text style={styles.submitButtonText}>
-          {isSubmitting
-            ? 'Saving...'
-            : allRated
-              ? (isInviteNumberRelation ? 'Save & send invite' : 'Save foundational reading')
-              : `Rate ${PILLARS.length - completedCount} more pillar${PILLARS.length - completedCount > 1 ? 's' : ''}`}
-        </Text>
-      </Pressable>
+      <View style={styles.submitSection}>
+        <Pressable
+          onPress={() => void handleSubmit()}
+          disabled={!allRated || !allPrivateSignalsRated || isSubmitting}
+          style={[
+            styles.submitButton,
+            (!allRated || !allPrivateSignalsRated || isSubmitting) && styles.submitButtonDisabled,
+          ]}
+        >
+          <Text style={styles.submitButtonText}>
+            {isSubmitting
+              ? 'Saving...'
+              : allRated
+                ? (isInviteNumberRelation ? 'Save & send invite' : 'Save foundational reading')
+                : `Rate ${PILLARS.length - completedCount} more pillar${PILLARS.length - completedCount > 1 ? 's' : ''}`}
+          </Text>
+        </Pressable>
+        {allRated && privateSignalsBlockingMessage ? (
+          <Text style={styles.submitHelperText}>{privateSignalsBlockingMessage}</Text>
+        ) : null}
+      </View>
     </ScrollView>
   );
 }
@@ -593,17 +645,29 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
   },
 
+  // ── Unlocked private signal layer ────────────────────────────────────────
+  // Visual treatment: dim amber chamber, warmGold-tinted border + subtle
+  // outer glow. The intent is "a secret depth layer just opened" — not a
+  // form panel, not a casino badge. Restricted to this block only; the
+  // parent pillar card stays neutral.
   unlockBlock: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     gap: spacing.xs,
-    paddingTop: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border.soft,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + '40',
+    backgroundColor: colors.accent.warmGold + '0F',
+    shadowColor: colors.accent.warmGold,
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   unlockTitle: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1.2,
+    letterSpacing: 1.6,
     textTransform: 'uppercase',
     color: colors.accent.warmGold,
   },
@@ -614,9 +678,9 @@ const styles = StyleSheet.create({
   },
   unlockDetailsList: {
     marginTop: spacing.sm,
-    paddingLeft: spacing.xs,
+    paddingLeft: spacing.sm,
     borderLeftWidth: 2,
-    borderLeftColor: colors.accent.warmGold + '33',
+    borderLeftColor: colors.accent.warmGold + '66',
   },
   unlockDetailItem: {
     gap: 2,
@@ -636,27 +700,29 @@ const styles = StyleSheet.create({
   },
   unlockChildRatingRow: {
     flexDirection: 'row',
-    gap: 4,
-    marginTop: 4,
+    gap: spacing.xs,
+    marginTop: spacing.sm,
   },
   unlockChildRatingButton: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.sm,
+    flex: 1,
+    height: 44,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border.soft + '88',
-    backgroundColor: 'transparent',
+    borderColor: colors.accent.warmGold + '33',
+    backgroundColor: colors.background.tertiary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   unlockChildRatingButtonActive: {
-    borderColor: colors.accent.warmGold + 'AA',
-    backgroundColor: colors.accent.warmGold + '22',
+    borderColor: colors.accent.warmGold,
+    backgroundColor: colors.accent.warmGold + '4D',
   },
   unlockChildRatingText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: colors.text.muted,
+    letterSpacing: 0.2,
   },
   unlockChildRatingTextActive: {
     color: colors.accent.warmGold,
@@ -668,6 +734,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  submitSection: {
+    gap: spacing.xs,
+  },
   submitButton: {
     backgroundColor: colors.accent.deepTeal,
     borderRadius: radius.md,
@@ -681,5 +750,12 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontSize: 16,
     fontWeight: '700',
+  },
+  submitHelperText: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    paddingHorizontal: spacing.sm,
   },
 });

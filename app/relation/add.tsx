@@ -223,7 +223,7 @@ export default function AddRelationScreen() {
                 relationDepth: 'encounter',
               });
               if (created) {
-                router.replace({ pathname: '/relation/[id]', params: { id: created.id, justCreated: '1' } });
+                router.replace({ pathname: '/relation/evaluate/[id]', params: { id: created.id } });
               }
             },
           },
@@ -245,7 +245,7 @@ export default function AddRelationScreen() {
         relationDepth: 'encounter',
       });
       if (!created) return;
-      router.replace({ pathname: '/relation/[id]', params: { id: created.id, justCreated: '1' } });
+      router.replace({ pathname: '/relation/evaluate/[id]', params: { id: created.id } });
       return;
     }
 
@@ -268,7 +268,7 @@ export default function AddRelationScreen() {
               relationDepth: 'encounter',
             });
             if (created) {
-              router.replace({ pathname: '/relation/[id]', params: { id: created.id, justCreated: '1' } });
+              router.replace({ pathname: '/relation/evaluate/[id]', params: { id: created.id } });
             }
           },
         },
@@ -286,7 +286,7 @@ export default function AddRelationScreen() {
       relationDepth: 'encounter',
     });
     if (!created) return;
-    router.replace({ pathname: '/relation/[id]', params: { id: created.id, justCreated: '1' } });
+    router.replace({ pathname: '/relation/evaluate/[id]', params: { id: created.id } });
   };
 
   // ── Hub ───────────────────────────────────────────────────────────────────
