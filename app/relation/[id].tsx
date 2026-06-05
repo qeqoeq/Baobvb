@@ -832,6 +832,18 @@ export default function RelationDetailScreen() {
               )}
             </View>
 
+            {nextAction.ctaKind === 'invite' && evaluation ? (
+              <View style={styles.mutualRevealMomentBlock}>
+                <Text style={styles.mutualRevealMomentEyebrow}>Mutual reveal</Text>
+                <Text style={styles.mutualRevealMomentTitle}>
+                  Ready to understand this relationship together?
+                </Text>
+                <Text style={styles.mutualRevealMomentBody}>
+                  Your reading stays private. Invite them only when you want a mutual reveal.
+                </Text>
+              </View>
+            ) : null}
+
             {privateLayerSections.length > 0 ? (
               <View style={styles.privateLayerBlock}>
                 <Text style={styles.privateLayerEyebrow}>Private layer</Text>
@@ -860,11 +872,13 @@ export default function RelationDetailScreen() {
               </View>
             ) : null}
 
-            <View style={styles.readingNote}>
-              <Text style={styles.readingNoteText}>
-                {getReadingNoteText(nameRevealed, revealStatus)}
-              </Text>
-            </View>
+            {nextAction.ctaKind === 'invite' && evaluation ? null : (
+              <View style={styles.readingNote}>
+                <Text style={styles.readingNoteText}>
+                  {getReadingNoteText(nameRevealed, revealStatus)}
+                </Text>
+              </View>
+            )}
           </View>
         ) : (
           <View style={styles.unreadSection}>
@@ -1470,6 +1484,37 @@ const styles = StyleSheet.create({
   privateReadbackDotFilled: {
     borderColor: colors.accent.deepTeal + 'AA',
     backgroundColor: colors.accent.deepTeal + '55',
+  },
+
+  // Post-save invite moment. Calm microcopy block — no button, no accent
+  // color, no fill. The actual invite CTA lives in primaryActionCard above;
+  // this block exists to give the action emotional context, not to duplicate.
+  mutualRevealMomentBlock: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.sm,
+    gap: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border.soft,
+  },
+  mutualRevealMomentEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.text.muted,
+  },
+  mutualRevealMomentTitle: {
+    fontSize: 15,
+    lineHeight: 21,
+    color: colors.text.primary,
+    fontWeight: '500',
+  },
+  mutualRevealMomentBody: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.secondary,
   },
 
   unreadSection: {
