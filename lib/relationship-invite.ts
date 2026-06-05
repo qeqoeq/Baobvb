@@ -30,7 +30,7 @@ export function getRelationshipInviteMessage(params: {
   const url = buildRelationshipInviteUrl(params.relationId, params.inviteToken);
   const sender = params.senderName?.trim() || 'Someone';
   return {
-    message: `${sender} added you on Baobab. Tap to confirm from your side — it takes under a minute.`,
+    message: `${sender} opened a private space with you on Baobab. Nothing is public. Reveal it together when you're both ready.`,
     url,
   };
 }
