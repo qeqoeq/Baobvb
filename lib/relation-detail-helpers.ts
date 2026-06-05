@@ -302,7 +302,7 @@ export function getRelationNextAction(input: {
   if (input.revealStatus === 'waiting_other_side') {
     const isInviteNumber = deriveRelationAnchorMode(input.relation) === 'invite_number';
 
-    if (isInviteNumber && input.deliveryChannelOpened) {
+    if (input.deliveryChannelOpened) {
       return {
         title: 'Invite sent',
         body: 'Waiting for them.',

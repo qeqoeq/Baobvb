@@ -235,6 +235,32 @@ describe('getRelationNextAction', () => {
     expect(result.ctaKind).toBeNull();
     expect(result.ctaLabel).toBeNull();
   });
+
+  it('manual + waiting_other_side + deliveryChannelOpened transitions to resend', () => {
+    const result = getRelationNextAction({
+      relation: { ...baseRelation, source: 'manual' as const },
+      hasEvaluation: true,
+      revealStatus: 'waiting_other_side',
+      nameRevealed: false,
+      deliveryChannelOpened: true,
+    });
+    expect(result.ctaKind).toBe('resend');
+    expect(result.title).toBe('Invite sent');
+    expect(result.ctaLabel).toBe('Send again');
+  });
+
+  it('scan + waiting_other_side + deliveryChannelOpened transitions to resend', () => {
+    const result = getRelationNextAction({
+      relation: { ...baseRelation, source: 'scan' as const },
+      hasEvaluation: true,
+      revealStatus: 'waiting_other_side',
+      nameRevealed: false,
+      deliveryChannelOpened: true,
+    });
+    expect(result.ctaKind).toBe('resend');
+    expect(result.title).toBe('Invite sent');
+    expect(result.ctaLabel).toBe('Send again');
+  });
 });
 
 // ── getSharedRevealDisplayState ─────────────────────────────────────────────

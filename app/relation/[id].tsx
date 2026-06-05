@@ -492,7 +492,14 @@ export default function RelationDetailScreen() {
       }
 
       // Non-phone relations: general share sheet.
-      await Share.share({ message: fullMessage });
+      // Mark delivery channel opened only when iOS reports an activity was
+      // launched. On dismissedAction (Cancel / drag-down) we stay in the
+      // 'invite' state — doctrine: do not claim an invite is sent just
+      // because the share sheet was opened.
+      const result = await Share.share({ message: fullMessage });
+      if (result.action === Share.sharedAction) {
+        markInviteDeliveryOpened(relation.id);
+      }
     } catch (error) {
       const description = error instanceof Error ? error.message : '';
       if (description.includes('Authentication required')) {
