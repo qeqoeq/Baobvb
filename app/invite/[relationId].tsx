@@ -325,7 +325,7 @@ export default function InviteArrivalScreen() {
           <Text style={styles.kicker}>{'BAOBAB'}</Text>
           <Text style={styles.title}>{'A private link\nis waiting'}</Text>
           <Text style={styles.body}>
-            {'Someone opened a private space with you.\nNothing is public. Nothing is ranked.'}
+            {'Someone opened a private space with you.\nNothing is public. Both sides write privately, then reveal together.'}
           </Text>
         </View>
       </View>
@@ -381,7 +381,7 @@ export default function InviteArrivalScreen() {
               style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
             >
               <Text style={styles.primaryButtonText}>
-                {isSubmitting ? 'Continuing…' : 'Continue privately'}
+                {isSubmitting ? 'Continuing…' : 'Continue and read'}
               </Text>
             </Pressable>
             <Pressable onPress={exitInviteFlow} style={styles.secondaryButton}>
