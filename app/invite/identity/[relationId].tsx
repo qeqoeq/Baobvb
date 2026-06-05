@@ -19,7 +19,14 @@ export default function InviteIdentityScreen() {
   const returnToInvite = () => {
     router.replace({
       pathname: '/invite/[relationId]',
-      params: { relationId: relationIdTrim, token: token || '' },
+      params: {
+        relationId: relationIdTrim,
+        token: token || '',
+        // Signal that B already tapped "Continue and read" before identity.
+        // The arrival screen resumes that intent automatically, with all
+        // doctrine guards (token, identity, no in-flight state, no error).
+        continueAfterIdentity: '1',
+      },
     });
   };
 

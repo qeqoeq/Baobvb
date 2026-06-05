@@ -1,11 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { devLogLinking } from '../../lib/dev-linking-log';
 import { isLocalDraftId } from '../../lib/identity';
+import { shouldAutoContinueInvite } from '../../lib/invite-auto-continue';
 import { claimRelationshipInviteForCurrentUser } from '../../lib/reveal-shared-repo';
 import type { SharedInviteClaimResult } from '../../lib/reveal-shared-types';
 import type { RelationshipSideKey, SharedRelationBootstrapInput } from '../../store/useRelationsStore';
@@ -118,13 +119,18 @@ function getClaimErrorCopy(kind: ClaimErrorKind): ClaimErrorCopy {
 }
 
 export default function InviteArrivalScreen() {
-  const { relationId, token } = useLocalSearchParams<{ relationId: string; token?: string }>();
+  const { relationId, token, continueAfterIdentity } = useLocalSearchParams<{
+    relationId: string;
+    token?: string;
+    continueAfterIdentity?: string;
+  }>();
   const relationIdTrim = typeof relationId === 'string' ? relationId.trim() : '';
   const { me, relations, resolveInvitedSideB, addRelation } = useRelationsStore();
   const [showUnresolvedContinuation, setShowUnresolvedContinuation] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [brokenLink, setBrokenLink] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasAutoContinuedRef = useRef(false);
 
   const relation = useMemo(
     () =>
@@ -154,6 +160,40 @@ export default function InviteArrivalScreen() {
     if (!showUnresolvedContinuation || !relation) return;
     router.push({ pathname: '/relation/[id]', params: { id: relation.id } });
   }, [showUnresolvedContinuation, relation]);
+
+  // Auto-continue only resumes an explicit intent after identity creation;
+  // it must not claim without token or repeat after navigation.
+  useEffect(() => {
+    if (hasAutoContinuedRef.current) return;
+    const ok = shouldAutoContinueInvite({
+      continueAfterIdentity,
+      hasLocalIdentity,
+      token,
+      isSubmitting,
+      claimError,
+      brokenLink,
+      showUnresolvedContinuation,
+    });
+    if (!ok) return;
+    hasAutoContinuedRef.current = true;
+    // Strip the flag from the URL so a back-navigation from Evaluate sideB
+    // does not re-trigger the claim on remount.
+    router.setParams({ continueAfterIdentity: undefined });
+    void handleAddMySide();
+    // handleAddMySide is intentionally omitted from deps: it closes over the
+    // current states and refs, and re-creating the effect on every render
+    // would defeat the hasAutoContinuedRef guard. The guards above keep
+    // the effect idempotent across re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    continueAfterIdentity,
+    hasLocalIdentity,
+    token,
+    isSubmitting,
+    claimError,
+    brokenLink,
+    showUnresolvedContinuation,
+  ]);
 
   const handleAddMySide = async () => {
     if (isSubmitting) return;
