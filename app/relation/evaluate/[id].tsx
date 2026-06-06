@@ -221,7 +221,11 @@ export default function EvaluateScreen() {
         try {
           const canonicalId = newCanonicalRelationId();
           setCanonicalRelationId(relation.id, canonicalId);
-          const invite = await createRelationshipInviteForCurrentUser(canonicalId, 'sideA');
+          const invite = await createRelationshipInviteForCurrentUser(canonicalId, 'sideA', undefined, {
+            displayName: me.displayName,
+            handle: me.handle,
+            avatarSeed: me.avatarSeed,
+          });
           try {
             await attachSharedPrivateReadingReferenceForCurrentUser(
               canonicalId,

@@ -5,10 +5,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { devLogLinking } from '../../lib/dev-linking-log';
+import { formatInviterPrompt } from '../../lib/format-inviter-identity';
 import { isLocalDraftId } from '../../lib/identity';
 import { shouldAutoContinueInvite } from '../../lib/invite-auto-continue';
+import { previewRelationshipInviteForCurrentUser } from '../../lib/preview-relationship-invite';
 import { claimRelationshipInviteForCurrentUser } from '../../lib/reveal-shared-repo';
-import type { SharedInviteClaimResult } from '../../lib/reveal-shared-types';
+import type { InvitePreviewResult, SharedInviteClaimResult } from '../../lib/reveal-shared-types';
 import type { RelationshipSideKey, SharedRelationBootstrapInput } from '../../store/useRelationsStore';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
@@ -130,6 +132,7 @@ export default function InviteArrivalScreen() {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [brokenLink, setBrokenLink] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [preview, setPreview] = useState<InvitePreviewResult | null>(null);
   const hasAutoContinuedRef = useRef(false);
 
   const relation = useMemo(
@@ -160,6 +163,19 @@ export default function InviteArrivalScreen() {
     if (!showUnresolvedContinuation || !relation) return;
     router.push({ pathname: '/relation/[id]', params: { id: relation.id } });
   }, [showUnresolvedContinuation, relation]);
+
+  // Best-effort identity preview. UX-only: any failure leaves preview=null
+  // and the screen falls back to "Someone opened...". Never blocks claim.
+  useEffect(() => {
+    if (!token?.trim()) return;
+    let cancelled = false;
+    void previewRelationshipInviteForCurrentUser(token).then((result) => {
+      if (!cancelled) setPreview(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   // Auto-continue only resumes an explicit intent after identity creation;
   // it must not claim without token or repeat after navigation.
@@ -288,11 +304,22 @@ export default function InviteArrivalScreen() {
           relationship_name_revealed: claimResult.relationship_name_revealed,
           counterpart_public_profile_id: claimResult.counterpart_public_profile_id,
         };
-        const created = addRelation('Private link', {
+        // Materialize the relation with the inviter's identity snapshot when
+        // present. Legacy invites (pre-snapshot migration) fall back to the
+        // generic "Private link" / "?" defaults.
+        const snapshotDisplayName = claimResult.inviter_display_name?.trim() || '';
+        const snapshotHandle = claimResult.inviter_handle?.trim() || '';
+        const snapshotAvatarSeed = claimResult.inviter_avatar_seed?.trim() || '';
+        const displayName = snapshotDisplayName || 'Private link';
+        const handle = snapshotHandle || undefined;
+        const avatarSeed =
+          snapshotAvatarSeed || displayName.charAt(0).toUpperCase() || '?';
+        const created = addRelation(displayName, {
           source: 'claim',
-          privateLabel: 'Private link',
+          privateLabel: displayName,
           anchorMode: 'claim',
-          avatarSeed: '?',
+          handle,
+          avatarSeed,
           canonicalRelationId: claimedCanonicalId,
           claimSharedRecord,
           anchorValue: null,
@@ -365,7 +392,8 @@ export default function InviteArrivalScreen() {
           <Text style={styles.kicker}>{'BAOBAB'}</Text>
           <Text style={styles.title}>{'A private link\nis waiting'}</Text>
           <Text style={styles.body}>
-            {'Someone opened a private space with you.\nNothing is public. Both sides write privately, then reveal together.'}
+            {formatInviterPrompt(preview)}
+            {'\nNothing is public. Both sides write privately, then reveal together.'}
           </Text>
         </View>
       </View>

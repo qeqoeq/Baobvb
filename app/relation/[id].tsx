@@ -449,7 +449,11 @@ export default function RelationDetailScreen() {
       if (isLocalDraftId(canonicalId)) {
         throw new Error('[invite] canonicalRelationId must not be a localDraftId');
       }
-      const invite = await createRelationshipInviteForCurrentUser(canonicalId, 'sideA');
+      const invite = await createRelationshipInviteForCurrentUser(canonicalId, 'sideA', undefined, {
+        displayName: me.displayName,
+        handle: me.handle,
+        avatarSeed: me.avatarSeed,
+      });
 
       // Attach local reading to the shared record so the backend state is consistent
       // before refreshSharedReveal can fire. Additive — failure does not block invite.

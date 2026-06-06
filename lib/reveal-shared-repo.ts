@@ -71,12 +71,23 @@ export async function createRelationshipInviteForCurrentUser(
   relationshipId: string,
   inviterSide: RelationshipSideKey,
   ttlMinutes = 60 * 24 * 7,
+  inviterIdentity?: {
+    displayName: string;
+    handle: string;
+    avatarSeed: string;
+  },
 ): Promise<SharedRelationshipInvite> {
   await getAuthenticatedUserId();
+  // Snapshot is frozen at send time. Empty string / null defaults preserve
+  // back-compat with pre-snapshot call-sites; the client renders "Someone"
+  // as fallback when the recipient previews the invite.
   const { data, error } = await supabase.rpc('create_relationship_invite', {
     p_relationship_id: relationshipId,
     p_inviter_side: inviterSide,
     p_ttl_minutes: ttlMinutes,
+    p_inviter_display_name: inviterIdentity?.displayName ?? '',
+    p_inviter_handle: inviterIdentity?.handle ?? null,
+    p_inviter_avatar_seed: inviterIdentity?.avatarSeed ?? null,
   });
 
   if (error) {

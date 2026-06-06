@@ -75,4 +75,33 @@ export type SharedInviteClaimResult = {
   ready_at: string | null;
   revealed_at: string | null;
   relationship_name_revealed: boolean;
+  /**
+   * Inviter identity snapshot, frozen at invite creation time.
+   * Optional: legacy invites created before migration 20260607000000 have
+   * empty/null values. The client falls back to "Private link" + "?" when absent.
+   *
+   * Doctrine: never overwritten if A renames themselves later. The displayName
+   * is what A chose to expose at the moment of sending the invite.
+   */
+  inviter_display_name?: string | null;
+  inviter_handle?: string | null;
+  inviter_avatar_seed?: string | null;
+};
+
+/**
+ * Sanitized payload returned by preview_relationship_invite().
+ *
+ * Read-only, scoped to a single invite token. Used by InviteArrivalScreen
+ * before claim to render a contextual greeting ("Alice opened a private
+ * space with you") instead of the generic "Someone".
+ *
+ * No relationship_id is returned (B already knows it from the URL path).
+ * No auth UIDs, no reading payloads, no reveal data.
+ */
+export type InvitePreviewResult = {
+  inviter_display_name: string;
+  inviter_handle: string | null;
+  inviter_avatar_seed: string | null;
+  expires_at: string;
+  claimed_at: string | null;
 };
