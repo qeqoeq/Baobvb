@@ -753,12 +753,16 @@ export default function RelationDetailScreen() {
                       <View style={styles.narrativeCard}>
                         {evaluation ? (
                           <>
-                            <Text style={styles.narrativeLine}>
-                              <Text style={styles.narrativeKey}>Where it's strong:</Text> {strongestLabel}
-                            </Text>
-                            <Text style={styles.narrativeLine}>
-                              <Text style={styles.narrativeKey}>Where it can grow:</Text> {weakestLabel}
-                            </Text>
+                            {reading?.strongestPillar ? (
+                              <Text style={styles.narrativeLine}>
+                                <Text style={styles.narrativeKey}>Where it's strong:</Text> {strongestLabel}
+                              </Text>
+                            ) : null}
+                            {reading?.weakestPillar ? (
+                              <Text style={styles.narrativeLine}>
+                                <Text style={styles.narrativeKey}>Where it can grow:</Text> {weakestLabel}
+                              </Text>
+                            ) : null}
                           </>
                         ) : null}
                         <Text style={styles.narrativeReading}>

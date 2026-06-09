@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 
 import {
+  getStrongestAndWeakestPillars,
   getTierNarrative,
   getGrowthSuggestion,
   getGardenMicroSignal,
   type FoundationalReadingDerived,
 } from './foundational-reading';
-import type { PillarKey } from './evaluation';
+import type { Evaluation, PillarKey, PillarRating } from './evaluation';
 
 // Factory for getGardenMicroSignal inputs.
 // Only 4 fields are read by the function; the rest are irrelevant.
@@ -54,10 +55,34 @@ describe('getTierNarrative', () => {
     );
   });
 
-  it('Vibrant + null pillar → substitutes "-"', () => {
+  it('Vibrant + null pillar → balanced fallback narrative (no "-" leak)', () => {
     expect(getTierNarrative('Vibrant', null)).toBe(
-      'This link feels vibrant and already grounded, with room to grow through -.',
+      'This link feels vibrant and already grounded, with room to grow steadily.',
     );
+  });
+
+  it('Thrill + null pillar → balanced fallback narrative', () => {
+    expect(getTierNarrative('Thrill', null)).toBe(
+      'This link feels alive and promising, and is finding its rhythm.',
+    );
+  });
+
+  it('Spark + null pillar → balanced fallback narrative', () => {
+    expect(getTierNarrative('Spark', null)).toBe(
+      'This link is emerging and meaningful, with space to grow.',
+    );
+  });
+
+  it('Ghost + null pillar → balanced fallback narrative', () => {
+    expect(getTierNarrative('Ghost', null)).toBe(
+      'This link feels distant today, and could be rebuilt through gentle attention.',
+    );
+  });
+
+  it('null pillar narratives never contain a "-" placeholder', () => {
+    for (const tier of ['Legend', 'Anchor', 'Vibrant', 'Thrill', 'Spark', 'Ghost'] as const) {
+      expect(getTierNarrative(tier, null).includes(' -')).toBe(false);
+    }
   });
 
   it('Thrill + known pillar → substitutes lowercase pillar label', () => {
@@ -163,5 +188,112 @@ describe('getGardenMicroSignal', () => {
     expect(
       getGardenMicroSignal(micro({ toNurture: true, strongestPillar: 'trust' })),
     ).toEqual({ text: 'To nurture', tone: 'nurture' });
+  });
+});
+
+// ── getStrongestAndWeakestPillars ───────────────────────────────────────────
+// Doctrine: never invent a strong/weak signal that the evaluation does not
+// honestly support. Equal ratings, ties at the top, ties at the bottom — all
+// return null for the corresponding slot. The function must never return the
+// same pillar in both slots when non-null.
+
+function evalWith(ratings: Record<PillarKey, PillarRating>): Evaluation {
+  return {
+    id: 'e-test',
+    relationId: 'r-test',
+    ratings,
+    score: 0,
+    tier: 'Ghost',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  };
+}
+
+describe('getStrongestAndWeakestPillars', () => {
+  it('null evaluation → both null', () => {
+    expect(getStrongestAndWeakestPillars(null)).toEqual({
+      strongestPillar: null,
+      weakestPillar: null,
+    });
+  });
+
+  it('all ratings at 3/3/3/3/3 → both null', () => {
+    expect(
+      getStrongestAndWeakestPillars(
+        evalWith({ trust: 3, interactions: 3, affinity: 3, support: 3, sharedNetwork: 3 }),
+      ),
+    ).toEqual({ strongestPillar: null, weakestPillar: null });
+  });
+
+  it('all ratings at 5/5/5/5/5 → both null', () => {
+    expect(
+      getStrongestAndWeakestPillars(
+        evalWith({ trust: 5, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5 }),
+      ),
+    ).toEqual({ strongestPillar: null, weakestPillar: null });
+  });
+
+  it('all ratings at 1/1/1/1/1 → both null', () => {
+    expect(
+      getStrongestAndWeakestPillars(
+        evalWith({ trust: 1, interactions: 1, affinity: 1, support: 1, sharedNetwork: 1 }),
+      ),
+    ).toEqual({ strongestPillar: null, weakestPillar: null });
+  });
+
+  it('clear strong + clear weak → returns both unique pillars', () => {
+    // trust=5 (unique max), interactions=1 (unique min)
+    expect(
+      getStrongestAndWeakestPillars(
+        evalWith({ trust: 5, interactions: 1, affinity: 3, support: 2, sharedNetwork: 4 }),
+      ),
+    ).toEqual({ strongestPillar: 'trust', weakestPillar: 'interactions' });
+  });
+
+  it('tied at top, clear weak → strongest null, weakest returned', () => {
+    // trust=5, interactions=5 (tied max), sharedNetwork=2 (unique min)
+    expect(
+      getStrongestAndWeakestPillars(
+        evalWith({ trust: 5, interactions: 5, affinity: 4, support: 3, sharedNetwork: 2 }),
+      ),
+    ).toEqual({ strongestPillar: null, weakestPillar: 'sharedNetwork' });
+  });
+
+  it('clear strong, tied at bottom → strongest returned, weakest null', () => {
+    // trust=5 (unique max), interactions=4, affinity=4, support=4, sharedNetwork=4 (tied min)
+    expect(
+      getStrongestAndWeakestPillars(
+        evalWith({ trust: 5, interactions: 4, affinity: 4, support: 4, sharedNetwork: 4 }),
+      ),
+    ).toEqual({ strongestPillar: 'trust', weakestPillar: null });
+  });
+
+  it('all near-equal with one clear lower → strongest null, weakest returned', () => {
+    // trust=4, interactions=4, affinity=4, support=3 (unique min), sharedNetwork=4 (tied max)
+    expect(
+      getStrongestAndWeakestPillars(
+        evalWith({ trust: 4, interactions: 4, affinity: 4, support: 3, sharedNetwork: 4 }),
+      ),
+    ).toEqual({ strongestPillar: null, weakestPillar: 'support' });
+  });
+
+  it('never returns strongestPillar === weakestPillar when both are non-null', () => {
+    // Exhaustive sweep of every PillarRating combination (3125 cases).
+    const ratings: PillarRating[] = [1, 2, 3, 4, 5];
+    for (const t of ratings) {
+      for (const i of ratings) {
+        for (const a of ratings) {
+          for (const s of ratings) {
+            for (const n of ratings) {
+              const result = getStrongestAndWeakestPillars(
+                evalWith({ trust: t, interactions: i, affinity: a, support: s, sharedNetwork: n }),
+              );
+              if (result.strongestPillar !== null && result.weakestPillar !== null) {
+                expect(result.strongestPillar).not.toBe(result.weakestPillar);
+              }
+            }
+          }
+        }
+      }
+    }
   });
 });

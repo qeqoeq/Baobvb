@@ -50,6 +50,18 @@ const TIER_NARRATIVES: Record<Tier, string> = {
   Ghost: 'This link feels distant today, and could be rebuilt through gentle %s.',
 };
 
+// Fallback narratives used when the link is balanced enough that no single
+// pillar stands out as weakest. Preserves the warm tone of the canonical
+// narratives without injecting a placeholder ("-") that would feel evaluative.
+const TIER_NARRATIVES_NO_PILLAR: Record<Tier, string> = {
+  Legend: TIER_NARRATIVES.Legend,
+  Anchor: TIER_NARRATIVES.Anchor,
+  Vibrant: 'This link feels vibrant and already grounded, with room to grow steadily.',
+  Thrill: 'This link feels alive and promising, and is finding its rhythm.',
+  Spark: 'This link is emerging and meaningful, with space to grow.',
+  Ghost: 'This link feels distant today, and could be rebuilt through gentle attention.',
+};
+
 const GROWTH_SUGGESTIONS: Record<PillarKey, string> = {
   trust: 'Create one small act of reliable follow-through this week.',
   interactions: 'Create more regular touchpoints around this link.',
@@ -69,29 +81,62 @@ function getLatestEvaluationByRelation(evaluations: Evaluation[]): Map<string, E
   return byRelation;
 }
 
-function getStrongestAndWeakestPillars(
+/**
+ * Honestly derives the strongest and weakest pillar of an evaluation.
+ *
+ * Doctrine:
+ *   - Never returns a pillar that is also returned for the other slot.
+ *     If a single value covers every pillar (all equal), both slots are null.
+ *   - If multiple pillars are tied at the top, no single one is "the
+ *     strongest" — the slot returns null. Same rule for the bottom.
+ *   - The function never invents a strong or weak point when the evaluation
+ *     cannot honestly support one. Callers should hide the corresponding
+ *     "Where it's strong / can grow" line when null.
+ *
+ * Exported so the doctrine can be tested directly (pure helper).
+ */
+export function getStrongestAndWeakestPillars(
   evaluation: Evaluation | null,
 ): { strongestPillar: PillarKey | null; weakestPillar: PillarKey | null } {
   if (!evaluation) {
     return { strongestPillar: null, weakestPillar: null };
   }
 
-  let strongestPillar = PILLAR_ORDER[0];
-  let weakestPillar = PILLAR_ORDER[0];
-  let strongestValue = evaluation.ratings[strongestPillar];
-  let weakestValue = evaluation.ratings[weakestPillar];
-
+  // Single pass to find max and min values.
+  let maxValue = evaluation.ratings[PILLAR_ORDER[0]];
+  let minValue = evaluation.ratings[PILLAR_ORDER[0]];
   for (const key of PILLAR_ORDER) {
     const value = evaluation.ratings[key];
-    if (value > strongestValue) {
-      strongestPillar = key;
-      strongestValue = value;
+    if (value > maxValue) maxValue = value;
+    if (value < minValue) minValue = value;
+  }
+
+  // All pillars carry the same rating → no honest strong or weak signal.
+  if (maxValue === minValue) {
+    return { strongestPillar: null, weakestPillar: null };
+  }
+
+  // Count occurrences and capture the first key hitting max/min.
+  // PILLAR_ORDER iteration is stable, so "first" is deterministic.
+  let maxCount = 0;
+  let minCount = 0;
+  let firstMax: PillarKey | null = null;
+  let firstMin: PillarKey | null = null;
+  for (const key of PILLAR_ORDER) {
+    const value = evaluation.ratings[key];
+    if (value === maxValue) {
+      maxCount += 1;
+      if (firstMax === null) firstMax = key;
     }
-    if (value < weakestValue) {
-      weakestPillar = key;
-      weakestValue = value;
+    if (value === minValue) {
+      minCount += 1;
+      if (firstMin === null) firstMin = key;
     }
   }
+
+  // Strict uniqueness: only return a pillar when nothing else ties it.
+  const strongestPillar = maxCount === 1 ? firstMax : null;
+  const weakestPillar = minCount === 1 ? firstMin : null;
 
   return { strongestPillar, weakestPillar };
 }
@@ -168,8 +213,11 @@ export function getTierNarrative(
 ): string {
   if (!tier) return 'No foundational reading yet.';
   const base = TIER_NARRATIVES[tier];
-  const weakestLabel = getPillarLabel(weakestPillar).toLowerCase();
-  return base.includes('%s') ? base.replace('%s', weakestLabel) : base;
+  if (!base.includes('%s')) return base;
+  // When no pillar is honestly weakest, swap to a balanced fallback narrative
+  // instead of substituting the placeholder "-" (which used to leak through).
+  if (!weakestPillar) return TIER_NARRATIVES_NO_PILLAR[tier];
+  return base.replace('%s', getPillarLabel(weakestPillar).toLowerCase());
 }
 
 export function getGrowthSuggestion(
