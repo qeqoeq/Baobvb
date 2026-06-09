@@ -1,4 +1,5 @@
 import type { Relation, RelationshipRevealSnapshot } from '../store/useRelationsStore';
+import { normalizeInviterHandle } from './format-inviter-identity';
 import {
   deriveRelationAnchorMode,
   deriveRelationDepth,
@@ -197,21 +198,24 @@ export function getRelationSheetIdentity(input: {
   }
 
   if (anchorMode === 'claim' || anchorMode === 'bootstrap' || anchorMode === 'shared') {
-    const sharedTitle = relation.handle ?? privateLabel;
+    // Doctrine: the human displayName (carried by privateLabel, which is
+    // sourced from the inviter snapshot for 'claim') is the primary
+    // identity. The handle is a secondary identifier rendered as a discreet
+    // "@handle" subtitle. The handle never replaces the human name.
+    const normalizedHandle = normalizeInviterHandle(relation.handle);
+    const handleDisplay = normalizedHandle ? `@${normalizedHandle}` : null;
     const supportingText =
-      relation.handle && relation.handle !== privateLabel
-        ? `Label: ${privateLabel}`
-        : null;
+      handleDisplay && handleDisplay !== privateLabel ? handleDisplay : null;
     return {
       privateLabel,
-      primaryTitle: sharedTitle,
+      primaryTitle: privateLabel,
       titleEyebrow: 'Shared identity',
       supportingText,
       stateLabel: relation.archived ? 'Archived' : 'Shared connection',
       relationDepth,
       relationDepthLabel,
       anchorLabel: 'Anchored by',
-      anchorValue: relation.handle ?? 'Shared Baobab connection',
+      anchorValue: handleDisplay ?? 'Shared Baobab connection',
       anchorHint: 'Active on Baobab.',
     };
   }

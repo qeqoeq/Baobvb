@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 
-import { formatInviterPrompt } from './format-inviter-identity';
+import {
+  formatInviterPrompt,
+  normalizeInviterHandle,
+} from './format-inviter-identity';
 import type { InvitePreviewResult } from './reveal-shared-types';
 
 const base: InvitePreviewResult = {
@@ -62,5 +65,84 @@ describe('formatInviterPrompt', () => {
         inviter_handle: '  bob.bao  ',
       }),
     ).toBe('Bob (@bob.bao) opened a private space with you.');
+  });
+
+  it('renders a single @ when the stored handle already has a leading @', () => {
+    expect(
+      formatInviterPrompt({
+        ...base,
+        inviter_display_name: 'Yasmine',
+        inviter_handle: '@yasmine.baobab',
+      }),
+    ).toBe('Yasmine (@yasmine.baobab) opened a private space with you.');
+  });
+
+  it('collapses repeated @ in the stored handle to a single @', () => {
+    expect(
+      formatInviterPrompt({
+        ...base,
+        inviter_display_name: 'Yasmine',
+        inviter_handle: '@@yasmine.baobab',
+      }),
+    ).toBe('Yasmine (@yasmine.baobab) opened a private space with you.');
+  });
+
+  it('trims whitespace before stripping the @ prefix', () => {
+    expect(
+      formatInviterPrompt({
+        ...base,
+        inviter_display_name: 'Yasmine',
+        inviter_handle: '   @yasmine.baobab   ',
+      }),
+    ).toBe('Yasmine (@yasmine.baobab) opened a private space with you.');
+  });
+
+  it('never produces "@@" or "((" in any rendered output', () => {
+    const cases: Array<string | null> = [
+      'yasmine.baobab',
+      '@yasmine.baobab',
+      '@@yasmine.baobab',
+      '@@@yasmine.baobab',
+      '  @yasmine.baobab  ',
+      null,
+      '',
+      '   ',
+    ];
+    for (const handle of cases) {
+      const out = formatInviterPrompt({
+        ...base,
+        inviter_display_name: 'Yasmine',
+        inviter_handle: handle,
+      });
+      expect(out.includes('@@')).toBe(false);
+      expect(out.includes('((')).toBe(false);
+    }
+  });
+});
+
+describe('normalizeInviterHandle', () => {
+  it('returns null for null / undefined / empty / whitespace', () => {
+    expect(normalizeInviterHandle(null)).toBeNull();
+    expect(normalizeInviterHandle(undefined)).toBeNull();
+    expect(normalizeInviterHandle('')).toBeNull();
+    expect(normalizeInviterHandle('   ')).toBeNull();
+    expect(normalizeInviterHandle('@')).toBeNull();
+    expect(normalizeInviterHandle('@@@')).toBeNull();
+  });
+
+  it('strips a single leading @', () => {
+    expect(normalizeInviterHandle('@alice.bao')).toBe('alice.bao');
+  });
+
+  it('strips repeated leading @', () => {
+    expect(normalizeInviterHandle('@@@alice.bao')).toBe('alice.bao');
+  });
+
+  it('leaves a non-@-prefixed handle untouched', () => {
+    expect(normalizeInviterHandle('alice.bao')).toBe('alice.bao');
+  });
+
+  it('trims surrounding whitespace before stripping @', () => {
+    expect(normalizeInviterHandle('   @alice.bao   ')).toBe('alice.bao');
   });
 });
