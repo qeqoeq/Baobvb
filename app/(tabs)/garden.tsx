@@ -76,7 +76,10 @@ function getRevealedLinkStrength(
     score,
     label: getLinkStrengthLabel(score),
     accent: getLinkStrengthAccent(score),
-    line: `Shared link · ${score}%`,
+    // Doctrine: never embed the numeric score in a human-relation display
+    // string. The score remains available on this carrier for non-display
+    // consumers (sort ordering) but must not leak through formatted text.
+    line: 'Shared link',
   };
 }
 
@@ -488,7 +491,7 @@ export default function GardenScreen() {
         </View>
         {isRevealed && sharedLink ? (
           <Text style={[styles.mappingScoreValue, { color: sharedLink.accent }]}>
-            {sharedLink.score}%
+            {sharedLink.label}
           </Text>
         ) : (
           <Text style={[styles.mappingSignal, signalStyle]}>{signalText}</Text>
