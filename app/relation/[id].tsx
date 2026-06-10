@@ -79,6 +79,10 @@ export default function RelationDetailScreen() {
   const revealTreeScale = useRef(new Animated.Value(0)).current;
   const revealOverlayOpacity = useRef(new Animated.Value(0)).current;
   const [isRevealing, setIsRevealing] = useState(false);
+  // Local-only transition moment shown after a successful reveal. Not persisted.
+  // It must never reappear on remount and must never expose any numeric score,
+  // tier, or percentage — only a qualitative doctrine cue.
+  const [showSharedReadingMoment, setShowSharedReadingMoment] = useState(false);
 
   const relation = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
@@ -433,6 +437,9 @@ export default function RelationDetailScreen() {
       // Refresh the backend record so the computed mutual score can hydrate the display.
       void refreshSharedReveal();
     }
+    // Show the qualitative transition moment only after a confirmed success.
+    // Both error branches above (revealError, notReady) have already returned.
+    setShowSharedReadingMoment(true);
     if (process.env.EXPO_OS === 'ios') {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
@@ -952,6 +959,22 @@ export default function RelationDetailScreen() {
         </View>
       )}
     </ScrollView>
+    {showSharedReadingMoment ? (
+      <View style={styles.sharedReadingMomentOverlay}>
+        <View style={styles.sharedReadingMomentCard}>
+          <Text style={styles.sharedReadingMomentEyebrow}>Shared reading</Text>
+          <Text style={styles.sharedReadingMomentTitle}>Your shared reading is ready</Text>
+          <Text style={styles.sharedReadingMomentSubtitle}>A direction, not a verdict.</Text>
+          <Pressable
+            onPress={() => setShowSharedReadingMoment(false)}
+            style={styles.sharedReadingMomentContinue}
+            accessibilityRole="button"
+          >
+            <Text style={styles.sharedReadingMomentContinueText}>Continue</Text>
+          </Pressable>
+        </View>
+      </View>
+    ) : null}
     </>
   );
 }
@@ -1661,5 +1684,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.muted,
     textDecorationLine: 'underline',
+  },
+
+  // ── Shared reading transition moment (local-only) ───────────────────────────
+  // Sober overlay shown once after a successful reveal. No score, no tier,
+  // no percentage. Just a doctrine cue ("direction, not a verdict") and a
+  // Continue button. Dismissing it does not persist anything.
+  sharedReadingMomentOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.background.primary + 'F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  sharedReadingMomentCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accent.deepTeal + '44',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg + 4,
+    gap: spacing.sm,
+  },
+  sharedReadingMomentEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.text.muted,
+  },
+  sharedReadingMomentTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '700',
+    color: colors.text.primary,
+    letterSpacing: -0.3,
+  },
+  sharedReadingMomentSubtitle: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+    marginBottom: spacing.sm,
+  },
+  sharedReadingMomentContinue: {
+    backgroundColor: colors.accent.deepTeal,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  sharedReadingMomentContinueText: {
+    color: colors.text.primary,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
