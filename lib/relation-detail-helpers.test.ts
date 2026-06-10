@@ -99,7 +99,7 @@ describe('getVisibleTierLabel', () => {
 describe('getReadingNoteText', () => {
   it('returns revealed note when nameRevealed is true', () => {
     expect(getReadingNoteText(true, 'revealed')).toBe(
-      'Reading is one layer of this link.',
+      'A shared reading is a direction, not a verdict.',
     );
   });
 
@@ -124,7 +124,7 @@ describe('getReadingNoteText', () => {
   it('nameRevealed takes priority over reveal_ready status', () => {
     // Status is reveal_ready but name is already revealed → revealed note wins
     expect(getReadingNoteText(true, 'reveal_ready')).toBe(
-      'Reading is one layer of this link.',
+      'A shared reading is a direction, not a verdict.',
     );
   });
 });

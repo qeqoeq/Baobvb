@@ -143,7 +143,11 @@ export function getVisibleTierLabel(
  * Pure — depends only on reveal state.
  */
 export function getReadingNoteText(nameRevealed: boolean, revealStatus: RevealStatus): string {
-  if (nameRevealed) return 'Reading is one layer of this link.';
+  // Post-reveal closing note: frames the shared reading as a direction, not
+  // a verdict. Doctrine: Baobab is a private GPS for relationships, not a
+  // social rating system. The reading helps orient how to read the link,
+  // without reducing it to a score, label, or definitive judgement.
+  if (nameRevealed) return 'A shared reading is a direction, not a verdict.';
   if (revealStatus === 'reveal_ready') return 'The reveal is a one-time action.';
   return 'Your reading stays private until both sides share.';
 }
