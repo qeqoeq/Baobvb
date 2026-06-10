@@ -786,8 +786,8 @@ export default function RelationDetailScreen() {
                   </>
                 ) : (
                   <View style={styles.privateStateCard}>
-                    <Text style={styles.privateStateTitle}>Shared view unlocked</Text>
-                    <Text style={styles.privateStateText}>Reading appears in a moment.</Text>
+                    <Text style={styles.privateStateTitle}>Bringing your shared reading in…</Text>
+                    <Text style={styles.privateStateText}>Just a moment.</Text>
                   </View>
                 )
               ) : readingVariant === 'reveal_ready' ? (
