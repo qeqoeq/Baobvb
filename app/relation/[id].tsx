@@ -963,7 +963,7 @@ export default function RelationDetailScreen() {
       <View style={styles.sharedReadingMomentOverlay}>
         <View style={styles.sharedReadingMomentCard}>
           <Text style={styles.sharedReadingMomentEyebrow}>Shared reading</Text>
-          <Text style={styles.sharedReadingMomentTitle}>Your shared reading is ready</Text>
+          <Text style={styles.sharedReadingMomentTitle}>Link opened</Text>
           <Text style={styles.sharedReadingMomentSubtitle}>A direction, not a verdict.</Text>
           <Pressable
             onPress={() => setShowSharedReadingMoment(false)}

@@ -78,8 +78,8 @@ export default function InviteIdentityScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>Create your card</Text>
-        <Text style={styles.body}>Add just enough to continue this invitation.</Text>
+        <Text style={styles.title}>What should we call you?</Text>
+        <Text style={styles.body}>Just enough to open this link.</Text>
 
         <View style={styles.fieldBlock}>
           <Text style={styles.fieldLabel}>Your name</Text>

@@ -390,10 +390,14 @@ export default function InviteArrivalScreen() {
         {/* Text zone */}
         <View style={styles.textZone}>
           <Text style={styles.kicker}>{'BAOBAB'}</Text>
-          <Text style={styles.title}>{'A private link\nis waiting'}</Text>
+          <Text style={styles.title}>
+            {preview?.inviter_display_name?.trim()
+              ? `${preview.inviter_display_name.trim()} opened\na link with you`
+              : 'Your private link\nis waiting'}
+          </Text>
           <Text style={styles.body}>
             {formatInviterPrompt(preview)}
-            {'\nNothing is public. Both sides write privately, then reveal together.'}
+            {"\nYour side stays private. Reveal it together when you're both ready."}
           </Text>
         </View>
       </View>
@@ -449,7 +453,7 @@ export default function InviteArrivalScreen() {
               style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
             >
               <Text style={styles.primaryButtonText}>
-                {isSubmitting ? 'Continuing…' : 'Continue and read'}
+                {isSubmitting ? 'Continuing…' : 'Start your side'}
               </Text>
             </Pressable>
             <Pressable onPress={exitInviteFlow} style={styles.secondaryButton}>

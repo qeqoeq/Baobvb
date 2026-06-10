@@ -316,7 +316,7 @@ export default function EvaluateScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.kicker}>Foundational reading</Text>
+        <Text style={styles.kicker}>Read this link</Text>
         <View style={styles.identityRow}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
@@ -333,7 +333,7 @@ export default function EvaluateScreen() {
           </View>
         </View>
         <Text style={styles.subtitle}>
-          Take a moment to read this relationship honestly.
+          How does this connection feel today?
         </Text>
         <View style={styles.progressWrap}>
           <View style={styles.progressHead}>

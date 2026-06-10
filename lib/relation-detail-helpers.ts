@@ -282,8 +282,8 @@ export function getRelationNextAction(input: {
   // readings, even when no local evaluation exists (bootstrap / claim relations).
   if (input.revealStatus === 'reveal_ready') {
     return {
-      title: 'Reveal is ready',
-      body: 'Both sides are in.',
+      title: 'You\'re both in',
+      body: 'Open what Baobab found.',
       ctaLabel: 'Open reveal',
       ctaKind: 'reveal',
     };
