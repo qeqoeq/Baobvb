@@ -709,9 +709,6 @@ export default function RelationDetailScreen() {
                         <Text style={[styles.tierName, { color: readingAccent }]}>
                           {sharedRevealDisplay.tier}
                         </Text>
-                        <Text style={[styles.tierScore, { color: readingAccent }]}>
-                          {sharedRevealDisplay.score}
-                        </Text>
                       </View>
                       {tierLexicon ? (
                         <Text style={styles.tierDefinition}>{tierLexicon.definition}</Text>
@@ -1260,11 +1257,6 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     letterSpacing: -0.4,
-  },
-  tierScore: {
-    fontSize: 32,
-    fontWeight: '700',
-    letterSpacing: -1,
   },
   tierDefinition: {
     fontSize: 13,
