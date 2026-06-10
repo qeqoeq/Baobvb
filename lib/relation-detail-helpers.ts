@@ -375,16 +375,33 @@ export function getReadingCardVariant(input: {
   return 'private_fallback';
 }
 
+/**
+ * Internal display state carrier for the shared reading section. Carries the
+ * numeric `score` field because downstream non-display consumers (Garden
+ * ordering, Atlas circle membership, recommendation weights) need to read
+ * it through the same precedence/gating layer.
+ *
+ * INTERNAL DOCTRINE — never render `score` directly in a human-relation UI
+ * surface. For any new human-relation display, consume the doctrine-safe
+ * contract `HumanRelationRevealDisplay` from `./human-reading-display`
+ * instead, which strips the numeric score by construction.
+ *
+ * If non-human rating surfaces are introduced later, they should use a
+ * distinct display contract and must not reuse this type.
+ */
 export type SharedRevealDisplayState =
   | { kind: 'score'; score: number; tier: string }
   | { kind: 'pending' }
   | { kind: 'hidden' };
 
 /**
- * Determines how the shared reading score section renders after mutual reveal.
- * 'score'   — mutual (or private-fallback) score is available; show it.
+ * Determines how the shared reading section gates after mutual reveal.
+ * 'score'   — mutual (or private-fallback) score is available internally.
+ *             Use this for non-display consumers (Garden, Atlas). For human
+ *             display surfaces, route through `getHumanRelationRevealDisplay`
+ *             so the numeric score never leaks to the UI.
  * 'pending' — revealed but server has not yet returned a score.
- * 'hidden'  — reveal has not happened; do not show shared score.
+ * 'hidden'  — reveal has not happened.
  */
 export function getSharedRevealDisplayState(input: {
   nameRevealed: boolean;
