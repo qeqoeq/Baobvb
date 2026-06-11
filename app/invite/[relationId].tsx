@@ -379,17 +379,28 @@ export default function InviteArrivalScreen() {
 
       {/* Central composition: orb + identity text */}
       <View style={styles.stage}>
-        {/* Organic orb — layered concentric rings */}
+        {/* Organic orb — layered concentric rings + Baobab mark (canopy + seed + trunk) */}
         <View style={styles.orbZone}>
           <View style={styles.orbRing3} />
           <View style={styles.orbRing2} />
           <View style={styles.orbRing1} />
-          <View style={styles.orbCore} />
+          <View style={styles.baobabMark}>
+            <View style={styles.baobabCanopy}>
+              <View style={styles.baobabLeaf} />
+              <View style={[styles.baobabLeaf, styles.baobabLeafCenter]} />
+              <View style={styles.baobabLeaf} />
+            </View>
+            <View style={styles.orbCore} />
+            <View style={styles.baobabTrunk} />
+          </View>
         </View>
 
         {/* Text zone */}
         <View style={styles.textZone}>
-          <Text style={styles.kicker}>{'BAOBAB'}</Text>
+          <View style={styles.brandBlock}>
+            <Text style={styles.kicker}>{'BAOBAB'}</Text>
+            <Text style={styles.kickerSubtitle}>{'Private reading'}</Text>
+          </View>
           <Text style={styles.title}>
             {preview?.inviter_display_name?.trim()
               ? `${preview.inviter_display_name.trim()} opened\na link with you`
@@ -535,16 +546,55 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent.warmGold + '18',
   },
   orbCore: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.accent.warmGold + '60',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.accent.warmGold + '70',
     borderWidth: 1,
-    borderColor: colors.accent.warmGold + 'AA',
+    borderColor: colors.accent.warmGold + 'BB',
     shadowColor: colors.accent.warmGold,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
+  },
+
+  // ── Baobab mark — vector signature (canopy + seed + trunk) ───────────────────
+  // Composed of plain RN Views, no asset, no package. Reuses the existing
+  // warmGold/softAmber palette to stay consistent with the orb rings and the
+  // rest of the app (Sprint M's baoTreeIcon uses the same pattern on the
+  // resend button in relation detail). The seed is the existing orbCore.
+  baobabMark: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  baobabCanopy: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 3,
+    marginBottom: 3,
+  },
+  baobabLeaf: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.accent.softAmber + '90',
+  },
+  baobabLeafCenter: {
+    width: 6,
+    height: 7,
+    borderRadius: 3,
+    backgroundColor: colors.accent.warmGold,
+    shadowColor: colors.accent.warmGold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+  },
+  baobabTrunk: {
+    width: 2,
+    height: 8,
+    backgroundColor: colors.accent.warmGold + 'B8',
+    marginTop: 3,
+    borderRadius: 1,
   },
 
   // ── Text zone ─────────────────────────────────────────────────────────────────
@@ -552,11 +602,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
   },
+  brandBlock: {
+    alignItems: 'center',
+    gap: 4,
+  },
   kicker: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 3,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 4,
     color: colors.accent.warmGold,
+    textAlign: 'center',
+  },
+  kickerSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.4,
+    color: colors.text.secondary,
     textAlign: 'center',
   },
   title: {
