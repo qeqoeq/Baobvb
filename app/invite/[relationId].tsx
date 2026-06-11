@@ -386,12 +386,15 @@ export default function InviteArrivalScreen() {
           <View style={styles.orbRing1} />
           <View style={styles.baobabMark}>
             <View style={styles.baobabCanopy}>
+              <View style={[styles.baobabLeaf, styles.baobabLeafOuter]} />
               <View style={styles.baobabLeaf} />
               <View style={[styles.baobabLeaf, styles.baobabLeafCenter]} />
               <View style={styles.baobabLeaf} />
+              <View style={[styles.baobabLeaf, styles.baobabLeafOuter]} />
             </View>
             <View style={styles.orbCore} />
             <View style={styles.baobabTrunk} />
+            <View style={styles.baobabBase} />
           </View>
         </View>
 
@@ -546,16 +549,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent.warmGold + '18',
   },
   orbCore: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.accent.warmGold + '70',
-    borderWidth: 1,
-    borderColor: colors.accent.warmGold + 'BB',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.accent.warmGold + '88',
+    borderWidth: 1.5,
+    borderColor: colors.accent.warmGold + 'D0',
     shadowColor: colors.accent.warmGold,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 10,
+    shadowOpacity: 0.7,
+    shadowRadius: 12,
   },
 
   // ── Baobab mark — vector signature (canopy + seed + trunk) ───────────────────
@@ -570,31 +573,44 @@ const styles = StyleSheet.create({
   baobabCanopy: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 3,
-    marginBottom: 3,
+    gap: 1,
+    marginBottom: 2,
   },
   baobabLeaf: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: colors.accent.softAmber + '90',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent.softAmber + 'A8',
+  },
+  baobabLeafOuter: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent.softAmber + '78',
   },
   baobabLeafCenter: {
-    width: 6,
-    height: 7,
-    borderRadius: 3,
+    width: 11,
+    height: 12,
+    borderRadius: 5.5,
     backgroundColor: colors.accent.warmGold,
     shadowColor: colors.accent.warmGold,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 4,
+    shadowOpacity: 0.7,
+    shadowRadius: 6,
   },
   baobabTrunk: {
-    width: 2,
-    height: 8,
-    backgroundColor: colors.accent.warmGold + 'B8',
-    marginTop: 3,
-    borderRadius: 1,
+    width: 5,
+    height: 9,
+    backgroundColor: colors.accent.warmGold + 'CC',
+    marginTop: 2,
+    borderTopLeftRadius: 1.5,
+    borderTopRightRadius: 1.5,
+  },
+  baobabBase: {
+    width: 12,
+    height: 3,
+    backgroundColor: colors.accent.warmGold + 'A0',
+    borderRadius: 1.5,
   },
 
   // ── Text zone ─────────────────────────────────────────────────────────────────
