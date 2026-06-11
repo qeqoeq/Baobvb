@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, AppState, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { devLogLinking, maskIdForLog } from '../../lib/dev-linking-log';
@@ -83,6 +83,12 @@ export default function RelationDetailScreen() {
   // It must never reappear on remount and must never expose any numeric score,
   // tier, or percentage — only a qualitative doctrine cue.
   const [showSharedReadingMoment, setShowSharedReadingMoment] = useState(false);
+  // Live countdown during cooking_reveal. Read-only from server's unlock_at;
+  // never used to fake a ready state. null when cooking countdown is unknown.
+  const [cookingRemainingSeconds, setCookingRemainingSeconds] = useState<number | null>(null);
+  const cookingCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastCountdownHapticSecondRef = useRef<number | null>(null);
+  const isAppActiveRef = useRef(true);
 
   const relation = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
@@ -218,6 +224,71 @@ export default function RelationDetailScreen() {
       }
     };
   }, [relation, sharedReveal, effectiveRelation, refreshSharedReveal]);
+
+  // Track foreground/background to silence countdown haptics when inactive.
+  useEffect(() => {
+    isAppActiveRef.current = AppState.currentState === 'active';
+    const subscription = AppState.addEventListener('change', (next) => {
+      isAppActiveRef.current = next === 'active';
+    });
+    return () => subscription.remove();
+  }, []);
+
+  // Cooking countdown ritual. Reads unlock_at strictly from the server snapshot
+  // and computes remaining seconds locally. Never fakes a ready state — the
+  // existing markReadyAndRefresh useEffect remains the only path to reveal_ready.
+  useEffect(() => {
+    const clear = () => {
+      if (cookingCountdownIntervalRef.current) {
+        clearInterval(cookingCountdownIntervalRef.current);
+        cookingCountdownIntervalRef.current = null;
+      }
+    };
+
+    if (!effectiveRelation || effectiveRelation.localState.revealSnapshot.status !== 'cooking_reveal') {
+      clear();
+      if (cookingRemainingSeconds !== null) setCookingRemainingSeconds(null);
+      lastCountdownHapticSecondRef.current = null;
+      return;
+    }
+    const unlockAt = effectiveRelation.localState.revealSnapshot.unlockAt;
+    const unlockAtMs = unlockAt ? Date.parse(unlockAt) : NaN;
+    if (!Number.isFinite(unlockAtMs)) {
+      clear();
+      if (cookingRemainingSeconds !== null) setCookingRemainingSeconds(null);
+      return;
+    }
+
+    const tick = () => {
+      const remainingMs = unlockAtMs - Date.now();
+      const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
+      setCookingRemainingSeconds(remainingSec);
+      // 15-6 explains the wait; 5-1 is the opening ritual.
+      // Phase 1 (>5): silent — give the user time to read and breathe.
+      // Phase 2 (5→1): tactile crescendo (Light → Medium) — the link is about
+      // to open. No haptic at 0: the existing handleOpenReveal success haptic
+      // takes over once the server confirms reveal_ready.
+      if (remainingSec > 0 && remainingSec <= 5
+        && lastCountdownHapticSecondRef.current !== remainingSec
+        && isAppActiveRef.current
+        && process.env.EXPO_OS === 'ios'
+      ) {
+        lastCountdownHapticSecondRef.current = remainingSec;
+        const style = remainingSec <= 2
+          ? Haptics.ImpactFeedbackStyle.Medium
+          : Haptics.ImpactFeedbackStyle.Light;
+        void Haptics.impactAsync(style);
+      }
+      if (remainingSec === 0) clear();
+    };
+    tick();
+    cookingCountdownIntervalRef.current = setInterval(tick, 250);
+
+    return clear;
+    // cookingRemainingSeconds is intentionally omitted: it changes every tick
+    // and would re-create the interval. The tick reads it via setter only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveRelation]);
 
   if (!relation) {
     return (
@@ -811,12 +882,23 @@ export default function RelationDetailScreen() {
                       <Text style={styles.privateStateText}>Waiting on their side.</Text>
                     </>
                   ) : readingVariant === 'cooking' ? (
-                    <>
-                      <Text style={styles.privateStateTitle}>Private reading saved</Text>
-                      <Text style={styles.privateStateText}>
-                        Locked until the reveal opens.
-                      </Text>
-                    </>
+                    cookingRemainingSeconds !== null && cookingRemainingSeconds > 0 ? (
+                      <>
+                        <Text style={styles.privateStateTitle}>
+                          {cookingRemainingSeconds <= 5 ? 'Almost open' : 'Opening your link…'}
+                        </Text>
+                        <Text style={styles.cookingCountdown}>
+                          {cookingRemainingSeconds}s
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.privateStateTitle}>Private reading saved</Text>
+                        <Text style={styles.privateStateText}>
+                          Locked until the reveal opens.
+                        </Text>
+                      </>
+                    )
                   ) : (
                     <>
                       <Text style={styles.privateStateTitle}>{safeRevealSummary?.stateLabel}</Text>
@@ -1383,6 +1465,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.secondary,
     lineHeight: 18,
+  },
+  cookingCountdown: {
+    fontSize: 28,
+    color: colors.accent.warmGold,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginTop: spacing.xs,
   },
   privateStateDate: {
     fontSize: 11,
