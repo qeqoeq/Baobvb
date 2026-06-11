@@ -4,13 +4,13 @@ import type { InvitePreviewResult } from './reveal-shared-types';
  * Pure formatter for the InviteArrivalScreen first body line.
  *
  * Doctrine:
- *   - Falls back to "Someone opened a private space with you." when the
+ *   - Falls back to "Someone opened a private reading for this connection." when the
  *     preview is unavailable, the displayName is empty/whitespace, or any
  *     other degraded case. Never displays UUIDs or raw IDs.
  *   - Handle is shown as `(@handle)` when present and non-empty.
  *   - Pure, no React, no I/O. Trivially testable.
  */
-const FALLBACK = 'Someone opened a private space with you.';
+const FALLBACK = 'Someone opened a private reading for this connection.';
 
 /**
  * Normalizes a handle for display: trims surrounding whitespace and strips
@@ -32,6 +32,6 @@ export function formatInviterPrompt(preview: InvitePreviewResult | null): string
   const name = preview.inviter_display_name?.trim();
   if (!name) return FALLBACK;
   const handle = normalizeInviterHandle(preview.inviter_handle);
-  if (handle) return `${name} (@${handle}) opened a private space with you.`;
-  return `${name} opened a private space with you.`;
+  if (handle) return `${name} (@${handle}) opened a private reading for this connection.`;
+  return `${name} opened a private reading for this connection.`;
 }
