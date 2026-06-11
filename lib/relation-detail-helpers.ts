@@ -321,20 +321,18 @@ export function getRelationNextAction(input: {
 
     if (input.relation.source === 'claim') {
       return {
-        title: 'Reading private',
-        body: 'Saved on your side. The reveal waits for both.',
+        title: 'Your side is in',
+        body: 'Private reading saved. The reveal waits for both sides.',
         ctaLabel: null,
         ctaKind: null,
       };
     }
 
     return {
-      title: isInviteNumber
-        ? 'Reading saved'
-        : 'Waiting for the other side',
+      title: 'Your side is in',
       body: isInviteNumber
-        ? 'Send invite to continue.'
-        : (isSharedBackedRelation(input.relation) ? 'Waiting on their side.' : 'Ready when they join.'),
+        ? 'Send the invite to open it together.'
+        : 'Private reading saved. The reveal waits for both sides.',
       ctaLabel: isInviteNumber ? 'Send invite' : 'Invite them',
       ctaKind: 'invite',
     };

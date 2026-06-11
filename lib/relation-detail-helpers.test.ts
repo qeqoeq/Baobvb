@@ -206,8 +206,8 @@ describe('getRelationNextAction', () => {
       nameRevealed: false,
       deliveryChannelOpened: false,
     });
-    expect(result.title).toBe('Reading private');
-    expect(result.body).toBe('Saved on your side. The reveal waits for both.');
+    expect(result.title).toBe('Your side is in');
+    expect(result.body).toBe('Private reading saved. The reveal waits for both sides.');
   });
 
   it('reveal_ready without local evaluation shows Open reveal (bootstrap / claim relations)', () => {
