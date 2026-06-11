@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 
 import { colors } from '../../../constants/colors';
 import { radius, spacing } from '../../../constants/spacing';
@@ -123,6 +124,7 @@ export default function EvaluateScreen() {
   const setProgressiveChildRating = useCallback(
     (parentPillar: PillarKey, criterionKey: ProgressiveCriterionKey, rating: 1 | 2 | 3 | 4 | 5) => {
       if (!relation) return;
+      void Haptics.selectionAsync().catch(() => undefined);
       setProgressivePrivateSignal(relation.id, parentPillar, criterionKey, rating);
     },
     [relation, setProgressivePrivateSignal],
@@ -164,13 +166,19 @@ export default function EvaluateScreen() {
   const privateSignalsBlockingMessage = useMemo(() => {
     if (pillarsRequiringPrivateSignals.length === 0) return null;
     if (pillarsRequiringPrivateSignals.length === 1) {
-      return `Add a private signal for ${pillarsRequiringPrivateSignals[0].pillarLabel} before saving.`;
+      return `One more detail for ${pillarsRequiringPrivateSignals[0].pillarLabel} to save.`;
     }
     const labels = pillarsRequiringPrivateSignals.map((p) => p.pillarLabel);
     const last = labels[labels.length - 1];
     const head = labels.slice(0, -1).join(', ');
-    return `Add private signals for ${head} and ${last} before saving.`;
+    return `A few more details for ${head} and ${last} to save.`;
   }, [pillarsRequiringPrivateSignals]);
+  const progressLabel = useMemo(() => {
+    const remaining = PILLARS.length - completedCount;
+    if (remaining > 0) return `${remaining} more to go`;
+    if (!allPrivateSignalsRated) return 'Add details to save';
+    return 'Ready to save';
+  }, [completedCount, allPrivateSignalsRated]);
   const isInviteNumberRelation = relation?.source === 'invite_number';
   const sourceLabel =
     relation?.source === 'scan'
@@ -185,6 +193,7 @@ export default function EvaluateScreen() {
     : null;
 
   const setRating = useCallback((key: PillarKey, value: PillarRating) => {
+    void Haptics.selectionAsync().catch(() => undefined);
     setRatings((prev) => ({ ...prev, [key]: value }));
   }, []);
 
@@ -215,6 +224,8 @@ export default function EvaluateScreen() {
       setIsSubmitting(false);
       return;
     }
+
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
 
     if (!relation.canonicalRelationId) {
       if (relation.source === 'invite_number' && relation.anchorValue) {
@@ -338,9 +349,7 @@ export default function EvaluateScreen() {
         <View style={styles.progressWrap}>
           <View style={styles.progressHead}>
             <Text style={styles.progressLabel}>Progress</Text>
-            <Text style={styles.progressValue}>
-              {completedCount}/{PILLARS.length}
-            </Text>
+            <Text style={styles.progressValue}>{progressLabel}</Text>
           </View>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
@@ -465,8 +474,8 @@ export default function EvaluateScreen() {
             {isSubmitting
               ? 'Saving...'
               : allRated
-                ? (isInviteNumberRelation ? 'Save & send invite' : 'Save foundational reading')
-                : `Rate ${PILLARS.length - completedCount} more pillar${PILLARS.length - completedCount > 1 ? 's' : ''}`}
+                ? (isInviteNumberRelation ? 'Save and send' : 'Save my reading')
+                : `${PILLARS.length - completedCount} more to go`}
           </Text>
         </Pressable>
         {allRated && privateSignalsBlockingMessage ? (
@@ -569,8 +578,8 @@ const styles = StyleSheet.create({
   },
   progressValue: {
     fontSize: 12,
-    color: colors.text.secondary,
-    fontWeight: '600',
+    color: colors.accent.softAmber,
+    fontWeight: '800',
   },
   progressTrack: {
     height: 6,
@@ -746,6 +755,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.accent.softAmber,
+    shadowColor: colors.accent.softAmber,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   submitButtonDisabled: {
     opacity: 0.4,
