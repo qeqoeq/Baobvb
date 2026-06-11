@@ -13,7 +13,6 @@ export default function InviteIdentityScreen() {
   const relationIdTrim = typeof relationId === 'string' ? relationId.trim() : '';
   const { updateMe } = useRelationsStore();
   const [displayName, setDisplayName] = useState('');
-  const [handleInput, setHandleInput] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const returnToInvite = () => {
@@ -37,10 +36,9 @@ export default function InviteIdentityScreen() {
       return;
     }
 
-    const handleSource = handleInput.trim() ? handleInput : cleanName;
-    const cleanHandle = normalizeHandleInput(handleSource);
+    const cleanHandle = normalizeHandleInput(cleanName);
     if (!cleanHandle) {
-      setError('Username is invalid. Use letters, numbers, dots, dashes or underscores.');
+      setError('Add at least one letter or number to continue.');
       return;
     }
 
@@ -79,7 +77,7 @@ export default function InviteIdentityScreen() {
     <View style={styles.screen}>
       <View style={styles.card}>
         <Text style={styles.title}>What should we call you?</Text>
-        <Text style={styles.body}>Just enough to open this link.</Text>
+        <Text style={styles.body}>A first name is enough to open this link.</Text>
 
         <View style={styles.fieldBlock}>
           <Text style={styles.fieldLabel}>Your name</Text>
@@ -94,23 +92,6 @@ export default function InviteIdentityScreen() {
             style={styles.input}
             autoFocus
           />
-        </View>
-
-        <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Username (optional)</Text>
-          <TextInput
-            value={handleInput}
-            onChangeText={(value) => {
-              setHandleInput(value);
-              if (error) setError(null);
-            }}
-            placeholder="@your.name"
-            placeholderTextColor={colors.text.muted}
-            style={styles.input}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <Text style={styles.fieldHint}>If left empty, we'll generate one from your name.</Text>
         </View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -162,11 +143,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     color: colors.text.muted,
     fontWeight: '700',
-  },
-  fieldHint: {
-    fontSize: 11,
-    color: colors.text.muted,
-    lineHeight: 16,
   },
   input: {
     backgroundColor: colors.background.tertiary,
