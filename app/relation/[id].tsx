@@ -1044,6 +1044,9 @@ export default function RelationDetailScreen() {
     {showSharedReadingMoment ? (
       <View style={styles.sharedReadingMomentOverlay}>
         <View style={styles.sharedReadingMomentCard}>
+          <View style={styles.sharedReadingMomentSeal}>
+            <View style={styles.sharedReadingMomentSeed} />
+          </View>
           <Text style={styles.sharedReadingMomentEyebrow}>Shared reading</Text>
           <Text style={styles.sharedReadingMomentTitle}>Link opened</Text>
           <Text style={styles.sharedReadingMomentSubtitle}>A direction, not a verdict.</Text>
@@ -1792,17 +1795,39 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.accent.deepTeal + '44',
+    borderColor: colors.accent.warmGold + '55',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg + 4,
     gap: spacing.sm,
+    shadowColor: colors.accent.warmGold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+  sharedReadingMomentSeal: {
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  sharedReadingMomentSeed: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.accent.warmGold + '38',
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + 'BB',
+    shadowColor: colors.accent.warmGold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 12,
   },
   sharedReadingMomentEyebrow: {
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.2,
+    fontWeight: '800',
+    letterSpacing: 2.4,
     textTransform: 'uppercase',
-    color: colors.text.muted,
+    color: colors.accent.warmGold,
+    textAlign: 'center',
   },
   sharedReadingMomentTitle: {
     fontSize: 22,
@@ -1823,6 +1848,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.accent.softAmber,
+    shadowColor: colors.accent.softAmber,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 2,
   },
   sharedReadingMomentContinueText: {
     color: colors.text.primary,
