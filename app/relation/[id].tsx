@@ -41,7 +41,6 @@ import {
   getSharedRevealDisplayState,
 } from '../../lib/relation-detail-helpers';
 import { showPhoneInviteSheet } from '../../lib/phone-invite-sheet';
-import { resolveViaRelationName } from '../../lib/relation-via-helpers';
 import {
   getProgressiveCriteriaForPillar,
   type ProgressiveCriterionKey,
@@ -366,15 +365,6 @@ export default function RelationDetailScreen() {
   // Deeper Signal — derived from the local user's own Trust + Affinity ratings.
   // Only available when the user has a local evaluation. Bootstrap/claim relations
   // without a local reading do not render this layer (privacy by design).
-  // ── Via-route (Sprint X.1) ─────────────────────────────────────────────────
-  // Resolve the declared via-route to a displayable name. Surfaced only
-  // post-reveal in the identity block — never on pre-reveal flows to avoid
-  // adding noise to the invite/cooking/reveal_ready ceremony.
-  const viaRelation = useMemo(
-    () => resolveViaRelationName(relation?.viaRelationId, relations),
-    [relation?.viaRelationId, relations],
-  );
-
   const deeperSignal = nameRevealed && evaluation
     ? getDeeperSignal({
         trust: evaluation.ratings.trust,
@@ -686,19 +676,6 @@ export default function RelationDetailScreen() {
           <Text style={styles.name}>{relationIdentity.primaryTitle}</Text>
           {relationIdentity.supportingText ? (
             <Text style={styles.identitySupport}>{relationIdentity.supportingText}</Text>
-          ) : null}
-          {nameRevealed && viaRelation ? (
-            <Pressable
-              onPress={() =>
-                router.push({ pathname: '/relation/[id]', params: { id: viaRelation.id } })
-              }
-              accessibilityRole="button"
-              style={styles.viaRouteRow}
-            >
-              <Text style={styles.viaRouteText}>
-                Known through <Text style={styles.viaRouteName}>{viaRelation.name}</Text>
-              </Text>
-            </Pressable>
           ) : null}
         </View>
       </View>
@@ -1243,24 +1220,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
     lineHeight: 18,
-  },
-  // ── Via-route line (Sprint X.1) ────────────────────────────────────────────
-  // Discrete identity line shown post-reveal beneath the handle. Tap opens
-  // the gateway relation. Visually quiet — never competes with the name or
-  // the reading card.
-  viaRouteRow: {
-    marginTop: 2,
-    paddingVertical: 2,
-  },
-  viaRouteText: {
-    fontSize: 12,
-    color: colors.text.muted,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  viaRouteName: {
-    color: colors.accent.warmGold,
-    fontWeight: '600',
   },
   metaZone: {
     gap: spacing.xs,

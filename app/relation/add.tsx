@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
@@ -10,7 +10,6 @@ import {
   lookupPublicProfile,
   type PublicProfileLookupState,
 } from '../../lib/lookup-public-profile';
-import { getEligibleViaRelations } from '../../lib/relation-via-helpers';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -85,16 +84,6 @@ export default function AddRelationScreen() {
   const [name, setName] = useState(params.prefillName ?? '');
   const [handle, setHandle] = useState(params.prefillHandle ?? '');
   const [scanLookup, setScanLookup] = useState<PublicProfileLookupState>({ status: 'idle' });
-
-  // ── Via-route declaration (Sprint X.1) ────────────────────────────────────
-  // Optional, manual path only. The user chooses whether they reached this
-  // person directly or through an existing relation. Strictly declarative.
-  const [viaMode, setViaMode] = useState<'direct' | 'through'>('direct');
-  const [selectedViaId, setSelectedViaId] = useState<string | null>(null);
-  const eligibleViaCandidates = useMemo(
-    () => getEligibleViaRelations({ relations }),
-    [relations],
-  );
 
   // ── v2 scan lookup (unchanged) ────────────────────────────────────────────
   useEffect(() => {
@@ -261,10 +250,6 @@ export default function AddRelationScreen() {
     }
 
     // ── Manual (private) path ─────────────────────────────────────────────
-    // Sprint X.1: resolve the declared via-route, if any. Only honored when
-    // the user chose "Through someone in my Bao" AND selected a candidate.
-    const viaRelationId = viaMode === 'through' ? selectedViaId : null;
-
     const existingByName = relations.find(
       (r) => getPrivateLabelValue(r).toLowerCase() === cleanName.toLowerCase(),
     );
@@ -281,7 +266,6 @@ export default function AddRelationScreen() {
               avatarSeed: cleanName.charAt(0).toUpperCase(),
               anchorValue: null,
               relationDepth: 'encounter',
-              viaRelationId,
             });
             if (created) {
               router.replace({ pathname: '/relation/evaluate/[id]', params: { id: created.id } });
@@ -300,7 +284,6 @@ export default function AddRelationScreen() {
       avatarSeed: cleanName.charAt(0).toUpperCase(),
       anchorValue: null,
       relationDepth: 'encounter',
-      viaRelationId,
     });
     if (!created) return;
     router.replace({ pathname: '/relation/evaluate/[id]', params: { id: created.id } });
@@ -432,95 +415,6 @@ export default function AddRelationScreen() {
           onSubmitEditing={handleCreate}
         />
 
-        {!fromClaim && eligibleViaCandidates.length > 0 ? (
-          <View style={styles.viaSection}>
-            <Text style={styles.viaSectionTitle}>How do you know them?</Text>
-            <View style={styles.viaModeRow}>
-              <Pressable
-                onPress={() => {
-                  setViaMode('direct');
-                  setSelectedViaId(null);
-                }}
-                style={[
-                  styles.viaModeOption,
-                  viaMode === 'direct' && styles.viaModeOptionActive,
-                ]}
-                accessibilityRole="button"
-              >
-                <Text
-                  style={[
-                    styles.viaModeOptionText,
-                    viaMode === 'direct' && styles.viaModeOptionTextActive,
-                  ]}
-                >
-                  Directly
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setViaMode('through')}
-                style={[
-                  styles.viaModeOption,
-                  viaMode === 'through' && styles.viaModeOptionActive,
-                ]}
-                accessibilityRole="button"
-              >
-                <Text
-                  style={[
-                    styles.viaModeOptionText,
-                    viaMode === 'through' && styles.viaModeOptionTextActive,
-                  ]}
-                >
-                  Through someone in my Bao
-                </Text>
-              </Pressable>
-            </View>
-            {viaMode === 'through' ? (
-              <View style={styles.viaCandidatesList}>
-                {eligibleViaCandidates.map((candidate) => {
-                  const isSelected = selectedViaId === candidate.id;
-                  return (
-                    <Pressable
-                      key={candidate.id}
-                      onPress={() =>
-                        setSelectedViaId(isSelected ? null : candidate.id)
-                      }
-                      style={[
-                        styles.viaCandidateRow,
-                        isSelected && styles.viaCandidateRowActive,
-                      ]}
-                      accessibilityRole="button"
-                    >
-                      <View
-                        style={[
-                          styles.viaCandidateAvatar,
-                          isSelected && styles.viaCandidateAvatarActive,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.viaCandidateAvatarText,
-                            isSelected && styles.viaCandidateAvatarTextActive,
-                          ]}
-                        >
-                          {(candidate.avatarSeed || candidate.name.charAt(0) || '?').toUpperCase()}
-                        </Text>
-                      </View>
-                      <Text
-                        style={[
-                          styles.viaCandidateName,
-                          isSelected && styles.viaCandidateNameActive,
-                        ]}
-                      >
-                        {candidate.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : null}
-          </View>
-        ) : null}
-
         <Pressable
           onPress={handleCreate}
           disabled={!canSubmit}
@@ -588,99 +482,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     color: colors.text.secondary,
-  },
-
-  // ── Via-route declaration (Sprint X.1) ─────────────────────────────────────
-  // Optional section shown only on the manual add path when the user has at
-  // least one revealed relation eligible to serve as a via-route. Visually
-  // secondary to the name input — warm but not dominant.
-  viaSection: {
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  viaSectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text.primary,
-    letterSpacing: -0.1,
-  },
-  viaModeRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  viaModeOption: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    alignItems: 'center',
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.accent.warmGold + '33',
-    backgroundColor: colors.background.tertiary,
-  },
-  viaModeOptionActive: {
-    borderColor: colors.accent.warmGold,
-    backgroundColor: colors.accent.warmGold + '14',
-  },
-  viaModeOptionText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-  viaModeOptionTextActive: {
-    color: colors.accent.warmGold,
-    fontWeight: '600',
-  },
-  viaCandidatesList: {
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  viaCandidateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    backgroundColor: colors.background.tertiary,
-  },
-  viaCandidateRowActive: {
-    borderColor: colors.accent.warmGold,
-    backgroundColor: colors.accent.warmGold + '10',
-  },
-  viaCandidateAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background.secondary,
-    borderWidth: 1,
-    borderColor: colors.border.strong,
-  },
-  viaCandidateAvatarActive: {
-    borderColor: colors.accent.warmGold,
-    backgroundColor: colors.accent.warmGold + '20',
-  },
-  viaCandidateAvatarText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text.secondary,
-  },
-  viaCandidateAvatarTextActive: {
-    color: colors.accent.warmGold,
-  },
-  viaCandidateName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text.primary,
-  },
-  viaCandidateNameActive: {
-    color: colors.accent.warmGold,
-    fontWeight: '600',
   },
 
   // ── Hub action list ────────────────────────────────────────────────────────
