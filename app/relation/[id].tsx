@@ -1143,7 +1143,7 @@ const styles = StyleSheet.create({
   readingCardBrand: {
     alignItems: 'center',
     gap: 4,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   readingCardKicker: {
     fontSize: 11,
@@ -1387,7 +1387,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.accent.warmGold + '33',
     padding: spacing.lg + 2,
-    gap: spacing.lg,
+    gap: spacing.md,
     shadowColor: colors.accent.warmGold,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.14,
@@ -1404,9 +1404,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   tierName: {
-    fontSize: 36,
-    fontWeight: '800',
-    letterSpacing: -0.6,
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: -0.4,
     textAlign: 'center',
   },
   tierDefinition: {
@@ -1431,7 +1431,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   pillarsSection: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   pillarRow: {
     flexDirection: 'row',
@@ -1439,18 +1439,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   pillarLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text.primary,
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.text.secondary,
   },
   pillarDots: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 5,
   },
   pillarDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   narrativeCard: {
     backgroundColor: colors.background.tertiary,
