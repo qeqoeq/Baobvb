@@ -116,6 +116,17 @@ export type Relation = {
    */
   anchorValue?: string | null;
   relationDepth?: RelationDepth;
+  /**
+   * Private time-mark for re-reading (Sprint W.1).
+   *
+   * User-chosen ISO date pinned on this relation as an invitation to return
+   * later. Strictly local — never persisted to the backend, never shared
+   * with the other side, never displayed in Garden/World, never sent as a
+   * notification. The doctrine is observation through time, not pressure.
+   *
+   * Undefined / null = no mark. A finite ISO string = a mark.
+   */
+  rereadMarkedFor?: string | null;
   localState: RelationshipLocalState;
   /**
    * Canonical relation UUID. Null for purely local relations.
@@ -1813,6 +1824,23 @@ function setRelation(id: string, update: RelationUpdate): boolean {
   return true;
 }
 
+// Private time-mark for re-reading (Sprint W.1). Local-only mutation.
+// Passing `isoDate = null` clears the mark. Idempotent: a no-op assignment
+// (same value) does not emit a change or trigger a persist write.
+function setRereadMarkedForById(id: string, isoDate: string | null): void {
+  let didUpdate = false;
+  state.relations = state.relations.map((relation) => {
+    if (relation.id !== id) return relation;
+    const current = relation.rereadMarkedFor ?? null;
+    if (current === isoDate) return relation;
+    didUpdate = true;
+    return { ...relation, rereadMarkedFor: isoDate };
+  });
+  if (!didUpdate) return;
+  emitChange();
+  persist();
+}
+
 function setInviteDeliveryOpened(id: string): void {
   if (!state.relations.some((r) => r.id === id)) return;
   state.relations = state.relations.map((r) =>
@@ -2072,6 +2100,8 @@ export function useRelationsStore() {
   const setCanonicalRelationId = (localId: string, canonicalId: string) =>
     attachCanonicalRelationId(localId, canonicalId);
   const markInviteDeliveryOpened = (id: string) => setInviteDeliveryOpened(id);
+  const setRelationRereadMarkedFor = (relationId: string, isoDate: string | null) =>
+    setRereadMarkedForById(relationId, isoDate);
   const bootstrapSharedRelations = (rows: SharedRelationBootstrapInput[]) =>
     upsertBootstrappedSharedRelations(rows);
   const setProgressivePrivateSignal = (
@@ -2118,6 +2148,7 @@ export function useRelationsStore() {
     setPublicProfileId,
     setCanonicalRelationId,
     markInviteDeliveryOpened,
+    setRelationRereadMarkedFor,
     bootstrapSharedRelations,
     getAssistedReconciliationSuggestionForRelation,
     getDraftResolutionSuggestionForRelation,
