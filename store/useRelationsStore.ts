@@ -1658,6 +1658,17 @@ type RelationSourceMeta = {
    * When present, provides accurate initial localState instead of the conservative default.
    */
   claimSharedRecord?: SharedRelationBootstrapInput;
+  /**
+   * Sprint X.1 — Declarative via-route.
+   *
+   * User-selected at relation creation time: the id of an existing revealed
+   * relation through which the user knows this new person. Strictly
+   * declarative — never inferred. Local-only. When set, the graph engine
+   * surfaces this relation under the gateway's "Through X" view.
+   *
+   * Optional. Pass null/undefined to declare a direct connection.
+   */
+  viaRelationId?: string | null;
 };
 
 function pushRelationWithSource(
@@ -1687,6 +1698,9 @@ function pushRelationWithSource(
     sourceHandle: meta.sourceHandle,
     anchorValue: meta.anchorValue ?? null,
     relationDepth: meta.relationDepth,
+    // Sprint X.1 — declarative via-route, set at creation when the user
+    // selects "Through someone in my Bao" in the add flow.
+    viaRelationId: meta.viaRelationId ?? undefined,
     // For claim source: canonicalRelationId is known at creation time.
     // For other sources: null (set later via setCanonicalRelationId at invite creation).
     canonicalRelationId: meta.canonicalRelationId ?? null,
