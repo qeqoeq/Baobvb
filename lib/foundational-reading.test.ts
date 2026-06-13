@@ -86,6 +86,72 @@ describe('getTierNarrative', () => {
     }
   });
 
+  // ── Sprint V.4: runtime guard against unknown / legacy tier labels ───────
+  // The device crashed in production with:
+  //   TypeError: Cannot read property 'includes' of undefined
+  //   at getTierNarrative (lib/foundational-reading.ts)
+  // The root cause is a `tier` value that is truthy but absent from
+  // TIER_NARRATIVES — typically a legacy Sprint-pre-V.1 string ('Ghost' /
+  // 'Spark' / 'Thrill' / 'Vibrant' / 'Legend') that escaped Sprint V.3
+  // hydration normalization through a runtime mutation path, or an unknown
+  // value injected from a backend / bundle mismatch. These tests reproduce
+  // the crash and lock the defensive contract: any unrecognized tier must
+  // fall back to 'No foundational reading yet.', never crash, never expose
+  // the legacy label, never fabricate a relational verdict.
+
+  it('legacy "Ghost" tier (Sprint-pre-V.1 leak) → "No foundational reading yet." (no crash)', () => {
+    expect(getTierNarrative('Ghost' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
+      'No foundational reading yet.',
+    );
+  });
+
+  it('legacy "Spark" tier → "No foundational reading yet." (no crash)', () => {
+    expect(getTierNarrative('Spark' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
+      'No foundational reading yet.',
+    );
+  });
+
+  it('legacy "Thrill" tier → "No foundational reading yet." (no crash)', () => {
+    expect(getTierNarrative('Thrill' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
+      'No foundational reading yet.',
+    );
+  });
+
+  it('legacy "Vibrant" tier → "No foundational reading yet." (no crash)', () => {
+    expect(getTierNarrative('Vibrant' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
+      'No foundational reading yet.',
+    );
+  });
+
+  it('legacy "Legend" tier → "No foundational reading yet." (no crash)', () => {
+    expect(getTierNarrative('Legend' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
+      'No foundational reading yet.',
+    );
+  });
+
+  it('arbitrary unknown tier (defensive: any future / backend / bundle mismatch) → fallback', () => {
+    expect(getTierNarrative('Unknown' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
+      'No foundational reading yet.',
+    );
+  });
+
+  it('unknown tier WITH a known weakestPillar still falls back safely (no path leaks)', () => {
+    // Verifies the guard fires before the weakestPillar / substitution paths
+    // could touch an undefined `base`.
+    expect(getTierNarrative('Ghost' as unknown as Parameters<typeof getTierNarrative>[0], 'trust')).toBe(
+      'No foundational reading yet.',
+    );
+  });
+
+  it('valid current tier still returns its canonical narrative (regression: guard does not block valid tiers)', () => {
+    expect(getTierNarrative('Distant', null)).toBe(
+      'This link feels distant today, and could be rebuilt through gentle attention.',
+    );
+    expect(getTierNarrative('Rooted', null)).toBe(
+      'This link feels rooted, shaped by time, trust, and repeated evidence.',
+    );
+  });
+
   it('Active + known pillar → canonical narrative (no substitution)', () => {
     expect(getTierNarrative('Active', 'interactions')).toBe(
       'This link has active movement today. Its shape is becoming easier to read.',
