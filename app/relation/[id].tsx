@@ -643,8 +643,12 @@ export default function RelationDetailScreen() {
       </Pressable>
       <View style={styles.header}>
         {nameRevealed ? (
-          <View style={styles.revealedHeroSeal}>
-            <View style={styles.revealedHeroSeed} />
+          <View style={styles.revealedHeroBrand}>
+            <View style={styles.revealedHeroSeal}>
+              <View style={styles.revealedHeroSeed} />
+            </View>
+            <Text style={styles.revealedHeroKicker}>{'BAOBAB'}</Text>
+            <Text style={styles.revealedHeroSubtitle}>{'Shared reading'}</Text>
           </View>
         ) : null}
         <View style={[styles.avatar, { backgroundColor: headerAccent + '14', borderColor: headerAccent + '44' }]}>
@@ -782,10 +786,12 @@ export default function RelationDetailScreen() {
       {nextAction.ctaKind !== 'resend' && (
         (evaluation || nameRevealed) ? (
           <View style={styles.readingSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionLabel}>{readingSectionLabel}</Text>
-              <View style={styles.sectionLine} />
-            </View>
+            {!nameRevealed ? (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionLabel}>{readingSectionLabel}</Text>
+                <View style={styles.sectionLine} />
+              </View>
+            ) : null}
 
             <View style={styles.readingCard}>
               {readingVariant === 'revealed' ? (
@@ -802,6 +808,34 @@ export default function RelationDetailScreen() {
                       ) : null}
                     </View>
 
+                    {revealedTier ? (
+                      <View style={styles.narrativeCard}>
+                        {evaluation ? (
+                          <>
+                            {reading?.strongestPillar ? (
+                              <Text style={styles.narrativeLine}>
+                                <Text style={styles.narrativeKey}>Where it's strong:</Text> {strongestLabel}
+                              </Text>
+                            ) : null}
+                            {reading?.weakestPillar ? (
+                              <Text style={styles.narrativeLine}>
+                                <Text style={styles.narrativeKey}>Where it can grow:</Text> {weakestLabel}
+                              </Text>
+                            ) : null}
+                          </>
+                        ) : null}
+                        <Text style={styles.narrativeReading}>
+                          {tierNarrative}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {nameRevealed && revealedTier ? (
+                      <View style={styles.doctrineCapsule}>
+                        <Text style={styles.doctrineCapsuleText}>
+                          {getReadingNoteText(nameRevealed, revealStatus)}
+                        </Text>
+                      </View>
+                    ) : null}
                     {evaluation ? (
                       <View style={styles.pillarsSection}>
                         <Text style={styles.signalsEyebrow}>Your read</Text>
@@ -826,27 +860,6 @@ export default function RelationDetailScreen() {
                             </View>
                           );
                         })}
-                      </View>
-                    ) : null}
-                    {revealedTier ? (
-                      <View style={styles.narrativeCard}>
-                        {evaluation ? (
-                          <>
-                            {reading?.strongestPillar ? (
-                              <Text style={styles.narrativeLine}>
-                                <Text style={styles.narrativeKey}>Where it's strong:</Text> {strongestLabel}
-                              </Text>
-                            ) : null}
-                            {reading?.weakestPillar ? (
-                              <Text style={styles.narrativeLine}>
-                                <Text style={styles.narrativeKey}>Where it can grow:</Text> {weakestLabel}
-                              </Text>
-                            ) : null}
-                          </>
-                        ) : null}
-                        <Text style={styles.narrativeReading}>
-                          {tierNarrative}
-                        </Text>
                       </View>
                     ) : null}
                     {deeperSignal ? (
@@ -977,7 +990,7 @@ export default function RelationDetailScreen() {
               </View>
             ) : null}
 
-            {nextAction.ctaKind === 'invite' && evaluation ? null : (
+            {nameRevealed || (nextAction.ctaKind === 'invite' && evaluation) ? null : (
               <View style={styles.readingNote}>
                 <Text style={styles.readingNoteText}>
                   {getReadingNoteText(nameRevealed, revealStatus)}
@@ -1126,25 +1139,44 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingTop: spacing.md,
   },
-  // Baobab seal on the revealed hero — minimal signature, mirrors the
-  // pattern used by the Shared Reading Moment (Sprint T.1) so the revealed
-  // page closes the same warm-gold ritual the user entered through on
-  // the arrival screen. Plain Views, no asset, no animation.
+  // Baobab brand block on the revealed hero — minimal but assumed signature.
+  // Mirrors the arrival screen pattern (S.1/S.2): seal + BAOBAB kicker + sub-
+  // label. Closes the same warm-gold ritual the user entered through. Plain
+  // Views, no asset, no animation.
+  revealedHeroBrand: {
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: spacing.xs,
+  },
   revealedHeroSeal: {
     alignItems: 'center',
     marginBottom: 2,
   },
   revealedHeroSeed: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.accent.warmGold + '38',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.accent.warmGold + '3C',
     borderWidth: 1,
-    borderColor: colors.accent.warmGold + 'BB',
+    borderColor: colors.accent.warmGold + 'C0',
     shadowColor: colors.accent.warmGold,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 12,
+    shadowOpacity: 0.75,
+    shadowRadius: 14,
+  },
+  revealedHeroKicker: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 4,
+    color: colors.accent.warmGold,
+    textAlign: 'center',
+  },
+  revealedHeroSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.4,
+    color: colors.text.secondary,
+    textAlign: 'center',
   },
   identityBlock: {
     alignItems: 'center',
@@ -1372,9 +1404,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border.soft,
-    padding: spacing.lg,
+    borderColor: colors.accent.warmGold + '33',
+    padding: spacing.lg + 2,
     gap: spacing.lg,
+    shadowColor: colors.accent.warmGold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 2,
   },
   tierHeader: {
     gap: spacing.sm,
@@ -1406,10 +1443,11 @@ const styles = StyleSheet.create({
   },
   signalsEyebrow: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.text.muted,
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    letterSpacing: 1.6,
+    marginBottom: spacing.xs,
   },
   pillarsSection: {
     gap: spacing.md,
@@ -1441,6 +1479,26 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
   },
+  // Doctrine capsule — a small warm-gold tinted note that carries the
+  // doctrinal cue ("A shared reading is a direction, not a verdict.")
+  // directly inside the revealed reading card, right after the narrative.
+  // The string is sourced from getReadingNoteText so it never duplicates.
+  // The bottom readingNote is hidden when nameRevealed to avoid double rendering.
+  doctrineCapsule: {
+    backgroundColor: colors.accent.warmGold + '10',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + '38',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+  },
+  doctrineCapsuleText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.text.primary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
   narrativeLine: {
     fontSize: 13,
     color: colors.text.secondary,
@@ -1461,10 +1519,11 @@ const styles = StyleSheet.create({
   },
   deeperSignalEyebrow: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.text.muted,
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    letterSpacing: 1.6,
+    marginBottom: spacing.xs,
   },
   deeperSignalLine: {
     fontSize: 13,
