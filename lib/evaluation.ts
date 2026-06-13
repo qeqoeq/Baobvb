@@ -1,6 +1,6 @@
 export type PillarKey = 'trust' | 'interactions' | 'affinity' | 'support' | 'sharedNetwork';
 export type PillarRating = 1 | 2 | 3 | 4 | 5;
-export type Tier = 'Ghost' | 'Spark' | 'Thrill' | 'Vibrant' | 'Anchor' | 'Legend';
+export type Tier = 'Distant' | 'Forming' | 'Active' | 'Steady' | 'Anchor' | 'Rooted';
 
 export type Evaluation = {
   id: string;
@@ -134,12 +134,12 @@ export type MutualScoreBreakdown = {
 };
 
 export function getMutualTier(score: number): Tier {
-  if (score >= 90) return 'Legend';
+  if (score >= 90) return 'Rooted';
   if (score >= 79) return 'Anchor';
-  if (score >= 65) return 'Vibrant';
-  if (score >= 50) return 'Thrill';
-  if (score >= 35) return 'Spark';
-  return 'Ghost';
+  if (score >= 65) return 'Steady';
+  if (score >= 50) return 'Active';
+  if (score >= 35) return 'Forming';
+  return 'Distant';
 }
 
 export function computeMutualRelationshipScore(
@@ -193,8 +193,8 @@ export function computeScore(ratings: Record<PillarKey, PillarRating>): number {
 // Private link score with Trust gate.
 //
 // Rule: Trust is a gate, not a weighted pillar.
-//   - trust <= 1 → score capped at 39 (cannot leave the Spark band)
-//   - trust === 2 → score capped at 59 (cannot enter the Vibrant band)
+//   - trust <= 1 → score capped at 39 (cannot leave the Forming band)
+//   - trust === 2 → score capped at 59 (cannot enter the Steady band)
 //   - trust >= 3 → no cap; the raw weighted sum stands
 //
 // This mirrors, on the private side, the Trust ceiling already enforced
@@ -209,21 +209,21 @@ export function computePrivateLinkScore(ratings: Record<PillarKey, PillarRating>
 }
 
 export function getTier(score: number): Tier {
-  if (score >= 85) return 'Legend';
+  if (score >= 85) return 'Rooted';
   if (score >= 70) return 'Anchor';
-  if (score >= 55) return 'Vibrant';
-  if (score >= 40) return 'Thrill';
-  if (score >= 25) return 'Spark';
-  return 'Ghost';
+  if (score >= 55) return 'Steady';
+  if (score >= 40) return 'Active';
+  if (score >= 25) return 'Forming';
+  return 'Distant';
 }
 
 const TIER_ACCENTS: Record<Tier, string> = {
-  Legend: '#E8B87A',
+  Rooted: '#E8B87A',
   Anchor: '#2A7C7C',
-  Vibrant: '#7A9E7E',
-  Thrill: '#B07282',
-  Spark: '#C8956C',
-  Ghost: '#5C5851',
+  Steady: '#7A9E7E',
+  Active: '#B07282',
+  Forming: '#C8956C',
+  Distant: '#5C5851',
 };
 
 export function getTierAccent(tier: Tier): string {

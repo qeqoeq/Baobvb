@@ -626,7 +626,7 @@ const SEED_EVALUATIONS: Evaluation[] = [
     support: 4,
     sharedNetwork: 3,
   }, '2026-01-15T12:00:00Z'),
-  // Jean (archived) — Ghost score
+  // Jean (archived) — Distant score
   buildEvaluation('e2', '3', {
     trust: 2,
     interactions: 1,
@@ -813,7 +813,7 @@ const SEED_ME: MeProfile = {
 
 const SEED_PLACES: Place[] = [];
 const PLACE_CATEGORIES: PlaceCategory[] = ['restaurant', 'cafe', 'bar', 'spot', 'other'];
-const TIER_VALUES: Tier[] = ['Ghost', 'Spark', 'Thrill', 'Vibrant', 'Anchor', 'Legend'];
+const TIER_VALUES: Tier[] = ['Distant', 'Forming', 'Active', 'Steady', 'Anchor', 'Rooted'];
 const REVEAL_UNLOCK_DELAY_MS = 90_000;
 
 /**

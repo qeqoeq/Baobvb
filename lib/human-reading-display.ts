@@ -30,8 +30,8 @@ import {
  *
  * Allowed for human surfaces
  *   - `kind`: 'hidden' | 'pending' | 'signature'
- *   - `tier`: qualitative signature (Legend / Anchor / Vibrant / Thrill /
- *             Spark / Ghost — or the localized fallback string)
+ *   - `tier`: qualitative signature (Rooted / Anchor / Steady / Active /
+ *             Forming / Distant — or the localized fallback string)
  *
  * Forbidden in this contract
  *   - numeric score (kept internal in SharedRevealDisplayState.score)

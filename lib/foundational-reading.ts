@@ -42,24 +42,27 @@ const PILLAR_LABELS: Record<PillarKey, string> = {
 };
 
 const TIER_NARRATIVES: Record<Tier, string> = {
-  Legend: 'This link feels exceptional, deeply rooted, and consistently strong.',
-  Anchor: 'This link feels grounded and reliable, with strong long-term potential.',
-  Vibrant: 'This link feels vibrant and already grounded, with room to grow through %s.',
-  Thrill: 'This link feels alive and promising, but it still needs steadier roots in %s.',
-  Spark: 'This link is emerging and meaningful, and can grow with more %s.',
-  Ghost: 'This link feels distant today, and could be rebuilt through gentle %s.',
+  Rooted: 'This link feels rooted, shaped by time, trust, and repeated evidence.',
+  Anchor: 'This link feels like a stable point of trust, with presence that can be counted on.',
+  Steady: 'This link feels steady today, with enough presence to create a clearer shared direction.',
+  Active: 'This link has active movement today. Its shape is becoming easier to read.',
+  Forming: 'This link is still finding its form. More shared moments could make its direction clearer.',
+  Distant: 'This link feels distant today, and could be rebuilt through gentle attention.',
 };
 
 // Fallback narratives used when the link is balanced enough that no single
 // pillar stands out as weakest. Preserves the warm tone of the canonical
 // narratives without injecting a placeholder ("-") that would feel evaluative.
+// Post Sprint V.1: narratives no longer carry %s substitution; the fallback
+// table mirrors the canonical narratives so the function path stays sound
+// even though the substitution branch is no longer triggered.
 const TIER_NARRATIVES_NO_PILLAR: Record<Tier, string> = {
-  Legend: TIER_NARRATIVES.Legend,
+  Rooted: TIER_NARRATIVES.Rooted,
   Anchor: TIER_NARRATIVES.Anchor,
-  Vibrant: 'This link feels vibrant and already grounded, with room to grow steadily.',
-  Thrill: 'This link feels alive and promising, and is finding its rhythm.',
-  Spark: 'This link is emerging and meaningful, with space to grow.',
-  Ghost: 'This link feels distant today, and could be rebuilt through gentle attention.',
+  Steady: TIER_NARRATIVES.Steady,
+  Active: TIER_NARRATIVES.Active,
+  Forming: TIER_NARRATIVES.Forming,
+  Distant: TIER_NARRATIVES.Distant,
 };
 
 const GROWTH_SUGGESTIONS: Record<PillarKey, string> = {
@@ -225,7 +228,7 @@ export function getGrowthSuggestion(
   tier: Tier | null,
 ): string {
   if (!weakestPillar) {
-    return tier === 'Legend'
+    return tier === 'Rooted'
       ? 'Keep this link warm with one intentional touchpoint this week.'
       : 'Keep nurturing this link through one intentional touchpoint this week.';
   }

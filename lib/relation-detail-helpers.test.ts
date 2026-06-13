@@ -415,7 +415,7 @@ describe('getDeeperSignal', () => {
 describe('getSharedRevealDisplayState pre-reveal safety', () => {
   it('nameRevealed=false × any visibleScore × any revealedTier → always hidden', () => {
     const scores = [null, 0, 35, 65, 82, 100];
-    const tiers = [null, 'Ghost', 'Spark', 'Thrill', 'Vibrant', 'Anchor', 'Legend'];
+    const tiers = [null, 'Distant', 'Forming', 'Active', 'Steady', 'Anchor', 'Rooted'];
     for (const visibleScore of scores) {
       for (const revealedTier of tiers) {
         const result = getSharedRevealDisplayState({
@@ -433,7 +433,7 @@ describe('getSharedRevealDisplayState pre-reveal safety', () => {
 });
 
 // ── getVisibleTierLabel — pre-reveal safety ────────────────────────────────
-// The badge label must never expose the tier name (Anchor, Legend, etc.) before
+// The badge label must never expose the tier name (Anchor, Rooted, etc.) before
 // the user opens the mutual reveal. Pre-reveal labels are intentionally generic.
 
 describe('getVisibleTierLabel pre-reveal safety', () => {
@@ -441,18 +441,18 @@ describe('getVisibleTierLabel pre-reveal safety', () => {
     expect(getVisibleTierLabel(false, true, 'Anchor')).toBe('Private reading');
   });
 
-  it('nameRevealed=false + hasEvaluation=true + badgeLabel=Legend → "Private reading"', () => {
-    expect(getVisibleTierLabel(false, true, 'Legend')).toBe('Private reading');
+  it('nameRevealed=false + hasEvaluation=true + badgeLabel=Rooted → "Private reading"', () => {
+    expect(getVisibleTierLabel(false, true, 'Rooted')).toBe('Private reading');
   });
 
   it('nameRevealed=false + hasEvaluation=true + every tier name → "Private reading"', () => {
-    for (const tierName of ['Ghost', 'Spark', 'Thrill', 'Vibrant', 'Anchor', 'Legend']) {
+    for (const tierName of ['Distant', 'Forming', 'Active', 'Steady', 'Anchor', 'Rooted']) {
       expect(getVisibleTierLabel(false, true, tierName)).toBe('Private reading');
     }
   });
 
   it('nameRevealed=false + hasEvaluation=false → "Unread" regardless of badgeLabel', () => {
     expect(getVisibleTierLabel(false, false, 'Anchor')).toBe('Unread');
-    expect(getVisibleTierLabel(false, false, 'Legend')).toBe('Unread');
+    expect(getVisibleTierLabel(false, false, 'Rooted')).toBe('Unread');
   });
 });

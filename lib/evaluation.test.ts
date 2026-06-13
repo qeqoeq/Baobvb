@@ -21,39 +21,39 @@ const ALL_FIVES: Record<PillarKey, PillarRating> = {
 };
 
 // ── getTier (private reading) ───────────────────────────────────────────────
-// Thresholds: Ghost<25, Spark<40, Thrill<55, Vibrant<70, Anchor<85, Legend
+// Thresholds: Distant<25, Forming<40, Active<55, Steady<70, Anchor<85, Rooted
 
 describe('getTier', () => {
-  it('Ghost: score 0', () => expect(getTier(0)).toBe('Ghost'));
-  it('Ghost: score 24', () => expect(getTier(24)).toBe('Ghost'));
-  it('Spark: score 25', () => expect(getTier(25)).toBe('Spark'));
-  it('Spark: score 39', () => expect(getTier(39)).toBe('Spark'));
-  it('Thrill: score 40', () => expect(getTier(40)).toBe('Thrill'));
-  it('Thrill: score 54', () => expect(getTier(54)).toBe('Thrill'));
-  it('Vibrant: score 55', () => expect(getTier(55)).toBe('Vibrant'));
-  it('Vibrant: score 69', () => expect(getTier(69)).toBe('Vibrant'));
+  it('Distant: score 0', () => expect(getTier(0)).toBe('Distant'));
+  it('Distant: score 24', () => expect(getTier(24)).toBe('Distant'));
+  it('Forming: score 25', () => expect(getTier(25)).toBe('Forming'));
+  it('Forming: score 39', () => expect(getTier(39)).toBe('Forming'));
+  it('Active: score 40', () => expect(getTier(40)).toBe('Active'));
+  it('Active: score 54', () => expect(getTier(54)).toBe('Active'));
+  it('Steady: score 55', () => expect(getTier(55)).toBe('Steady'));
+  it('Steady: score 69', () => expect(getTier(69)).toBe('Steady'));
   it('Anchor: score 70', () => expect(getTier(70)).toBe('Anchor'));
   it('Anchor: score 84', () => expect(getTier(84)).toBe('Anchor'));
-  it('Legend: score 85', () => expect(getTier(85)).toBe('Legend'));
-  it('Legend: score 100', () => expect(getTier(100)).toBe('Legend'));
+  it('Rooted: score 85', () => expect(getTier(85)).toBe('Rooted'));
+  it('Rooted: score 100', () => expect(getTier(100)).toBe('Rooted'));
 });
 
 // ── getMutualTier (mutual reveal — different thresholds) ────────────────────
-// Thresholds: Ghost<35, Spark<50, Thrill<65, Vibrant<79, Anchor<90, Legend
+// Thresholds: Distant<35, Forming<50, Active<65, Steady<79, Anchor<90, Rooted
 
 describe('getMutualTier', () => {
-  it('Ghost: score 0', () => expect(getMutualTier(0)).toBe('Ghost'));
-  it('Ghost: score 34', () => expect(getMutualTier(34)).toBe('Ghost'));
-  it('Spark: score 35', () => expect(getMutualTier(35)).toBe('Spark'));
-  it('Spark: score 49', () => expect(getMutualTier(49)).toBe('Spark'));
-  it('Thrill: score 50', () => expect(getMutualTier(50)).toBe('Thrill'));
-  it('Thrill: score 64', () => expect(getMutualTier(64)).toBe('Thrill'));
-  it('Vibrant: score 65', () => expect(getMutualTier(65)).toBe('Vibrant'));
-  it('Vibrant: score 78', () => expect(getMutualTier(78)).toBe('Vibrant'));
+  it('Distant: score 0', () => expect(getMutualTier(0)).toBe('Distant'));
+  it('Distant: score 34', () => expect(getMutualTier(34)).toBe('Distant'));
+  it('Forming: score 35', () => expect(getMutualTier(35)).toBe('Forming'));
+  it('Forming: score 49', () => expect(getMutualTier(49)).toBe('Forming'));
+  it('Active: score 50', () => expect(getMutualTier(50)).toBe('Active'));
+  it('Active: score 64', () => expect(getMutualTier(64)).toBe('Active'));
+  it('Steady: score 65', () => expect(getMutualTier(65)).toBe('Steady'));
+  it('Steady: score 78', () => expect(getMutualTier(78)).toBe('Steady'));
   it('Anchor: score 79', () => expect(getMutualTier(79)).toBe('Anchor'));
   it('Anchor: score 89', () => expect(getMutualTier(89)).toBe('Anchor'));
-  it('Legend: score 90', () => expect(getMutualTier(90)).toBe('Legend'));
-  it('Legend: score 100', () => expect(getMutualTier(100)).toBe('Legend'));
+  it('Rooted: score 90', () => expect(getMutualTier(90)).toBe('Rooted'));
+  it('Rooted: score 100', () => expect(getMutualTier(100)).toBe('Rooted'));
 });
 
 // ── computeScore (private weighted sum) ────────────────────────────────────
@@ -96,7 +96,7 @@ describe('computeScore', () => {
 // out of the bands they would otherwise reach.
 
 describe('computePrivateLinkScore — Trust gate', () => {
-  it('trust=1 + all other pillars=5 → score ≤ 39 (cannot leave Spark band)', () => {
+  it('trust=1 + all other pillars=5 → score ≤ 39 (cannot leave Forming band)', () => {
     const ratings: Record<PillarKey, PillarRating> = {
       trust: 1, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
     };
@@ -104,7 +104,7 @@ describe('computePrivateLinkScore — Trust gate', () => {
     expect(score).toBeLessThanOrEqual(39);
   });
 
-  it('trust=2 + all other pillars=5 → score ≤ 59 (cannot enter Vibrant band)', () => {
+  it('trust=2 + all other pillars=5 → score ≤ 59 (cannot enter Steady band)', () => {
     const ratings: Record<PillarKey, PillarRating> = {
       trust: 2, interactions: 5, affinity: 5, support: 5, sharedNetwork: 5,
     };
@@ -162,10 +162,10 @@ describe('computePrivateLinkScore — Trust gate', () => {
 // These caps are the non-obvious constraints in the mutual score model.
 
 describe('computeMutualRelationshipScore', () => {
-  it('perfect mutual: both sides all 5s → score 96 and Legend tier', () => {
+  it('perfect mutual: both sides all 5s → score 96 and Rooted tier', () => {
     const result = computeMutualRelationshipScore(ALL_FIVES, ALL_FIVES);
     expect(result.finalScore).toBe(96);
-    expect(result.tier).toBe('Legend');
+    expect(result.tier).toBe('Rooted');
   });
 
   it('trust cap: sideA trust=1 forces finalScore ≤ 59 regardless of other pillars', () => {
@@ -176,7 +176,7 @@ describe('computeMutualRelationshipScore', () => {
     };
     const result = computeMutualRelationshipScore(sideA, ALL_FIVES);
     expect(result.finalScore).toBe(59);
-    expect(result.tier).toBe('Thrill');
+    expect(result.tier).toBe('Active');
   });
 
   it('support cap: sideA support=1 forces finalScore ≤ 64', () => {
@@ -186,7 +186,7 @@ describe('computeMutualRelationshipScore', () => {
     };
     const result = computeMutualRelationshipScore(sideA, ALL_FIVES);
     expect(result.finalScore).toBe(64);
-    expect(result.tier).toBe('Thrill');
+    expect(result.tier).toBe('Active');
   });
 
   // ── Trust gate — explicit invariants at the trust≤2 boundary ─────────────

@@ -9,35 +9,35 @@ export type RelationshipLexiconEntry = {
 
 // Local lexicon registry (canonical names stay stable for future i18n mapping).
 const RELATIONSHIP_LEXICON: Record<Tier, RelationshipLexiconEntry> = {
-  Legend: {
-    canonicalName: 'Legend',
+  Rooted: {
+    canonicalName: 'Rooted',
     colorLabel: 'Warm amber',
-    definition: 'A rare relationship with deep trust, strong continuity, and lasting presence.',
+    definition: 'A deep relationship with lasting presence, strong trust, and shared history.',
   },
   Anchor: {
     canonicalName: 'Anchor',
     colorLabel: 'Deep teal',
-    definition: 'A grounded relationship that feels dependable across time and context.',
+    definition: 'A relationship with strong reliability, safety, and meaningful presence.',
   },
-  Vibrant: {
-    canonicalName: 'Vibrant',
+  Steady: {
+    canonicalName: 'Steady',
     colorLabel: 'Muted sage',
-    definition: 'A lively relationship with healthy momentum and meaningful reciprocity.',
+    definition: 'A relationship with consistent presence, reliable signal, and a stable rhythm.',
   },
-  Thrill: {
-    canonicalName: 'Thrill',
+  Active: {
+    canonicalName: 'Active',
     colorLabel: 'Dusty rose',
-    definition: 'A relationship full of intensity and movement that still seeks stronger roots.',
+    definition: 'A relationship with present movement, visible exchanges, and growing mutual signal.',
   },
-  Spark: {
-    canonicalName: 'Spark',
+  Forming: {
+    canonicalName: 'Forming',
     colorLabel: 'Soft gold',
-    definition: 'An early relationship with visible potential and promising first signals.',
+    definition: 'A relationship still taking shape, with early signals but limited shared evidence.',
   },
-  Ghost: {
-    canonicalName: 'Ghost',
+  Distant: {
+    canonicalName: 'Distant',
     colorLabel: 'Mist gray',
-    definition: 'A distant relationship with low current signal and limited active presence.',
+    definition: 'A relationship with limited current signal and little active presence.',
   },
 };
 

@@ -28,85 +28,86 @@ function micro(opts: {
 }
 
 // ── getTierNarrative ────────────────────────────────────────────────────────
-// Tiers without %s: Legend, Anchor (fixed strings).
-// Tiers with %s:    Vibrant, Thrill, Spark, Ghost (pillar label substituted).
-// Edge cases: null tier → fallback message; null pillar → '-' substituted.
+// Post Sprint V.1: narratives are canonical descriptive strings, none contain
+// %s. The substitution path is preserved in the helper for future re-use but
+// is never taken with the current taxonomy.
+// Edge case: null tier → fallback message.
 
 describe('getTierNarrative', () => {
   it('null tier → no-reading fallback', () => {
     expect(getTierNarrative(null, 'trust')).toBe('No foundational reading yet.');
   });
 
-  it('Legend → fixed string, no substitution', () => {
-    expect(getTierNarrative('Legend', null)).toBe(
-      'This link feels exceptional, deeply rooted, and consistently strong.',
+  it('Rooted → canonical narrative, no substitution', () => {
+    expect(getTierNarrative('Rooted', null)).toBe(
+      'This link feels rooted, shaped by time, trust, and repeated evidence.',
     );
   });
 
-  it('Anchor → fixed string, no substitution', () => {
+  it('Anchor → canonical narrative, no substitution', () => {
     expect(getTierNarrative('Anchor', null)).toBe(
-      'This link feels grounded and reliable, with strong long-term potential.',
+      'This link feels like a stable point of trust, with presence that can be counted on.',
     );
   });
 
-  it('Vibrant + known pillar → substitutes lowercase pillar label', () => {
-    expect(getTierNarrative('Vibrant', 'trust')).toBe(
-      'This link feels vibrant and already grounded, with room to grow through trust.',
+  it('Steady + known pillar → canonical narrative (no substitution)', () => {
+    expect(getTierNarrative('Steady', 'trust')).toBe(
+      'This link feels steady today, with enough presence to create a clearer shared direction.',
     );
   });
 
-  it('Vibrant + null pillar → balanced fallback narrative (no "-" leak)', () => {
-    expect(getTierNarrative('Vibrant', null)).toBe(
-      'This link feels vibrant and already grounded, with room to grow steadily.',
+  it('Steady + null pillar → canonical narrative', () => {
+    expect(getTierNarrative('Steady', null)).toBe(
+      'This link feels steady today, with enough presence to create a clearer shared direction.',
     );
   });
 
-  it('Thrill + null pillar → balanced fallback narrative', () => {
-    expect(getTierNarrative('Thrill', null)).toBe(
-      'This link feels alive and promising, and is finding its rhythm.',
+  it('Active + null pillar → canonical narrative', () => {
+    expect(getTierNarrative('Active', null)).toBe(
+      'This link has active movement today. Its shape is becoming easier to read.',
     );
   });
 
-  it('Spark + null pillar → balanced fallback narrative', () => {
-    expect(getTierNarrative('Spark', null)).toBe(
-      'This link is emerging and meaningful, with space to grow.',
+  it('Forming + null pillar → canonical narrative', () => {
+    expect(getTierNarrative('Forming', null)).toBe(
+      'This link is still finding its form. More shared moments could make its direction clearer.',
     );
   });
 
-  it('Ghost + null pillar → balanced fallback narrative', () => {
-    expect(getTierNarrative('Ghost', null)).toBe(
+  it('Distant + null pillar → canonical narrative', () => {
+    expect(getTierNarrative('Distant', null)).toBe(
       'This link feels distant today, and could be rebuilt through gentle attention.',
     );
   });
 
   it('null pillar narratives never contain a "-" placeholder', () => {
-    for (const tier of ['Legend', 'Anchor', 'Vibrant', 'Thrill', 'Spark', 'Ghost'] as const) {
+    for (const tier of ['Rooted', 'Anchor', 'Steady', 'Active', 'Forming', 'Distant'] as const) {
       expect(getTierNarrative(tier, null).includes(' -')).toBe(false);
     }
   });
 
-  it('Thrill + known pillar → substitutes lowercase pillar label', () => {
-    expect(getTierNarrative('Thrill', 'interactions')).toBe(
-      'This link feels alive and promising, but it still needs steadier roots in interactions.',
+  it('Active + known pillar → canonical narrative (no substitution)', () => {
+    expect(getTierNarrative('Active', 'interactions')).toBe(
+      'This link has active movement today. Its shape is becoming easier to read.',
     );
   });
 
-  it('Spark + known pillar → substitutes pillar label', () => {
-    expect(getTierNarrative('Spark', 'sharedNetwork')).toBe(
-      'This link is emerging and meaningful, and can grow with more shared network.',
+  it('Forming + known pillar → canonical narrative (no substitution)', () => {
+    expect(getTierNarrative('Forming', 'sharedNetwork')).toBe(
+      'This link is still finding its form. More shared moments could make its direction clearer.',
     );
   });
 
-  it('Ghost + known pillar → substitutes in "gentle %s" phrasing', () => {
-    expect(getTierNarrative('Ghost', 'support')).toBe(
-      'This link feels distant today, and could be rebuilt through gentle support.',
+  it('Distant + known pillar → canonical narrative (no substitution)', () => {
+    expect(getTierNarrative('Distant', 'support')).toBe(
+      'This link feels distant today, and could be rebuilt through gentle attention.',
     );
   });
 });
 
 // ── getGrowthSuggestion ─────────────────────────────────────────────────────
 // 3 branches: known pillar → pillar-specific suggestion;
-//             null + Legend → warm; null + other tier → nurture.
+//             null + Rooted → warm; null + other tier → nurture.
 
 describe('getGrowthSuggestion', () => {
   it('known pillar → returns that pillar suggestion', () => {
@@ -116,19 +117,19 @@ describe('getGrowthSuggestion', () => {
   });
 
   it('known pillar (interactions) → returns interactions suggestion', () => {
-    expect(getGrowthSuggestion('interactions', 'Ghost')).toBe(
+    expect(getGrowthSuggestion('interactions', 'Distant')).toBe(
       'Create more regular touchpoints around this link.',
     );
   });
 
-  it('null pillar + Legend → "Keep this link warm" variant', () => {
-    expect(getGrowthSuggestion(null, 'Legend')).toBe(
+  it('null pillar + Rooted → "Keep this link warm" variant', () => {
+    expect(getGrowthSuggestion(null, 'Rooted')).toBe(
       'Keep this link warm with one intentional touchpoint this week.',
     );
   });
 
-  it('null pillar + non-Legend → "Keep nurturing" variant', () => {
-    expect(getGrowthSuggestion(null, 'Spark')).toBe(
+  it('null pillar + non-Rooted → "Keep nurturing" variant', () => {
+    expect(getGrowthSuggestion(null, 'Forming')).toBe(
       'Keep nurturing this link through one intentional touchpoint this week.',
     );
   });
@@ -203,7 +204,7 @@ function evalWith(ratings: Record<PillarKey, PillarRating>): Evaluation {
     relationId: 'r-test',
     ratings,
     score: 0,
-    tier: 'Ghost',
+    tier: 'Distant',
     createdAt: '2026-01-01T00:00:00.000Z',
   };
 }

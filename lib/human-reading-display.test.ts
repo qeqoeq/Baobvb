@@ -54,7 +54,7 @@ describe('getHumanRelationRevealDisplay', () => {
     const result = getHumanRelationRevealDisplay({
       nameRevealed: true,
       visibleScore: null,
-      revealedTier: 'Vibrant',
+      revealedTier: 'Steady',
     });
     expect(result.kind).toBe('pending');
   });
@@ -67,9 +67,9 @@ describe('getHumanRelationRevealDisplay', () => {
       visibleScore: number | null;
       revealedTier: string | null;
     }> = [
-      { nameRevealed: false, visibleScore: 96, revealedTier: 'Legend' },
-      { nameRevealed: true, visibleScore: 96, revealedTier: 'Legend' },
-      { nameRevealed: true, visibleScore: 0, revealedTier: 'Ghost' },
+      { nameRevealed: false, visibleScore: 96, revealedTier: 'Rooted' },
+      { nameRevealed: true, visibleScore: 96, revealedTier: 'Rooted' },
+      { nameRevealed: true, visibleScore: 0, revealedTier: 'Distant' },
       { nameRevealed: true, visibleScore: null, revealedTier: null },
       { nameRevealed: true, visibleScore: 50, revealedTier: null },
     ];
@@ -83,7 +83,7 @@ describe('getHumanRelationRevealDisplay', () => {
     const result = getHumanRelationRevealDisplay({
       nameRevealed: true,
       visibleScore: 96,
-      revealedTier: 'Legend',
+      revealedTier: 'Rooted',
     });
     expect(Object.prototype.hasOwnProperty.call(result, 'mutualScore')).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(result, 'foundationalScore')).toBe(false);
@@ -99,11 +99,11 @@ describe('getHumanRelationRevealDisplay', () => {
       visibleScore: number | null;
       revealedTier: string | null;
     }> = [
-      { nameRevealed: true, visibleScore: 96, revealedTier: 'Legend' },
-      { nameRevealed: true, visibleScore: 50, revealedTier: 'Thrill' },
-      { nameRevealed: true, visibleScore: 0, revealedTier: 'Ghost' },
+      { nameRevealed: true, visibleScore: 96, revealedTier: 'Rooted' },
+      { nameRevealed: true, visibleScore: 50, revealedTier: 'Active' },
+      { nameRevealed: true, visibleScore: 0, revealedTier: 'Distant' },
       { nameRevealed: true, visibleScore: null, revealedTier: null },
-      { nameRevealed: false, visibleScore: 96, revealedTier: 'Legend' },
+      { nameRevealed: false, visibleScore: 96, revealedTier: 'Rooted' },
     ];
     for (const input of inputs) {
       const result = getHumanRelationRevealDisplay(input);
@@ -124,7 +124,7 @@ describe('getHumanRelationRevealDisplay', () => {
     const result: HumanRelationRevealDisplay = getHumanRelationRevealDisplay({
       nameRevealed: true,
       visibleScore: 96,
-      revealedTier: 'Legend',
+      revealedTier: 'Rooted',
     });
     // @ts-expect-error — 'score' is intentionally absent from the contract.
     const _shouldNotCompile: number | undefined = result.score;

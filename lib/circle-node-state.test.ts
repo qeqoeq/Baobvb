@@ -70,7 +70,7 @@ function makeReading(opts: {
           sharedNetwork: opts.sharedNetwork,
         },
         score: 50,
-        tier: 'Vibrant',
+        tier: 'Steady',
         createdAt: '2024-01-01',
       }
     : null;
@@ -199,7 +199,7 @@ describe('getCircleNodeStatus — pre-reveal safety', () => {
 // ─── B: getCircleNodeStatusLabel — exhaustive, no tier string leaks ───────────
 
 describe('getCircleNodeStatusLabel — no tier strings', () => {
-  const TIER_STRINGS = ['Ghost', 'Spark', 'Thrill', 'Vibrant', 'Anchor', 'Legend'];
+  const TIER_STRINGS = ['Distant', 'Forming', 'Active', 'Steady', 'Anchor', 'Rooted'];
   const ALL_STATUSES: CircleNodeStatus[] = [
     'revealed_stable',
     'revealed_to_nurture',
@@ -998,7 +998,7 @@ describe('P: deriveTerritorialProfile', () => {
   });
 
   it('P06 — faint quality + no gateway → ambient', () => {
-    const link = makeMapMember('l3', 'Ghost', 'revealed_stable', {
+    const link = makeMapMember('l3', 'Faint', 'revealed_stable', {
       gatewayAccessState: 'none',
       linkQualityBand: 'faint',
     });
