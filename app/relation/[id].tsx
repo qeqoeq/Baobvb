@@ -642,15 +642,6 @@ export default function RelationDetailScreen() {
         <Text style={styles.backRowText}>‹ Back</Text>
       </Pressable>
       <View style={styles.header}>
-        {nameRevealed ? (
-          <View style={styles.revealedHeroBrand}>
-            <View style={styles.revealedHeroSeal}>
-              <View style={styles.revealedHeroSeed} />
-            </View>
-            <Text style={styles.revealedHeroKicker}>{'BAOBAB'}</Text>
-            <Text style={styles.revealedHeroSubtitle}>{'Shared reading'}</Text>
-          </View>
-        ) : null}
         <View style={[styles.avatar, { backgroundColor: headerAccent + '14', borderColor: headerAccent + '44' }]}>
           <Text style={[styles.avatarText, { color: headerAccent }]}>
             {(relation.avatarSeed || relationIdentity.privateLabel.charAt(0) || '?').toUpperCase()}
@@ -797,6 +788,10 @@ export default function RelationDetailScreen() {
               {readingVariant === 'revealed' ? (
                 sharedRevealDisplay.kind === 'score' ? (
                   <>
+                    <View style={styles.readingCardBrand}>
+                      <Text style={styles.readingCardKicker}>{'BAOBAB'}</Text>
+                      <Text style={styles.readingCardSubtitle}>{'Shared reading'}</Text>
+                    </View>
                     <View style={styles.tierHeader}>
                       <View style={styles.tierTitleRow}>
                         <Text style={[styles.tierName, { color: readingAccent }]}>
@@ -1139,39 +1134,25 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingTop: spacing.md,
   },
-  // Baobab brand block on the revealed hero — minimal but assumed signature.
-  // Mirrors the arrival screen pattern (S.1/S.2): seal + BAOBAB kicker + sub-
-  // label. Closes the same warm-gold ritual the user entered through. Plain
-  // Views, no asset, no animation.
-  revealedHeroBrand: {
+  // Baobab brand block inside the reading card — the brand signs the
+  // reading object, not the person. Mirrors the arrival kicker pair
+  // (BAOBAB + sub-label) but lives inside the card so the hero above
+  // can honor the relation (avatar + name + handle) without competing
+  // signals. No seed here: the warm-gold border/glow of readingCard
+  // already carries the visual signature.
+  readingCardBrand: {
     alignItems: 'center',
     gap: 4,
     marginBottom: spacing.xs,
   },
-  revealedHeroSeal: {
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  revealedHeroSeed: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.accent.warmGold + '3C',
-    borderWidth: 1,
-    borderColor: colors.accent.warmGold + 'C0',
-    shadowColor: colors.accent.warmGold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.75,
-    shadowRadius: 14,
-  },
-  revealedHeroKicker: {
+  readingCardKicker: {
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 4,
     color: colors.accent.warmGold,
     textAlign: 'center',
   },
-  revealedHeroSubtitle: {
+  readingCardSubtitle: {
     fontSize: 11,
     fontWeight: '500',
     letterSpacing: 0.4,
