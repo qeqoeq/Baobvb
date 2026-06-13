@@ -42,11 +42,6 @@ import {
 } from '../../lib/relation-detail-helpers';
 import { showPhoneInviteSheet } from '../../lib/phone-invite-sheet';
 import {
-  addDays,
-  getRereadMarkerState,
-  type RereadMarkerState,
-} from '../../lib/relation-reread-marker';
-import {
   getProgressiveCriteriaForPillar,
   type ProgressiveCriterionKey,
 } from '../../lib/progressive-criteria';
@@ -73,7 +68,7 @@ const PILLAR_ORDER: PillarKey[] = [
 
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
-  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation, progressivePrivateSignals, setRelationRereadMarkedFor } = useRelationsStore();
+  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation, progressivePrivateSignals } = useRelationsStore();
   const [sharedReveal, setSharedReveal] = useState<Awaited<
     ReturnType<typeof getSharedRevealRecordForCurrentUser>
   > | null>(null);
@@ -370,34 +365,6 @@ export default function RelationDetailScreen() {
   // Deeper Signal — derived from the local user's own Trust + Affinity ratings.
   // Only available when the user has a local evaluation. Bootstrap/claim relations
   // without a local reading do not render this layer (privacy by design).
-  // ── Re-read marker (Sprint W.1) ───────────────────────────────────────────
-  // Private time-mark pinned by the user on this relation to invite a future
-  // return. Local-only, never shared, never notified. Recomputed at each
-  // render so the state correctly bascules from `marked` to `ready` the
-  // moment the user re-opens the screen on or after the marked date.
-  const rereadMarkerState: RereadMarkerState = useMemo(
-    () => getRereadMarkerState(
-      relation?.rereadMarkedFor ?? null,
-      new Date().toISOString(),
-    ),
-    [relation?.rereadMarkedFor],
-  );
-  const [rereadPickerOpen, setRereadPickerOpen] = useState(false);
-  const handleRereadPreset = useCallback((days: number) => {
-    if (!relation) return;
-    const iso = addDays(new Date().toISOString(), days);
-    setRelationRereadMarkedFor(relation.id, iso);
-    setRereadPickerOpen(false);
-  }, [relation, setRelationRereadMarkedFor]);
-  const handleRereadClear = useCallback(() => {
-    if (!relation) return;
-    setRelationRereadMarkedFor(relation.id, null);
-    setRereadPickerOpen(false);
-  }, [relation, setRelationRereadMarkedFor]);
-  const handleRereadChange = useCallback(() => {
-    setRereadPickerOpen(true);
-  }, []);
-
   const deeperSignal = nameRevealed && evaluation
     ? getDeeperSignal({
         trust: evaluation.ratings.trust,
@@ -1075,97 +1042,6 @@ export default function RelationDetailScreen() {
           >
             <Text style={styles.draftResolutionArchiveText}>Archive this draft</Text>
           </Pressable>
-        </View>
-      ) : null}
-
-      {nameRevealed && !relation.archived ? (
-        <View style={styles.rereadMarkerBlock}>
-          {rereadMarkerState.kind === 'unset' || rereadPickerOpen ? (
-            <>
-              <Text style={styles.rereadMarkerTitle}>Read this again</Text>
-              <Text style={styles.rereadMarkerBody}>
-                Mark this link for a later read.
-              </Text>
-              <View style={styles.rereadMarkerPresetsRow}>
-                <Pressable
-                  onPress={() => handleRereadPreset(30)}
-                  style={styles.rereadMarkerPreset}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.rereadMarkerPresetText}>30 days</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => handleRereadPreset(60)}
-                  style={styles.rereadMarkerPreset}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.rereadMarkerPresetText}>60 days</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => handleRereadPreset(90)}
-                  style={styles.rereadMarkerPreset}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.rereadMarkerPresetText}>90 days</Text>
-                </Pressable>
-              </View>
-              {rereadMarkerState.kind !== 'unset' ? (
-                <Pressable
-                  onPress={handleRereadClear}
-                  style={styles.rereadMarkerSecondaryAction}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.rereadMarkerSecondaryActionText}>Clear mark</Text>
-                </Pressable>
-              ) : null}
-            </>
-          ) : rereadMarkerState.kind === 'marked' ? (
-            <>
-              <Text style={styles.rereadMarkerTitle}>Marked for later</Text>
-              <Text style={styles.rereadMarkerBody}>
-                Return around {rereadMarkerState.humanLabel}.
-              </Text>
-              <View style={styles.rereadMarkerSecondaryRow}>
-                <Pressable
-                  onPress={handleRereadChange}
-                  style={styles.rereadMarkerSecondaryAction}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.rereadMarkerSecondaryActionText}>Change</Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleRereadClear}
-                  style={styles.rereadMarkerSecondaryAction}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.rereadMarkerSecondaryActionText}>Clear</Text>
-                </Pressable>
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={styles.rereadMarkerTitle}>Time to read again</Text>
-              <Text style={styles.rereadMarkerBody}>
-                Something may have changed since this reading.
-              </Text>
-              <View style={styles.rereadMarkerSecondaryRow}>
-                <Pressable
-                  onPress={handleRereadChange}
-                  style={styles.rereadMarkerSecondaryAction}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.rereadMarkerSecondaryActionText}>Mark again</Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleRereadClear}
-                  style={styles.rereadMarkerSecondaryAction}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.rereadMarkerSecondaryActionText}>Clear</Text>
-                </Pressable>
-              </View>
-            </>
-          )}
         </View>
       ) : null}
 
@@ -1954,65 +1830,6 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     textDecorationLine: 'underline',
   },
-  // ── Re-read marker (Sprint W.1) ────────────────────────────────────────────
-  // Private time-mark block shown post-reveal. Visually secondary to the
-  // reading card: muted warm-gold tint, soft border, no glow. Should feel
-  // like an intimate suggestion to return, never a prompt or a deadline.
-  rereadMarkerBlock: {
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md + 2,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.accent.warmGold + '22',
-    backgroundColor: colors.accent.warmGold + '08',
-    gap: spacing.xs,
-  },
-  rereadMarkerTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text.primary,
-    letterSpacing: -0.1,
-  },
-  rereadMarkerBody: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.text.secondary,
-  },
-  rereadMarkerPresetsRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  rereadMarkerPreset: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.accent.warmGold + '50',
-    backgroundColor: colors.background.tertiary,
-  },
-  rereadMarkerPresetText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.accent.warmGold,
-    letterSpacing: 0.1,
-  },
-  rereadMarkerSecondaryRow: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-    marginTop: spacing.xs,
-  },
-  rereadMarkerSecondaryAction: {
-    paddingVertical: spacing.xs,
-  },
-  rereadMarkerSecondaryActionText: {
-    fontSize: 12,
-    color: colors.text.muted,
-    textDecorationLine: 'underline',
-  },
-
   managementZone: {
     alignItems: 'center',
     paddingTop: spacing.md,
