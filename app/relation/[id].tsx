@@ -642,35 +642,42 @@ export default function RelationDetailScreen() {
         <Text style={styles.backRowText}>‹ Back</Text>
       </Pressable>
       <View style={styles.header}>
+        {nameRevealed ? (
+          <View style={styles.revealedHeroSeal}>
+            <View style={styles.revealedHeroSeed} />
+          </View>
+        ) : null}
         <View style={[styles.avatar, { backgroundColor: headerAccent + '14', borderColor: headerAccent + '44' }]}>
           <Text style={[styles.avatarText, { color: headerAccent }]}>
             {(relation.avatarSeed || relationIdentity.privateLabel.charAt(0) || '?').toUpperCase()}
           </Text>
         </View>
         <View style={styles.identityBlock}>
-          <View
-            style={[
-              styles.identityEyebrowBadge,
-              isSharedIdentity
-                ? styles.identityEyebrowBadgeShared
-                : isScannedIdentity
-                  ? styles.identityEyebrowBadgeScanned
-                  : styles.identityEyebrowBadgePrivate,
-            ]}
-          >
-            <Text
+          {!nameRevealed ? (
+            <View
               style={[
-                styles.identityEyebrow,
+                styles.identityEyebrowBadge,
                 isSharedIdentity
-                  ? styles.identityEyebrowShared
+                  ? styles.identityEyebrowBadgeShared
                   : isScannedIdentity
-                    ? styles.identityEyebrowScanned
-                    : styles.identityEyebrowPrivate,
+                    ? styles.identityEyebrowBadgeScanned
+                    : styles.identityEyebrowBadgePrivate,
               ]}
             >
-              {relationIdentity.titleEyebrow}
-            </Text>
-          </View>
+              <Text
+                style={[
+                  styles.identityEyebrow,
+                  isSharedIdentity
+                    ? styles.identityEyebrowShared
+                    : isScannedIdentity
+                      ? styles.identityEyebrowScanned
+                      : styles.identityEyebrowPrivate,
+                ]}
+              >
+                {relationIdentity.titleEyebrow}
+              </Text>
+            </View>
+          ) : null}
           <Text style={styles.name}>{relationIdentity.primaryTitle}</Text>
           {relationIdentity.supportingText ? (
             <Text style={styles.identitySupport}>{relationIdentity.supportingText}</Text>
@@ -678,35 +685,37 @@ export default function RelationDetailScreen() {
         </View>
       </View>
 
-      <View style={styles.metaZone}>
-        <View style={styles.stateRow}>
-          <View style={styles.statusChip}>
-            <Text style={styles.statusChipText}>{relationIdentity.stateLabel}</Text>
-          </View>
-          <Pressable onPress={() => router.push(`./edit/${relation.id}`)} style={styles.editLink}>
-            <Text style={styles.editLinkText}>Edit relation</Text>
-          </Pressable>
-        </View>
-
-        {nextAction.ctaKind !== 'resend' && (
-          <>
-            {relation.source !== 'manual' && (
-              <View style={styles.anchorCard}>
-                <Text style={styles.anchorCardLabel}>{relationIdentity.anchorLabel}</Text>
-                <Text style={styles.anchorCardValue}>{relationIdentity.anchorValue}</Text>
-                {relationIdentity.anchorHint ? (
-                  <Text style={styles.anchorCardHint}>{relationIdentity.anchorHint}</Text>
-                ) : null}
-              </View>
-            )}
-
-            <View style={styles.depthRow}>
-              <Text style={styles.depthLabel}>Depth</Text>
-              <Text style={styles.depthValue}>{relationIdentity.relationDepthLabel}</Text>
+      {!nameRevealed && (
+        <View style={styles.metaZone}>
+          <View style={styles.stateRow}>
+            <View style={styles.statusChip}>
+              <Text style={styles.statusChipText}>{relationIdentity.stateLabel}</Text>
             </View>
-          </>
-        )}
-      </View>
+            <Pressable onPress={() => router.push(`./edit/${relation.id}`)} style={styles.editLink}>
+              <Text style={styles.editLinkText}>Edit relation</Text>
+            </Pressable>
+          </View>
+
+          {nextAction.ctaKind !== 'resend' && (
+            <>
+              {relation.source !== 'manual' && (
+                <View style={styles.anchorCard}>
+                  <Text style={styles.anchorCardLabel}>{relationIdentity.anchorLabel}</Text>
+                  <Text style={styles.anchorCardValue}>{relationIdentity.anchorValue}</Text>
+                  {relationIdentity.anchorHint ? (
+                    <Text style={styles.anchorCardHint}>{relationIdentity.anchorHint}</Text>
+                  ) : null}
+                </View>
+              )}
+
+              <View style={styles.depthRow}>
+                <Text style={styles.depthLabel}>Depth</Text>
+                <Text style={styles.depthValue}>{relationIdentity.relationDepthLabel}</Text>
+              </View>
+            </>
+          )}
+        </View>
+      )}
 
       {shouldShowPrimaryActionCard ? (
         <View style={[
@@ -791,16 +800,11 @@ export default function RelationDetailScreen() {
                       {tierLexicon ? (
                         <Text style={styles.tierDefinition}>{tierLexicon.definition}</Text>
                       ) : null}
-                      {evaluation?.createdAt ? (
-                        <Text style={styles.tierDate}>
-                          Read together on {new Date(evaluation.createdAt).toLocaleDateString()}
-                        </Text>
-                      ) : null}
                     </View>
 
                     {evaluation ? (
                       <View style={styles.pillarsSection}>
-                        <Text style={styles.signalsEyebrow}>Signals</Text>
+                        <Text style={styles.signalsEyebrow}>Your read</Text>
                         {PILLAR_ORDER.map((key) => {
                           const dots = reading?.pillarDots?.[key] ?? [];
                           return (
@@ -847,7 +851,7 @@ export default function RelationDetailScreen() {
                     ) : null}
                     {deeperSignal ? (
                       <View style={styles.deeperSignalBlock}>
-                        <Text style={styles.deeperSignalEyebrow}>Private deeper signal</Text>
+                        <Text style={styles.deeperSignalEyebrow}>A deeper read</Text>
                         {deeperSignal.lines.map((line, idx) => (
                           <Text key={idx} style={styles.deeperSignalLine}>{line}</Text>
                         ))}
@@ -1122,6 +1126,26 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingTop: spacing.md,
   },
+  // Baobab seal on the revealed hero — minimal signature, mirrors the
+  // pattern used by the Shared Reading Moment (Sprint T.1) so the revealed
+  // page closes the same warm-gold ritual the user entered through on
+  // the arrival screen. Plain Views, no asset, no animation.
+  revealedHeroSeal: {
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  revealedHeroSeed: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.accent.warmGold + '38',
+    borderWidth: 1,
+    borderColor: colors.accent.warmGold + 'BB',
+    shadowColor: colors.accent.warmGold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 12,
+  },
   identityBlock: {
     alignItems: 'center',
     gap: spacing.xs,
@@ -1362,14 +1386,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   tierName: {
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: -0.4,
+    fontSize: 36,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    textAlign: 'center',
   },
   tierDefinition: {
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.text.secondary,
+    textAlign: 'center',
   },
   tierDate: {
     fontSize: 10,
