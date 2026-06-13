@@ -25,6 +25,10 @@ import {
   findAssistedReconciliationSuggestionForRelation,
   findDraftResolutionSuggestionForRelation,
 } from '../lib/assisted-reconciliation';
+import {
+  normalizePersistedEvaluationTier,
+  normalizePersistedRevealSnapshotTier,
+} from '../lib/persisted-tier-normalization';
 // Dev-only — bundled but only callable inside __DEV__ guard. Tree-shaken in production.
 import { generateLargeNetworkSeed } from '../lib/dev/large-network-seed';
 
@@ -813,7 +817,6 @@ const SEED_ME: MeProfile = {
 
 const SEED_PLACES: Place[] = [];
 const PLACE_CATEGORIES: PlaceCategory[] = ['restaurant', 'cafe', 'bar', 'spot', 'other'];
-const TIER_VALUES: Tier[] = ['Distant', 'Forming', 'Active', 'Steady', 'Anchor', 'Rooted'];
 const REVEAL_UNLOCK_DELAY_MS = 90_000;
 
 /**
@@ -1004,10 +1007,10 @@ function normalizeRelationshipLocalState(
     relation.relationshipNameRevealed === true || rawReveal?.revealed === true;
   const revealStatus = forceRevealed ? 'revealed' : statusCandidate;
   const revealed = isStatusRevealed(revealStatus);
-  const tier =
-    rawReveal?.tier && TIER_VALUES.includes(rawReveal.tier)
-      ? rawReveal.tier
-      : undefined;
+  // Re-derive the snapshot tier from mutualScore when available, falling
+  // back to a whitelisted rawTier otherwise. Defensive against legacy
+  // persisted labels (pre Sprint V.1) surviving in AsyncStorage.
+  const tier = normalizePersistedRevealSnapshotTier(rawReveal?.tier, rawReveal?.mutualScore);
 
   // sideA: derive from local evaluations (fallback), but upgrade hasPrivateReading if the
   // persisted raw state carries backend truth (bootstrap/claim sources).
@@ -1149,7 +1152,11 @@ loadPersistedState<PersistedState>().then((persisted) => {
         }, persistedEvaluations),
       }),
     );
-    state.evaluations = persistedEvaluations;
+    // Re-derive tier on every persisted evaluation. Defensive against legacy
+    // persisted labels (pre Sprint V.1: Ghost / Spark / Thrill / Vibrant /
+    // Legend) surviving in AsyncStorage from older installs. The score is
+    // the canonical truth; the tier label is a pure derivation via getTier.
+    state.evaluations = persistedEvaluations.map(normalizePersistedEvaluationTier);
     state.places = Array.isArray(persisted.places)
       ? persisted.places.reduce<Place[]>((acc, rawPlace) => {
           if (!rawPlace || typeof rawPlace !== 'object') return acc;
