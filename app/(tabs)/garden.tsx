@@ -21,7 +21,7 @@ const VALID_FILTER_KEYS: GardenFilterKey[] = [
   'attention',
 ];
 
-type GardenSortKey = 'strength' | 'recent' | 'name';
+type GardenSortKey = 'recent' | 'name';
 
 type SharedLinkStrengthLabel = 'Strong' | 'Good' | 'Fragile' | 'Needs care';
 
@@ -119,7 +119,7 @@ export default function GardenScreen() {
   const params = useLocalSearchParams<{ filter?: string }>();
   const { activeRelations, archivedRelations, evaluations } = useRelationsStore();
   const [selectedFilter, setSelectedFilter] = useState<GardenFilterKey>('active');
-  const [bucketSort, setBucketSort] = useState<GardenSortKey>('strength');
+  const [bucketSort, setBucketSort] = useState<GardenSortKey>('recent');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Sync incoming filter param from deep-link (e.g. from World hint taps).
@@ -136,7 +136,7 @@ export default function GardenScreen() {
 
   // Reset sort when the view changes — entering a bucket should always default to Strength.
   useEffect(() => {
-    setBucketSort('strength');
+    setBucketSort('recent');
   }, [selectedFilter]);
 
   const entries = useMemo(
@@ -247,8 +247,6 @@ export default function GardenScreen() {
       );
 
       switch (bucketSort) {
-        case 'recent':
-          return bucketEntries;
         case 'name':
           return bucketEntries
             .map((entry) => ({
@@ -257,14 +255,9 @@ export default function GardenScreen() {
             }))
             .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }))
             .map((x) => x.entry);
-        case 'strength':
+        case 'recent':
         default:
-          return [...bucketEntries].sort((a, b) => {
-            const sa = a.relation.localState.revealSnapshot.mutualScore ?? -1;
-            const sb = b.relation.localState.revealSnapshot.mutualScore ?? -1;
-            if (sb !== sa) return sb - sa;
-            return b.recentDate.localeCompare(a.recentDate);
-          });
+          return bucketEntries;
       }
     }
 
@@ -800,12 +793,6 @@ export default function GardenScreen() {
             {isBucketFilter ? (
               <View style={styles.sortRow}>
                 <Text style={styles.sortLabel}>Order</Text>
-                <Pressable
-                  onPress={() => setBucketSort('strength')}
-                  style={[styles.sortChip, bucketSort === 'strength' && styles.sortChipActive]}
-                >
-                  <Text style={[styles.sortChipText, bucketSort === 'strength' && styles.sortChipTextActive]}>Strength</Text>
-                </Pressable>
                 <Pressable
                   onPress={() => setBucketSort('recent')}
                   style={[styles.sortChip, bucketSort === 'recent' && styles.sortChipActive]}
