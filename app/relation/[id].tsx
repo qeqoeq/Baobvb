@@ -45,6 +45,7 @@ import {
   getProgressiveCriteriaForPillar,
   type ProgressiveCriterionKey,
 } from '../../lib/progressive-criteria';
+import { getPlaceCategoryLabel, getPlaceFitLabel } from '../../lib/places';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 function getHeaderTitle(
@@ -68,7 +69,7 @@ const PILLAR_ORDER: PillarKey[] = [
 
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
-  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation, progressivePrivateSignals } = useRelationsStore();
+  const { me, places, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation, progressivePrivateSignals } = useRelationsStore();
   const [sharedReveal, setSharedReveal] = useState<Awaited<
     ReturnType<typeof getSharedRevealRecordForCurrentUser>
   > | null>(null);
@@ -420,6 +421,11 @@ export default function RelationDetailScreen() {
 
     return sections;
   }, [progressivePrivateSignals, relation]);
+
+  const placesFromRelation = useMemo(
+    () => (relation ? places.filter((place) => place.sourceRelationId === relation.id) : []),
+    [places, relation],
+  );
 
   const handleOpenReveal = async () => {
     if (isRevealing) return;
@@ -1044,6 +1050,36 @@ export default function RelationDetailScreen() {
           </Pressable>
         </View>
       ) : null}
+
+      {nameRevealed && (
+        <View style={styles.relationPlacesSection}>
+          {placesFromRelation.length > 0 && (
+            <View style={styles.relationPlacesList}>
+              <Text style={styles.relationPlacesLabel}>Places</Text>
+              {placesFromRelation.slice(0, 3).map((place) => (
+                <Pressable
+                  key={place.id}
+                  style={styles.relationPlaceRow}
+                  onPress={() => router.push({ pathname: '/place/[id]', params: { id: place.id } })}
+                >
+                  <Text style={styles.relationPlaceName}>{place.name}</Text>
+                  <Text style={styles.relationPlaceMeta}>
+                    {getPlaceCategoryLabel(place.category)} · {getPlaceFitLabel(place.personalFit)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <Pressable
+            style={styles.relationPlaceCta}
+            onPress={() =>
+              router.push({ pathname: '/place/add', params: { sourceRelationId: relation.id } })
+            }
+          >
+            <Text style={styles.relationPlaceCtaText}>Keep a place from this connection</Text>
+          </Pressable>
+        </View>
+      )}
 
       {!relation.archived && nextAction.ctaKind !== 'resend' && (
         <View style={styles.managementZone}>
@@ -1829,6 +1865,47 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text.muted,
     textDecorationLine: 'underline',
+  },
+  relationPlacesSection: {
+    gap: spacing.sm,
+  },
+  relationPlacesList: {
+    gap: spacing.xs,
+  },
+  relationPlacesLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    color: colors.text.muted,
+    marginBottom: spacing.xs,
+  },
+  relationPlaceRow: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    gap: 2,
+  },
+  relationPlaceName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  relationPlaceMeta: {
+    fontSize: 12,
+    color: colors.text.secondary,
+  },
+  relationPlaceCta: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+  },
+  relationPlaceCtaText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.accent.deepTeal,
   },
   managementZone: {
     alignItems: 'center',
