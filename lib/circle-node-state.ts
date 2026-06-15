@@ -362,6 +362,12 @@ export function deriveProximityBand(reading: FoundationalReadingDerived): Proxim
 export function deriveGatewayPowerBand(reading: FoundationalReadingDerived): GatewayPowerBand {
   const rating = reading.foundationalEvaluation?.ratings.sharedNetwork ?? null;
   if (rating === null) return 'low';
+
+  // Trust gate: breadth of network cannot make an unsafe path ready.
+  // Mirrors the trust ceiling enforced in computePrivateLinkScore.
+  const trust = reading.foundationalEvaluation?.ratings.trust ?? null;
+  if (trust !== null && trust <= 2) return 'low';
+
   if (rating >= 5) return 'strong';
   if (rating >= 3) return 'moderate';
   return 'low';

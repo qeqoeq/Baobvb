@@ -58,6 +58,7 @@ function makeReading(opts: {
   archived?: boolean;
   mutualScore?: number;
   sharedNetwork?: 1 | 2 | 3 | 4 | 5;
+  trust?: 1 | 2 | 3 | 4 | 5;
   viaRelationId?: string;
 }): FoundationalReadingDerived {
   const revealStatus = opts.revealStatus ?? 'waiting_other_side';
@@ -66,7 +67,7 @@ function makeReading(opts: {
         id: 'eval-test',
         relationId: 'test-id',
         ratings: {
-          trust: 3, interactions: 3, affinity: 3, support: 3,
+          trust: opts.trust ?? 3, interactions: 3, affinity: 3, support: 3,
           sharedNetwork: opts.sharedNetwork,
         },
         score: 50,
@@ -587,6 +588,20 @@ describe('deriveGatewayPowerBand', () => {
 
   it('no evaluation → low', () => {
     expect(deriveGatewayPowerBand(makeReading({}))).toBe('low');
+  });
+
+  it('trust = 1 blocks strong gateway regardless of sharedNetwork breadth', () => {
+    expect(deriveGatewayPowerBand(makeReading({ sharedNetwork: 5, trust: 1 }))).toBe('low');
+  });
+
+  it('trust = 2 blocks moderate/strong gateway regardless of sharedNetwork breadth', () => {
+    expect(deriveGatewayPowerBand(makeReading({ sharedNetwork: 5, trust: 2 }))).toBe('low');
+    expect(deriveGatewayPowerBand(makeReading({ sharedNetwork: 4, trust: 2 }))).toBe('low');
+  });
+
+  it('trust = 3 leaves gate inactive — sharedNetwork determines band', () => {
+    expect(deriveGatewayPowerBand(makeReading({ sharedNetwork: 5, trust: 3 }))).toBe('strong');
+    expect(deriveGatewayPowerBand(makeReading({ sharedNetwork: 3, trust: 3 }))).toBe('moderate');
   });
 });
 
