@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   Pressable,
@@ -31,6 +31,11 @@ const FITS: PlacePersonalFit[] = ['saved', 'tried', 'kept', 'not_for_me'];
 
 export default function AddPlaceScreen() {
   const { addPlace } = useRelationsStore();
+  const { sourceRelationId: sourceRelationIdRaw } = useLocalSearchParams<{ sourceRelationId?: string }>();
+  const sourceRelationIdParam =
+    typeof sourceRelationIdRaw === 'string' && sourceRelationIdRaw.trim().length > 0
+      ? sourceRelationIdRaw.trim()
+      : undefined;
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState<PlaceCategory>('other');
@@ -52,13 +57,18 @@ export default function AddPlaceScreen() {
       category,
       personalFit,
       impression,
+      sourceRelationId: sourceRelationIdParam,
     });
     if (!created) {
       setError('Unable to save this place right now.');
       return;
     }
 
-    router.replace('../place');
+    if (sourceRelationIdParam) {
+      router.back();
+    } else {
+      router.replace('../place');
+    }
   };
 
   return (

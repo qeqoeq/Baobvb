@@ -325,7 +325,18 @@ export default function RootLayout() {
         name="relation/edit/[id]"
         options={{ title: 'Edit relation', presentation: 'modal' }}
       />
-      {/* Places routes are intentionally hidden from MVP navigation; files are kept parked for later. */}
+      {/* place/add is configured as a modal so it can be opened from relation context (X.11).
+          Other place/* routes remain parked — no production entry points exist yet. */}
+      <Stack.Screen
+        name="place/add"
+        options={{
+          presentation: 'modal',
+          title: 'Save a place',
+          headerStyle: { backgroundColor: colors.background.primary },
+          headerTintColor: colors.text.primary,
+          headerShadowVisible: false,
+        }}
+      />
       <Stack.Screen
         name="relation/[id]"
         options={{
