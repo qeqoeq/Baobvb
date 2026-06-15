@@ -5,10 +5,8 @@ import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
 import {
   getPlaceCategoryLabel,
+  getPlaceFitLabel,
   getPlaceReading,
-  getPlaceRatingSignature,
-  getPlaceTone,
-  sanitizeRating,
 } from '@/lib/places';
 import { useRelationsStore } from '@/store/useRelationsStore';
 
@@ -43,28 +41,12 @@ export default function PlaceDetailScreen() {
     );
   }
 
-  const safeRating = sanitizeRating(place.rating);
-  const tone = getPlaceTone(safeRating);
-
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View
-        style={[
-          styles.heroCard,
-          {
-            backgroundColor: tone.tint,
-            borderColor: tone.border,
-          },
-        ]}
-      >
+      <View style={styles.heroCard}>
         <Text style={styles.kicker}>{getPlaceCategoryLabel(place.category)}</Text>
         <Text style={styles.title}>{place.name}</Text>
-        <View style={styles.heroRow}>
-          <Text style={[styles.rating, { color: tone.accent }]}>{safeRating}/5</Text>
-          <Text style={[styles.signature, { color: tone.accent }]}>
-            {getPlaceRatingSignature(safeRating)}
-          </Text>
-        </View>
+        <Text style={styles.fit}>{getPlaceFitLabel(place.personalFit)}</Text>
       </View>
 
       <View style={styles.sectionCard}>
@@ -100,6 +82,8 @@ const styles = StyleSheet.create({
   heroCard: {
     borderWidth: 1,
     borderRadius: radius.lg,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.secondary,
     padding: spacing.lg,
     gap: spacing.sm,
   },
@@ -115,20 +99,10 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '700',
   },
-  heroRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  rating: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  signature: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+  fit: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    fontWeight: '600',
   },
   sectionCard: {
     borderRadius: radius.md,

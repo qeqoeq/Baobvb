@@ -11,9 +11,11 @@ import {
 
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
+import { PLACE_PERSONAL_FIT_LABELS } from '@/lib/places';
 import {
   type PlaceCategory,
   type PlaceCreateInput,
+  type PlacePersonalFit,
   useRelationsStore,
 } from '@/store/useRelationsStore';
 
@@ -25,14 +27,14 @@ const CATEGORIES: { id: PlaceCategory; label: string }[] = [
   { id: 'other', label: 'Other' },
 ];
 
-const RATINGS: PlaceCreateInput['rating'][] = [1, 2, 3, 4, 5];
+const FITS: PlacePersonalFit[] = ['saved', 'tried', 'kept', 'not_for_me'];
 
 export default function AddPlaceScreen() {
   const { addPlace } = useRelationsStore();
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState<PlaceCategory>('other');
-  const [rating, setRating] = useState<PlaceCreateInput['rating']>(4);
+  const [personalFit, setPersonalFit] = useState<PlaceCreateInput['personalFit']>('saved');
   const [impression, setImpression] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -48,7 +50,7 @@ export default function AddPlaceScreen() {
     const created = addPlace({
       name: cleanName,
       category,
-      rating,
+      personalFit,
       impression,
     });
     if (!created) {
@@ -66,10 +68,10 @@ export default function AddPlaceScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
-        <Text style={styles.kicker}>Places & tastes</Text>
-        <Text style={styles.title}>Rate a place</Text>
+        <Text style={styles.kicker}>Places</Text>
+        <Text style={styles.title}>Save a place</Text>
         <Text style={styles.subtitle}>
-          Keep a simple, honest trace of where trust and taste felt right.
+          Keep a simple, honest trace of where connection felt right.
         </Text>
       </View>
 
@@ -104,18 +106,18 @@ export default function AddPlaceScreen() {
           })}
         </View>
 
-        <Text style={styles.label}>Rating</Text>
+        <Text style={styles.label}>How does it fit?</Text>
         <View style={styles.rowWrap}>
-          {RATINGS.map((value) => {
-            const active = value === rating;
+          {FITS.map((fit) => {
+            const active = fit === personalFit;
             return (
               <Pressable
-                key={value}
-                onPress={() => setRating(value)}
-                style={[styles.ratingChip, active && styles.ratingChipActive]}
+                key={fit}
+                onPress={() => setPersonalFit(fit)}
+                style={[styles.fitChip, active && styles.fitChipActive]}
               >
-                <Text style={[styles.ratingText, active && styles.ratingTextActive]}>
-                  {value}
+                <Text style={[styles.fitText, active && styles.fitTextActive]}>
+                  {PLACE_PERSONAL_FIT_LABELS[fit]}
                 </Text>
               </Pressable>
             );
@@ -224,26 +226,24 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: colors.text.primary,
   },
-  ratingChip: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
+  fitChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 4,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.border.soft,
     backgroundColor: colors.background.tertiary,
   },
-  ratingChipActive: {
+  fitChipActive: {
     borderColor: colors.accent.mutedSage,
     backgroundColor: colors.background.secondary,
   },
-  ratingText: {
+  fitText: {
     color: colors.text.muted,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  ratingTextActive: {
-    color: '#45603E',
+  fitTextActive: {
+    color: colors.text.primary,
   },
   error: {
     color: '#A34A3B',

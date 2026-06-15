@@ -161,11 +161,13 @@ export type Relation = {
 
 export type PlaceCategory = 'restaurant' | 'cafe' | 'bar' | 'spot' | 'other';
 
+export type PlacePersonalFit = 'saved' | 'tried' | 'kept' | 'not_for_me';
+
 export type Place = {
   id: string;
   name: string;
   category: PlaceCategory;
-  rating: 1 | 2 | 3 | 4 | 5;
+  personalFit: PlacePersonalFit;
   impression?: string;
   createdAt: string;
 };
@@ -887,11 +889,19 @@ function sanitizePlaceCategory(value: unknown): PlaceCategory {
   return 'other';
 }
 
-function sanitizePlaceRating(value: unknown): 1 | 2 | 3 | 4 | 5 {
-  if (typeof value !== 'number') return 3;
-  if (value <= 1) return 1;
-  if (value >= 5) return 5;
-  return Math.round(value) as 1 | 2 | 3 | 4 | 5;
+const PLACE_PERSONAL_FITS: PlacePersonalFit[] = ['saved', 'tried', 'kept', 'not_for_me'];
+
+function sanitizePlacePersonalFit(value: unknown): PlacePersonalFit {
+  if (typeof value === 'string' && PLACE_PERSONAL_FITS.includes(value as PlacePersonalFit)) {
+    return value as PlacePersonalFit;
+  }
+  // Legacy hydration: numeric rating → personalFit
+  if (typeof value === 'number') {
+    if (value >= 4) return 'kept';
+    if (value === 3) return 'tried';
+    return 'not_for_me';
+  }
+  return 'saved';
 }
 
 function normalizeSideIdentityStatus(
@@ -1171,7 +1181,10 @@ loadPersistedState<PersistedState>().then((persisted) => {
                 : `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             name,
             category: sanitizePlaceCategory(place.category),
-            rating: sanitizePlaceRating(place.rating),
+            personalFit: sanitizePlacePersonalFit(
+              (place as Record<string, unknown>).personalFit ??
+              (place as Record<string, unknown>).rating,
+            ),
             impression:
               typeof place.impression === 'string' && place.impression.trim().length > 0
                 ? place.impression.trim()
@@ -1511,14 +1524,14 @@ function openMutualReveal(relationId: string): boolean {
 export type PlaceCreateInput = {
   name: string;
   category: PlaceCategory;
-  rating: 1 | 2 | 3 | 4 | 5;
+  personalFit: PlacePersonalFit;
   impression?: string;
 };
 
 export type PlaceUpdateInput = {
   name: string;
   category: PlaceCategory;
-  rating: 1 | 2 | 3 | 4 | 5;
+  personalFit: PlacePersonalFit;
   impression?: string;
 };
 
@@ -1551,13 +1564,13 @@ function pushPlace(input: PlaceCreateInput): Place | null {
   if (!cleanName) return null;
 
   const category = sanitizePlaceCategory(input.category);
-  const rating = sanitizePlaceRating(input.rating);
+  const personalFit = sanitizePlacePersonalFit(input.personalFit);
   const cleanImpression = input.impression?.trim();
   const place: Place = {
     id: `p-${Date.now()}`,
     name: cleanName,
     category,
-    rating,
+    personalFit,
     impression: cleanImpression ? cleanImpression : undefined,
     createdAt: new Date().toISOString(),
   };
@@ -1572,7 +1585,7 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
   if (!cleanName) return false;
 
   const category = sanitizePlaceCategory(update.category);
-  const rating = sanitizePlaceRating(update.rating);
+  const personalFit = sanitizePlacePersonalFit(update.personalFit);
   const cleanImpression = update.impression?.trim();
 
   let didUpdate = false;
@@ -1583,7 +1596,7 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
       ...place,
       name: cleanName,
       category,
-      rating,
+      personalFit,
       impression: cleanImpression ? cleanImpression : undefined,
     };
   });

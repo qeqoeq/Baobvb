@@ -5,10 +5,8 @@ import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
 import {
   getPlaceCategoryLabel,
+  getPlaceFitLabel,
   getPlaceReading,
-  getPlaceRatingSignature,
-  getPlaceTone,
-  sanitizeRating,
 } from '@/lib/places';
 import { useRelationsStore } from '@/store/useRelationsStore';
 
@@ -18,12 +16,12 @@ export default function PlacesScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.title}>Places & tastes</Text>
+        <Text style={styles.title}>Places</Text>
         <Text style={styles.subtitle}>
           A quiet memory of where connection felt right.
         </Text>
         <Link href="../place/add" style={styles.addLink}>
-          + Rate a place
+          + Save a place
         </Link>
       </View>
 
@@ -32,34 +30,23 @@ export default function PlacesScreen() {
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>No place yet</Text>
             <Text style={styles.emptyText}>
-              Start with one place and one simple note of taste.
+              Start with one place and one simple note.
             </Text>
           </View>
         ) : (
           places.map((place) => {
-            const safeRating = sanitizeRating(place.rating);
-            const tone = getPlaceTone(safeRating);
             return (
               <Pressable
                 key={place.id}
                 onPress={() => router.push(`../place/${place.id}`)}
-                style={[
-                  styles.card,
-                  {
-                    borderColor: tone.border,
-                    backgroundColor: tone.tint,
-                  },
-                ]}
+                style={styles.card}
               >
                 <View style={styles.row}>
                   <Text style={styles.name}>{place.name}</Text>
-                  <Text style={[styles.rating, { color: tone.accent }]}>{safeRating}/5</Text>
+                  <Text style={styles.fit}>{getPlaceFitLabel(place.personalFit)}</Text>
                 </View>
                 <View style={styles.metaRow}>
                   <Text style={styles.meta}>{getPlaceCategoryLabel(place.category)}</Text>
-                  <Text style={[styles.signature, { color: tone.accent }]}>
-                    {getPlaceRatingSignature(safeRating)}
-                  </Text>
                 </View>
                 <Text style={styles.impression}>{getPlaceReading(place)}</Text>
               </Pressable>
@@ -135,25 +122,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     flex: 1,
   },
-  rating: {
-    color: '#48624B',
-    fontWeight: '700',
+  fit: {
+    color: colors.text.secondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   meta: {
     color: colors.text.muted,
     fontSize: 13,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  signature: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   impression: {
     color: '#CFC8BF',

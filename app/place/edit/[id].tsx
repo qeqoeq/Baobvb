@@ -1,16 +1,16 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
 import {
   PLACE_CATEGORY_LABELS,
-  getPlaceTone,
-  sanitizeRating,
+  PLACE_PERSONAL_FIT_LABELS,
 } from '@/lib/places';
 import {
   type PlaceCategory,
+  type PlacePersonalFit,
   type PlaceUpdateInput,
   useRelationsStore,
 } from '@/store/useRelationsStore';
@@ -23,7 +23,7 @@ const CATEGORIES: { id: PlaceCategory; label: string }[] = [
   { id: 'other', label: PLACE_CATEGORY_LABELS.other },
 ];
 
-const RATINGS: PlaceUpdateInput['rating'][] = [1, 2, 3, 4, 5];
+const FITS: PlacePersonalFit[] = ['saved', 'tried', 'kept', 'not_for_me'];
 
 export default function EditPlaceScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
@@ -32,13 +32,11 @@ export default function EditPlaceScreen() {
 
   const [name, setName] = useState(place?.name ?? '');
   const [category, setCategory] = useState<PlaceCategory>(place?.category ?? 'other');
-  const [rating, setRating] = useState<PlaceUpdateInput['rating']>(
-    sanitizeRating(place?.rating ?? 3),
+  const [personalFit, setPersonalFit] = useState<PlaceUpdateInput['personalFit']>(
+    place?.personalFit ?? 'saved',
   );
   const [impression, setImpression] = useState(place?.impression ?? '');
   const [error, setError] = useState<string | null>(null);
-
-  const tone = useMemo(() => getPlaceTone(rating), [rating]);
 
   if (!place) {
     return (
@@ -58,7 +56,7 @@ export default function EditPlaceScreen() {
     const ok = updatePlace(place.id, {
       name,
       category,
-      rating,
+      personalFit,
       impression,
     });
 
@@ -72,10 +70,10 @@ export default function EditPlaceScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={[styles.previewCard, { borderColor: tone.border, backgroundColor: tone.tint }]}>
+      <View style={styles.previewCard}>
         <Text style={styles.previewLabel}>Place preview</Text>
         <Text style={styles.previewName}>{name.trim() || place.name}</Text>
-        <Text style={[styles.previewRating, { color: tone.accent }]}>{rating}/5</Text>
+        <Text style={styles.previewFit}>{PLACE_PERSONAL_FIT_LABELS[personalFit]}</Text>
       </View>
 
       <View style={styles.formCard}>
@@ -107,18 +105,18 @@ export default function EditPlaceScreen() {
           })}
         </View>
 
-        <Text style={styles.inputLabel}>Rating</Text>
+        <Text style={styles.inputLabel}>How does it fit?</Text>
         <View style={styles.rowWrap}>
-          {RATINGS.map((value) => {
-            const active = value === rating;
+          {FITS.map((fit) => {
+            const active = fit === personalFit;
             return (
               <Pressable
-                key={value}
-                onPress={() => setRating(value)}
-                style={[styles.ratingChip, active && styles.ratingChipActive]}
+                key={fit}
+                onPress={() => setPersonalFit(fit)}
+                style={[styles.fitChip, active && styles.fitChipActive]}
               >
-                <Text style={[styles.ratingChipText, active && styles.ratingChipTextActive]}>
-                  {value}
+                <Text style={[styles.fitChipText, active && styles.fitChipTextActive]}>
+                  {PLACE_PERSONAL_FIT_LABELS[fit]}
                 </Text>
               </Pressable>
             );
@@ -159,6 +157,8 @@ const styles = StyleSheet.create({
   previewCard: {
     borderWidth: 1,
     borderRadius: radius.lg,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.secondary,
     padding: spacing.md,
     gap: spacing.xs,
   },
@@ -174,8 +174,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
   },
-  previewRating: {
-    fontWeight: '700',
+  previewFit: {
+    color: colors.text.secondary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   formCard: {
     borderRadius: radius.lg,
@@ -227,25 +229,23 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: colors.text.primary,
   },
-  ratingChip: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
+  fitChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 4,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.border.soft,
     backgroundColor: colors.background.tertiary,
   },
-  ratingChipActive: {
+  fitChipActive: {
     borderColor: colors.accent.mutedSage,
     backgroundColor: colors.background.secondary,
   },
-  ratingChipText: {
+  fitChipText: {
     color: colors.text.muted,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  ratingChipTextActive: {
+  fitChipTextActive: {
     color: colors.text.primary,
   },
   error: {
