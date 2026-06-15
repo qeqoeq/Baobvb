@@ -170,6 +170,7 @@ export type Place = {
   personalFit: PlacePersonalFit;
   impression?: string;
   createdAt: string;
+  sourceRelationId?: string;
 };
 
 export type MeProfile = {
@@ -904,6 +905,12 @@ function sanitizePlacePersonalFit(value: unknown): PlacePersonalFit {
   return 'saved';
 }
 
+function sanitizePlaceSourceRelationId(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function normalizeSideIdentityStatus(
   value: unknown,
   fallback: RelationshipSideIdentityStatus,
@@ -1174,6 +1181,9 @@ loadPersistedState<PersistedState>().then((persisted) => {
           const name = typeof place.name === 'string' ? place.name.trim() : '';
           if (!name) return acc;
 
+          const hydratedSourceRelationId = sanitizePlaceSourceRelationId(
+            (place as Record<string, unknown>).sourceRelationId,
+          );
           acc.push({
             id:
               typeof place.id === 'string' && place.id.length > 0
@@ -1193,6 +1203,7 @@ loadPersistedState<PersistedState>().then((persisted) => {
               typeof place.createdAt === 'string' && place.createdAt.length > 0
                 ? place.createdAt
                 : new Date().toISOString(),
+            ...(hydratedSourceRelationId !== undefined ? { sourceRelationId: hydratedSourceRelationId } : {}),
           });
 
           return acc;
@@ -1526,6 +1537,7 @@ export type PlaceCreateInput = {
   category: PlaceCategory;
   personalFit: PlacePersonalFit;
   impression?: string;
+  sourceRelationId?: string;
 };
 
 export type PlaceUpdateInput = {
@@ -1533,6 +1545,7 @@ export type PlaceUpdateInput = {
   category: PlaceCategory;
   personalFit: PlacePersonalFit;
   impression?: string;
+  sourceRelationId?: string;
 };
 
 // ── progressive private signals ────────────────────────────────────────
@@ -1566,6 +1579,7 @@ function pushPlace(input: PlaceCreateInput): Place | null {
   const category = sanitizePlaceCategory(input.category);
   const personalFit = sanitizePlacePersonalFit(input.personalFit);
   const cleanImpression = input.impression?.trim();
+  const sourceRelationId = sanitizePlaceSourceRelationId(input.sourceRelationId);
   const place: Place = {
     id: `p-${Date.now()}`,
     name: cleanName,
@@ -1573,6 +1587,7 @@ function pushPlace(input: PlaceCreateInput): Place | null {
     personalFit,
     impression: cleanImpression ? cleanImpression : undefined,
     createdAt: new Date().toISOString(),
+    ...(sourceRelationId !== undefined ? { sourceRelationId } : {}),
   };
   state.places = [place, ...state.places];
   emitChange();
@@ -1598,6 +1613,7 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
       category,
       personalFit,
       impression: cleanImpression ? cleanImpression : undefined,
+      sourceRelationId: sanitizePlaceSourceRelationId(update.sourceRelationId),
     };
   });
 

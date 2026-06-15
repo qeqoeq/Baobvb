@@ -7,6 +7,7 @@ import {
   getPlaceFitLabel,
   getPlaceReading,
   sanitizePlacePersonalFit,
+  sanitizePlaceSourceRelationId,
 } from './places';
 
 // ── getPlaceCategoryLabel ────────────────────────────────────────────────────
@@ -138,5 +139,29 @@ describe('sanitizePlacePersonalFit — legacy numeric rating migration', () => {
     // where both `personalFit` and `rating` fields can be inspected together.
     expect(sanitizePlacePersonalFit(5)).toBe('saved');
     expect(sanitizePlacePersonalFit(1)).toBe('saved');
+  });
+});
+
+// ── sanitizePlaceSourceRelationId ────────────────────────────────────────────
+
+describe('sanitizePlaceSourceRelationId', () => {
+  it('returns trimmed string for valid non-empty input', () => {
+    expect(sanitizePlaceSourceRelationId('abc')).toBe('abc');
+    expect(sanitizePlaceSourceRelationId('  abc  ')).toBe('abc');
+    expect(sanitizePlaceSourceRelationId('rel-uuid-123')).toBe('rel-uuid-123');
+  });
+
+  it('returns undefined for empty or whitespace-only strings', () => {
+    expect(sanitizePlaceSourceRelationId('')).toBeUndefined();
+    expect(sanitizePlaceSourceRelationId('   ')).toBeUndefined();
+  });
+
+  it('returns undefined for non-string inputs', () => {
+    expect(sanitizePlaceSourceRelationId(null)).toBeUndefined();
+    expect(sanitizePlaceSourceRelationId(undefined)).toBeUndefined();
+    expect(sanitizePlaceSourceRelationId(42)).toBeUndefined();
+    expect(sanitizePlaceSourceRelationId({})).toBeUndefined();
+    expect(sanitizePlaceSourceRelationId([])).toBeUndefined();
+    expect(sanitizePlaceSourceRelationId(true)).toBeUndefined();
   });
 });
