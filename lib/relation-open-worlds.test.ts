@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   canUsePrivateOpenWorlds,
+  deriveTrustedWorldMap,
   getRelationOpenWorldLabel,
   isRelationOpenWorld,
   RELATION_OPEN_WORLD_OPTIONS,
   sanitizeRelationOpenWorlds,
+  type TrustedWorldMapEvaluationInput,
+  type TrustedWorldMapRelationInput,
 } from './relation-open-worlds';
 
 describe('isRelationOpenWorld', () => {
@@ -82,6 +85,125 @@ describe('getRelationOpenWorldLabel', () => {
     expect(getRelationOpenWorldLabel('sport')).toBe('Sport');
     expect(getRelationOpenWorldLabel('travel')).toBe('Travel');
     expect(getRelationOpenWorldLabel('culture')).toBe('Culture');
+  });
+});
+
+describe('deriveTrustedWorldMap', () => {
+  function makeRelation(
+    overrides: Partial<TrustedWorldMapRelationInput> & { id?: string } = {},
+  ): TrustedWorldMapRelationInput {
+    return {
+      id: 'r1',
+      archived: false,
+      privateOpenWorlds: undefined,
+      localState: { revealSnapshot: { revealed: true } },
+      ...overrides,
+    };
+  }
+
+  function makeEval(
+    relationId: string,
+    trust: number | null | undefined = 4,
+  ): TrustedWorldMapEvaluationInput {
+    return { relationId, ratings: { trust } };
+  }
+
+  it('returns [] for empty inputs', () => {
+    expect(deriveTrustedWorldMap([], [])).toEqual([]);
+  });
+
+  it('returns [] when no relation has privateOpenWorlds', () => {
+    const r = makeRelation({ privateOpenWorlds: undefined });
+    expect(deriveTrustedWorldMap([r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('returns [] when relation has worlds but is not revealed', () => {
+    const r = makeRelation({
+      privateOpenWorlds: ['sport'],
+      localState: { revealSnapshot: { revealed: false } },
+    });
+    expect(deriveTrustedWorldMap([r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('returns [] when relation has worlds but trust < 4', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'] });
+    expect(deriveTrustedWorldMap([r], [makeEval('r1', 3)])).toEqual([]);
+  });
+
+  it('returns [] when relation has worlds but is archived', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'], archived: true });
+    expect(deriveTrustedWorldMap([r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('returns [] when no evaluation exists for the relation', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'] });
+    expect(deriveTrustedWorldMap([r], [])).toEqual([]);
+  });
+
+  it('returns [] when evaluation has no ratings.trust', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'] });
+    const e: TrustedWorldMapEvaluationInput = { relationId: 'r1', ratings: {} };
+    expect(deriveTrustedWorldMap([r], [e])).toEqual([]);
+  });
+
+  it('returns [] when evaluation has no ratings object', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'] });
+    const e: TrustedWorldMapEvaluationInput = { relationId: 'r1' };
+    expect(deriveTrustedWorldMap([r], [e])).toEqual([]);
+  });
+
+  it('aggregates worlds from multiple eligible relations', () => {
+    const r1 = makeRelation({ id: 'r1', privateOpenWorlds: ['sport', 'learning'] });
+    const r2 = makeRelation({ id: 'r2', privateOpenWorlds: ['culture'] });
+    const result = deriveTrustedWorldMap([r1, r2], [makeEval('r1'), makeEval('r2')]);
+    expect(result).toEqual(['learning', 'sport', 'culture']);
+  });
+
+  it('deduplicates a world present on multiple relations', () => {
+    const r1 = makeRelation({ id: 'r1', privateOpenWorlds: ['sport'] });
+    const r2 = makeRelation({ id: 'r2', privateOpenWorlds: ['sport', 'travel'] });
+    const result = deriveTrustedWorldMap([r1, r2], [makeEval('r1'), makeEval('r2')]);
+    expect(result).toEqual(['sport', 'travel']);
+  });
+
+  it('returns worlds in canonical order regardless of input order', () => {
+    const r = makeRelation({ privateOpenWorlds: ['culture', 'local_life', 'sport'] });
+    const result = deriveTrustedWorldMap([r], [makeEval('r1')]);
+    expect(result).toEqual(['local_life', 'sport', 'culture']);
+  });
+
+  it('drops invalid world values via sanitization', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport', 'invalid_world', 42] });
+    expect(deriveTrustedWorldMap([r], [makeEval('r1')])).toEqual(['sport']);
+  });
+
+  it('ignores legacy work value', () => {
+    const r = makeRelation({ privateOpenWorlds: ['work', 'learning'] });
+    expect(deriveTrustedWorldMap([r], [makeEval('r1')])).toEqual(['learning']);
+  });
+
+  it('ignores worlds from ineligible relations even when eligible ones are present', () => {
+    const eligible = makeRelation({ id: 'r1', privateOpenWorlds: ['sport'] });
+    const ineligible = makeRelation({
+      id: 'r2',
+      privateOpenWorlds: ['culture'],
+      localState: { revealSnapshot: { revealed: false } },
+    });
+    const result = deriveTrustedWorldMap(
+      [eligible, ineligible],
+      [makeEval('r1'), makeEval('r2')],
+    );
+    expect(result).toEqual(['sport']);
+  });
+
+  it('output is strictly RelationOpenWorld[] — no ids, counts, or sources', () => {
+    const r = makeRelation({ privateOpenWorlds: ['travel', 'creative'] });
+    const result = deriveTrustedWorldMap([r], [makeEval('r1')]);
+    expect(Array.isArray(result)).toBe(true);
+    result.forEach((item) => {
+      expect(typeof item).toBe('string');
+    });
+    expect(result).toEqual(['creative', 'travel']);
   });
 });
 

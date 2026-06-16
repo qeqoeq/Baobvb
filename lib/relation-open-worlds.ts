@@ -58,3 +58,44 @@ export function canUsePrivateOpenWorlds(params: {
     params.isArchived !== true
   );
 }
+
+export type TrustedWorldMapRelationInput = {
+  id: string;
+  archived?: boolean;
+  privateOpenWorlds?: unknown;
+  localState?: {
+    revealSnapshot?: {
+      revealed?: boolean;
+    };
+  };
+};
+
+export type TrustedWorldMapEvaluationInput = {
+  relationId: string;
+  ratings?: {
+    trust?: number | null;
+  };
+};
+
+export function deriveTrustedWorldMap(
+  relations: TrustedWorldMapRelationInput[],
+  evaluations: TrustedWorldMapEvaluationInput[],
+): RelationOpenWorld[] {
+  const evalByRelationId = new Map(evaluations.map((e) => [e.relationId, e]));
+  const collected = new Set<RelationOpenWorld>();
+
+  for (const relation of relations) {
+    const evaluation = evalByRelationId.get(relation.id);
+    const isRevealed = relation.localState?.revealSnapshot?.revealed === true;
+    const trustRating = evaluation?.ratings?.trust ?? null;
+    const isArchived = relation.archived === true;
+
+    if (!canUsePrivateOpenWorlds({ isRevealed, trustRating, isArchived })) continue;
+
+    for (const world of sanitizeRelationOpenWorlds(relation.privateOpenWorlds)) {
+      collected.add(world);
+    }
+  }
+
+  return RELATION_OPEN_WORLD_OPTIONS.filter((w) => collected.has(w));
+}
