@@ -354,6 +354,7 @@ const SEED_RELATIONS: Relation[] = [
     identityStatus: 'verified',
     relationshipNameRevealed: true,
     source: 'manual',
+    privateOpenWorlds: ['local_life', 'culture'],
     localState: {
       sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e5' },
       sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
@@ -385,6 +386,7 @@ const SEED_RELATIONS: Relation[] = [
     identityStatus: 'verified',
     relationshipNameRevealed: true,
     source: 'manual',
+    privateOpenWorlds: ['learning', 'creative'],
     localState: {
       sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e7' },
       sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
@@ -415,6 +417,7 @@ const SEED_RELATIONS: Relation[] = [
     identityStatus: 'verified',
     relationshipNameRevealed: true,
     source: 'manual',
+    privateOpenWorlds: ['travel', 'culture'],
     localState: {
       sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e9' },
       sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
@@ -430,6 +433,7 @@ const SEED_RELATIONS: Relation[] = [
     identityStatus: 'verified',
     relationshipNameRevealed: true,
     source: 'manual',
+    privateOpenWorlds: ['sport', 'local_life'],
     localState: {
       sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e10' },
       sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
@@ -460,6 +464,7 @@ const SEED_RELATIONS: Relation[] = [
     identityStatus: 'verified',
     relationshipNameRevealed: true,
     source: 'manual',
+    privateOpenWorlds: ['learning', 'sport'],
     localState: {
       sideA: { exists: true, identityStatus: 'verified', hasPrivateReading: true, privateReadingId: 'e12' },
       sideB: { exists: true, identityStatus: 'verified', hasPrivateReading: true },
@@ -854,7 +859,7 @@ const REVEAL_UNLOCK_DELAY_MS = 90_000;
  * On mismatch with persisted state, the store resets to fresh seed.
  * This ensures dev/demo devices always get the latest data.
  */
-const SEED_VERSION = 7;
+const SEED_VERSION = 8;
 
 type PersistedState = StoreState & { seedVersion?: number };
 
