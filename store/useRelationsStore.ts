@@ -20,6 +20,10 @@ import {
   type RelationAnchorMode,
   type RelationDepth,
 } from '../lib/relation-model';
+import {
+  sanitizeRelationOpenWorlds,
+  type RelationOpenWorld,
+} from '../lib/relation-open-worlds';
 import { clearPersistedState, loadPersistedState, persistState } from '../lib/storage';
 import {
   findAssistedReconciliationSuggestionForRelation,
@@ -157,6 +161,13 @@ export type Relation = {
    * Does not confirm the message was sent, delivered, or received.
    */
   inviteDeliveryOpenedAt?: string | null;
+  /**
+   * Private, local-only perception of what worlds this relational path can open.
+   * Never sent to the backend. Never displayed with attribution.
+   * Gate: isRevealed === true AND trustRating >= 4 AND !isArchived.
+   * Max 3 worlds. Canonical order preserved by sanitizeRelationOpenWorlds.
+   */
+  privateOpenWorlds?: RelationOpenWorld[];
 };
 
 export type PlaceCategory = 'restaurant' | 'cafe' | 'bar' | 'spot' | 'other';
@@ -1183,6 +1194,10 @@ loadPersistedState<PersistedState>().then((persisted) => {
           relationshipNameRevealed: relation.relationshipNameRevealed === true,
           localState: relation.localState,
         }, persistedEvaluations),
+        ...(() => {
+          const w = sanitizeRelationOpenWorlds((relation as Record<string, unknown>).privateOpenWorlds);
+          return w.length > 0 ? { privateOpenWorlds: w } : {};
+        })(),
       }),
     );
     // Re-derive tier on every persisted evaluation. Defensive against legacy
@@ -1631,6 +1646,23 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
     };
   });
 
+  if (!didUpdate) return false;
+  emitChange();
+  persist();
+  return true;
+}
+
+function updateRelationPrivateOpenWorlds(id: string, worlds: RelationOpenWorld[]): boolean {
+  const sanitized = sanitizeRelationOpenWorlds(worlds);
+  let didUpdate = false;
+  state.relations = state.relations.map((relation) => {
+    if (relation.id !== id) return relation;
+    didUpdate = true;
+    return {
+      ...relation,
+      privateOpenWorlds: sanitized.length > 0 ? sanitized : undefined,
+    };
+  });
   if (!didUpdate) return false;
   emitChange();
   persist();
@@ -2130,6 +2162,9 @@ export function useRelationsStore() {
   const getDraftResolutionSuggestionForRelation = (relationId: string) =>
     findDraftResolutionSuggestionForRelation(relationId, relations);
 
+  const setRelationPrivateOpenWorlds = (id: string, worlds: RelationOpenWorld[]) =>
+    updateRelationPrivateOpenWorlds(id, worlds);
+
   return {
     me,
     relations,
@@ -2164,5 +2199,6 @@ export function useRelationsStore() {
     bootstrapSharedRelations,
     getAssistedReconciliationSuggestionForRelation,
     getDraftResolutionSuggestionForRelation,
+    setRelationPrivateOpenWorlds,
   };
 }

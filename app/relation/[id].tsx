@@ -45,6 +45,11 @@ import {
   getProgressiveCriteriaForPillar,
   type ProgressiveCriterionKey,
 } from '../../lib/progressive-criteria';
+import {
+  canUsePrivateOpenWorlds,
+  getRelationOpenWorldLabel,
+  RELATION_OPEN_WORLD_OPTIONS,
+} from '../../lib/relation-open-worlds';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 function getHeaderTitle(
@@ -68,7 +73,7 @@ const PILLAR_ORDER: PillarKey[] = [
 
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
-  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation, progressivePrivateSignals } = useRelationsStore();
+  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation, progressivePrivateSignals, setRelationPrivateOpenWorlds } = useRelationsStore();
   const [sharedReveal, setSharedReveal] = useState<Awaited<
     ReturnType<typeof getSharedRevealRecordForCurrentUser>
   > | null>(null);
@@ -377,6 +382,12 @@ export default function RelationDetailScreen() {
       privateReadingA: evaluation,
     }),
   );
+
+  const canUseOpenWorlds = canUsePrivateOpenWorlds({
+    isRevealed: nameRevealed,
+    trustRating: evaluation?.ratings.trust ?? null,
+    isArchived: relation.archived,
+  });
 
   // Private layer readback — locally-saved progressive private signals for THIS
   // relation, rendered without scoring, without average, without aggregation.
@@ -1044,6 +1055,49 @@ export default function RelationDetailScreen() {
           </Pressable>
         </View>
       ) : null}
+
+      {canUseOpenWorlds && (
+        <View style={styles.openWorldsBlock}>
+          <Text style={styles.openWorldsEyebrow}>{'PRIVATE WORLDS'}</Text>
+          <Text style={styles.openWorldsCaption}>
+            {'Keep a private sense of where this path can lead.'}
+          </Text>
+          <View style={styles.openWorldsChipRow}>
+            {RELATION_OPEN_WORLD_OPTIONS.map((world) => {
+              const selected = (relation.privateOpenWorlds ?? []).includes(world);
+              const atMax = (relation.privateOpenWorlds?.length ?? 0) >= 3;
+              const disabled = !selected && atMax;
+              return (
+                <Pressable
+                  key={world}
+                  onPress={() => {
+                    const current = relation.privateOpenWorlds ?? [];
+                    const next = selected
+                      ? current.filter((w) => w !== world)
+                      : [...current, world];
+                    setRelationPrivateOpenWorlds(relation.id, next);
+                  }}
+                  disabled={disabled}
+                  style={[
+                    styles.openWorldChip,
+                    selected && styles.openWorldChipSelected,
+                    disabled && styles.openWorldChipDisabled,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.openWorldChipText,
+                      selected && styles.openWorldChipTextSelected,
+                    ]}
+                  >
+                    {getRelationOpenWorldLabel(world)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       {!relation.archived && nextAction.ctaKind !== 'resend' && (
         <View style={styles.managementZone}>
@@ -1842,6 +1896,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.muted,
     textDecorationLine: 'underline',
+  },
+
+  // ── Private Worlds ──────────────────────────────────────────────────────────
+
+  openWorldsBlock: {
+    gap: spacing.sm,
+  },
+  openWorldsEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 2.5,
+    color: colors.text.muted,
+  },
+  openWorldsCaption: {
+    fontSize: 12,
+    color: colors.text.muted,
+    lineHeight: 18,
+  },
+  openWorldsChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  openWorldChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.secondary,
+  },
+  openWorldChipSelected: {
+    borderColor: colors.accent.warmGold,
+    backgroundColor: colors.accent.warmGold + '18',
+  },
+  openWorldChipDisabled: {
+    opacity: 0.4,
+  },
+  openWorldChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.secondary,
+  },
+  openWorldChipTextSelected: {
+    color: colors.accent.warmGold,
   },
 
   // ── Shared reading transition moment (local-only) ───────────────────────────
