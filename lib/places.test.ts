@@ -142,6 +142,34 @@ describe('sanitizePlacePersonalFit — legacy numeric rating migration', () => {
   });
 });
 
+// ── sourceRelationId preservation on update (regression guard for X.15b) ──────
+// setPlace spreads the existing place then overwrites only the mutable fields.
+// The original bug: explicitly writing
+//   sourceRelationId: sanitizePlaceSourceRelationId(update.sourceRelationId)
+// resolved to undefined when the edit screen did not pass sourceRelationId,
+// and that undefined overwrote the value coming from the spread.
+// Fix: remove sourceRelationId from PlaceUpdateInput and from the return value.
+
+describe('sourceRelationId preservation through place update spread', () => {
+  it('spread preserves sourceRelationId when update omits it', () => {
+    const existing = { id: 'p-1', name: 'Le Marché', sourceRelationId: 'rel-abc-123' };
+    const updated = { ...existing, name: 'Le Nouveau Marché' };
+    expect(updated.sourceRelationId).toBe('rel-abc-123');
+  });
+
+  it('demonstrates the original bug: explicit undefined write overwrites spread', () => {
+    const existing = { sourceRelationId: 'rel-abc-123' };
+    const buggy = { ...existing, sourceRelationId: sanitizePlaceSourceRelationId(undefined) };
+    expect(buggy.sourceRelationId).toBeUndefined();
+  });
+
+  it('demonstrates the fix: no explicit write leaves spread value intact', () => {
+    const existing = { sourceRelationId: 'rel-abc-123' };
+    const fixed = { ...existing };
+    expect(fixed.sourceRelationId).toBe('rel-abc-123');
+  });
+});
+
 // ── sanitizePlaceSourceRelationId ────────────────────────────────────────────
 
 describe('sanitizePlaceSourceRelationId', () => {

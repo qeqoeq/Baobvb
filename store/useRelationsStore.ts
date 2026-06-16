@@ -1545,7 +1545,6 @@ export type PlaceUpdateInput = {
   category: PlaceCategory;
   personalFit: PlacePersonalFit;
   impression?: string;
-  sourceRelationId?: string;
 };
 
 // ── progressive private signals ────────────────────────────────────────
@@ -1613,7 +1612,6 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
       category,
       personalFit,
       impression: cleanImpression ? cleanImpression : undefined,
-      sourceRelationId: sanitizePlaceSourceRelationId(update.sourceRelationId),
     };
   });
 
