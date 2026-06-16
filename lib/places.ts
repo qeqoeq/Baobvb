@@ -56,3 +56,104 @@ export function sanitizePlaceSourceRelationId(value: unknown): string | undefine
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 }
+
+// ── Route territory signals ──────────────────────────────────────────────────
+// Internal GPS cartography layer — never persisted, never displayed with
+// attribution. Derives which territories (object categories) have been opened
+// by relational routes, based on places the user has kept.
+//
+// Doctrine:
+//   sourceRelationId stays inside RouteTerritorySignal (private, internal).
+//   TrustWorldTerritory strips attribution entirely — it answers only
+//   "which territories has my trusted world charted?" never "who charted them."
+//
+// Invariants:
+//   - saved / not_for_me are excluded: no behavioral proof of territory
+//   - tried alone is insufficient in V1: territory requires kept evidence
+//   - keptCount >= 2 → 'strong'; keptCount === 1 → 'observed'
+//   - evidencePlaceIds contains only kept place ids
+
+export type RouteTerritorySignal = {
+  sourceRelationId: string;
+  category: PlaceCategory;
+  keptCount: number;
+  triedCount: number;
+  evidencePlaceIds: string[];
+  strength: 'observed' | 'strong';
+};
+
+export type TrustWorldTerritory = {
+  categories: Array<{
+    category: PlaceCategory;
+    strength: 'observed' | 'strong';
+  }>;
+};
+
+export function deriveRouteTerritorySignals(places: Place[]): RouteTerritorySignal[] {
+  type GroupData = { kept: Place[]; tried: Place[] };
+  const byRoute = new Map<string, Map<PlaceCategory, GroupData>>();
+
+  for (const place of places) {
+    if (!place.sourceRelationId) continue;
+    if (place.personalFit === 'saved' || place.personalFit === 'not_for_me') continue;
+
+    let byCat = byRoute.get(place.sourceRelationId);
+    if (!byCat) {
+      byCat = new Map();
+      byRoute.set(place.sourceRelationId, byCat);
+    }
+
+    let group = byCat.get(place.category);
+    if (!group) {
+      group = { kept: [], tried: [] };
+      byCat.set(place.category, group);
+    }
+
+    if (place.personalFit === 'kept') {
+      group.kept.push(place);
+    } else {
+      group.tried.push(place);
+    }
+  }
+
+  const signals: RouteTerritorySignal[] = [];
+
+  for (const [sourceRelationId, byCat] of byRoute) {
+    for (const [category, { kept, tried }] of byCat) {
+      if (kept.length === 0) continue;
+      signals.push({
+        sourceRelationId,
+        category,
+        keptCount: kept.length,
+        triedCount: tried.length,
+        evidencePlaceIds: kept.map((p) => p.id),
+        strength: kept.length >= 2 ? 'strong' : 'observed',
+      });
+    }
+  }
+
+  return signals.sort((a, b) => {
+    const bySource = a.sourceRelationId.localeCompare(b.sourceRelationId);
+    if (bySource !== 0) return bySource;
+    return a.category.localeCompare(b.category);
+  });
+}
+
+export function deriveTrustWorldTerritory(
+  signals: RouteTerritorySignal[],
+): TrustWorldTerritory {
+  const byCategory = new Map<PlaceCategory, 'observed' | 'strong'>();
+
+  for (const signal of signals) {
+    const current = byCategory.get(signal.category);
+    if (current !== 'strong') {
+      byCategory.set(signal.category, signal.strength);
+    }
+  }
+
+  const categories = [...byCategory.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([category, strength]) => ({ category, strength }));
+
+  return { categories };
+}

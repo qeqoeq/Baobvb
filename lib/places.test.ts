@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Place } from '@/store/useRelationsStore';
 import {
   PLACE_CATEGORY_LABELS,
   PLACE_PERSONAL_FIT_LABELS,
+  deriveRouteTerritorySignals,
+  deriveTrustWorldTerritory,
   getPlaceCategoryLabel,
   getPlaceFitLabel,
   getPlaceReading,
   sanitizePlacePersonalFit,
   sanitizePlaceSourceRelationId,
+  type RouteTerritorySignal,
 } from './places';
 
 // ── getPlaceCategoryLabel ────────────────────────────────────────────────────
@@ -167,6 +171,182 @@ describe('sourceRelationId preservation through place update spread', () => {
     const existing = { sourceRelationId: 'rel-abc-123' };
     const fixed = { ...existing };
     expect(fixed.sourceRelationId).toBe('rel-abc-123');
+  });
+});
+
+// ── deriveRouteTerritorySignals ──────────────────────────────────────────────
+
+describe('deriveRouteTerritorySignals', () => {
+  it('returns empty array for empty input', () => {
+    expect(deriveRouteTerritorySignals([])).toEqual([]);
+  });
+
+  it('ignores places without sourceRelationId', () => {
+    const places: Place[] = [
+      { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'kept' } as Place,
+    ];
+    expect(deriveRouteTerritorySignals(places)).toEqual([]);
+  });
+
+  it('ignores saved and not_for_me regardless of sourceRelationId', () => {
+    const places: Place[] = [
+      { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'saved', sourceRelationId: 'rel-1' } as Place,
+      { id: 'p-2', name: 'Bar B', category: 'bar', personalFit: 'not_for_me', sourceRelationId: 'rel-1' } as Place,
+    ];
+    expect(deriveRouteTerritorySignals(places)).toEqual([]);
+  });
+
+  it('kept + sourceRelationId + category produces an observed signal', () => {
+    const places: Place[] = [
+      { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
+    ];
+    const signals = deriveRouteTerritorySignals(places);
+    expect(signals).toHaveLength(1);
+    expect(signals[0]).toMatchObject({
+      sourceRelationId: 'rel-1',
+      category: 'cafe',
+      keptCount: 1,
+      triedCount: 0,
+      evidencePlaceIds: ['p-1'],
+      strength: 'observed',
+    });
+  });
+
+  it('two kept in same route+category → strength strong', () => {
+    const places: Place[] = [
+      { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
+      { id: 'p-2', name: 'Café B', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
+    ];
+    const signals = deriveRouteTerritorySignals(places);
+    expect(signals).toHaveLength(1);
+    expect(signals[0].strength).toBe('strong');
+    expect(signals[0].keptCount).toBe(2);
+  });
+
+  it('tried without kept produces no signal', () => {
+    const places: Place[] = [
+      { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'tried', sourceRelationId: 'rel-1' } as Place,
+    ];
+    expect(deriveRouteTerritorySignals(places)).toEqual([]);
+  });
+
+  it('tried + kept in same category → triedCount included in signal', () => {
+    const places: Place[] = [
+      { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
+      { id: 'p-2', name: 'Café B', category: 'cafe', personalFit: 'tried', sourceRelationId: 'rel-1' } as Place,
+    ];
+    const signals = deriveRouteTerritorySignals(places);
+    expect(signals).toHaveLength(1);
+    expect(signals[0].keptCount).toBe(1);
+    expect(signals[0].triedCount).toBe(1);
+  });
+
+  it('evidencePlaceIds contains only kept IDs, not tried', () => {
+    const places: Place[] = [
+      { id: 'p-kept', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
+      { id: 'p-tried', name: 'Café B', category: 'cafe', personalFit: 'tried', sourceRelationId: 'rel-1' } as Place,
+    ];
+    const signals = deriveRouteTerritorySignals(places);
+    expect(signals[0].evidencePlaceIds).toEqual(['p-kept']);
+    expect(signals[0].evidencePlaceIds).not.toContain('p-tried');
+  });
+
+  it('multiple routes → separate signals per route', () => {
+    const places: Place[] = [
+      { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
+      { id: 'p-2', name: 'Café B', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-2' } as Place,
+    ];
+    const signals = deriveRouteTerritorySignals(places);
+    expect(signals).toHaveLength(2);
+    expect(signals.map((s) => s.sourceRelationId)).toContain('rel-1');
+    expect(signals.map((s) => s.sourceRelationId)).toContain('rel-2');
+  });
+
+  it('same route, different categories → separate signals per category', () => {
+    const places: Place[] = [
+      { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
+      { id: 'p-2', name: 'Bar B', category: 'bar', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
+    ];
+    const signals = deriveRouteTerritorySignals(places);
+    expect(signals).toHaveLength(2);
+    expect(signals.map((s) => s.category)).toContain('cafe');
+    expect(signals.map((s) => s.category)).toContain('bar');
+  });
+
+  it('result is sorted by sourceRelationId then category', () => {
+    const places: Place[] = [
+      { id: 'p-1', name: 'Restaurant A', category: 'restaurant', personalFit: 'kept', sourceRelationId: 'rel-2' } as Place,
+      { id: 'p-2', name: 'Café B', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
+      { id: 'p-3', name: 'Bar C', category: 'bar', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
+    ];
+    const signals = deriveRouteTerritorySignals(places);
+    expect(signals[0]).toMatchObject({ sourceRelationId: 'rel-1', category: 'bar' });
+    expect(signals[1]).toMatchObject({ sourceRelationId: 'rel-1', category: 'cafe' });
+    expect(signals[2]).toMatchObject({ sourceRelationId: 'rel-2', category: 'restaurant' });
+  });
+});
+
+// ── deriveTrustWorldTerritory ────────────────────────────────────────────────
+
+describe('deriveTrustWorldTerritory', () => {
+  it('returns empty categories for empty signals', () => {
+    expect(deriveTrustWorldTerritory([])).toEqual({ categories: [] });
+  });
+
+  it('single observed signal → single observed territory', () => {
+    const signals: RouteTerritorySignal[] = [
+      { sourceRelationId: 'rel-1', category: 'cafe', keptCount: 1, triedCount: 0, evidencePlaceIds: ['p-1'], strength: 'observed' },
+    ];
+    expect(deriveTrustWorldTerritory(signals)).toEqual({
+      categories: [{ category: 'cafe', strength: 'observed' }],
+    });
+  });
+
+  it('single strong signal → single strong territory', () => {
+    const signals: RouteTerritorySignal[] = [
+      { sourceRelationId: 'rel-1', category: 'cafe', keptCount: 2, triedCount: 0, evidencePlaceIds: ['p-1', 'p-2'], strength: 'strong' },
+    ];
+    expect(deriveTrustWorldTerritory(signals)).toEqual({
+      categories: [{ category: 'cafe', strength: 'strong' }],
+    });
+  });
+
+  it('strong wins over observed for same category across routes', () => {
+    const signals: RouteTerritorySignal[] = [
+      { sourceRelationId: 'rel-1', category: 'cafe', keptCount: 1, triedCount: 0, evidencePlaceIds: ['p-1'], strength: 'observed' },
+      { sourceRelationId: 'rel-2', category: 'cafe', keptCount: 2, triedCount: 0, evidencePlaceIds: ['p-2', 'p-3'], strength: 'strong' },
+    ];
+    const territory = deriveTrustWorldTerritory(signals);
+    expect(territory.categories).toHaveLength(1);
+    expect(territory.categories[0]).toEqual({ category: 'cafe', strength: 'strong' });
+  });
+
+  it('observed does not downgrade strong', () => {
+    const signals: RouteTerritorySignal[] = [
+      { sourceRelationId: 'rel-1', category: 'cafe', keptCount: 2, triedCount: 0, evidencePlaceIds: ['p-1', 'p-2'], strength: 'strong' },
+      { sourceRelationId: 'rel-2', category: 'cafe', keptCount: 1, triedCount: 0, evidencePlaceIds: ['p-3'], strength: 'observed' },
+    ];
+    const territory = deriveTrustWorldTerritory(signals);
+    expect(territory.categories[0].strength).toBe('strong');
+  });
+
+  it('strips sourceRelationId — territory entries carry no attribution', () => {
+    const signals: RouteTerritorySignal[] = [
+      { sourceRelationId: 'rel-secret', category: 'bar', keptCount: 1, triedCount: 0, evidencePlaceIds: ['p-1'], strength: 'observed' },
+    ];
+    const territory = deriveTrustWorldTerritory(signals);
+    const entry = territory.categories[0] as Record<string, unknown>;
+    expect(entry.sourceRelationId).toBeUndefined();
+  });
+
+  it('multiple categories appear in sorted order', () => {
+    const signals: RouteTerritorySignal[] = [
+      { sourceRelationId: 'rel-1', category: 'restaurant', keptCount: 1, triedCount: 0, evidencePlaceIds: ['p-1'], strength: 'observed' },
+      { sourceRelationId: 'rel-1', category: 'bar', keptCount: 2, triedCount: 0, evidencePlaceIds: ['p-2', 'p-3'], strength: 'strong' },
+      { sourceRelationId: 'rel-2', category: 'cafe', keptCount: 1, triedCount: 0, evidencePlaceIds: ['p-4'], strength: 'observed' },
+    ];
+    const territory = deriveTrustWorldTerritory(signals);
+    expect(territory.categories.map((c) => c.category)).toEqual(['bar', 'cafe', 'restaurant']);
   });
 });
 
