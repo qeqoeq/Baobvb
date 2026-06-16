@@ -818,16 +818,32 @@ const SEED_ME: MeProfile = {
   photoUri: null,
 };
 
-const SEED_PLACES: Place[] = [];
+const SEED_PLACES: Place[] = [
+  // Via route '6' — cafe × 2 kept → keptCount 2 → strength 'strong' in territory derivation
+  { id: 'seed-place-1', name: 'Café Orée', category: 'cafe', personalFit: 'kept', impression: 'Quiet corner, easy to stay.', createdAt: '2026-02-10T10:00:00Z', sourceRelationId: '6' },
+  { id: 'seed-place-2', name: 'Le Comptoir Calme', category: 'cafe', personalFit: 'kept', impression: 'Good light, no noise.', createdAt: '2026-03-05T09:30:00Z', sourceRelationId: '6' },
+  // Via route '6' — cafe tried → exercises triedCount; no signal alone
+  { id: 'seed-place-3', name: 'Passage Verde', category: 'cafe', personalFit: 'tried', createdAt: '2026-03-18T14:00:00Z', sourceRelationId: '6' },
+  // Via route '6' — restaurant × 1 kept → strength 'observed'
+  { id: 'seed-place-4', name: 'Maison Luma', category: 'restaurant', personalFit: 'kept', impression: 'Warm dinner spot with a calm rhythm.', createdAt: '2026-01-28T20:00:00Z', sourceRelationId: '6' },
+  // Via route '10' — spot × 1 kept → strength 'observed'
+  { id: 'seed-place-5', name: 'Jardin Haut', category: 'spot', personalFit: 'kept', impression: 'Open-air place that felt easy to return to.', createdAt: '2026-02-20T16:00:00Z', sourceRelationId: '10' },
+  // Via route '10' — restaurant × 1 kept → second observed signal for restaurant territory
+  { id: 'seed-place-6', name: 'Atelier Nord', category: 'restaurant', personalFit: 'kept', impression: 'Simple menu, strong sense of place.', createdAt: '2026-04-02T19:30:00Z', sourceRelationId: '10' },
+  // No sourceRelationId — bar kept → confirms exclusion from territory derivation
+  { id: 'seed-place-7', name: 'Le Fond du Couloir', category: 'bar', personalFit: 'kept', impression: 'Found on my own. Good enough to return.', createdAt: '2026-01-15T22:00:00Z' },
+  // Via route '6' — saved → excluded from signal derivation (no territory proof)
+  { id: 'seed-place-8', name: 'Rue Basse', category: 'bar', personalFit: 'saved', createdAt: '2026-04-10T11:00:00Z', sourceRelationId: '6' },
+];
 const PLACE_CATEGORIES: PlaceCategory[] = ['restaurant', 'cafe', 'bar', 'spot', 'other'];
 const REVEAL_UNLOCK_DELAY_MS = 90_000;
 
 /**
- * Bump when SEED_RELATIONS or SEED_EVALUATIONS change meaningfully.
+ * Bump when SEED_RELATIONS, SEED_EVALUATIONS, or SEED_PLACES change meaningfully.
  * On mismatch with persisted state, the store resets to fresh seed.
  * This ensures dev/demo devices always get the latest data.
  */
-const SEED_VERSION = 6;
+const SEED_VERSION = 7;
 
 type PersistedState = StoreState & { seedVersion?: number };
 
@@ -838,7 +854,7 @@ const state: StoreState = {
   // Seed data is dev-only — production first-run must start with an empty world.
   relations: __DEV__ ? SEED_RELATIONS.map(applyNormalizedRelationModel) : [],
   evaluations: __DEV__ ? SEED_EVALUATIONS : [],
-  places: SEED_PLACES,
+  places: __DEV__ ? SEED_PLACES : [],
   progressivePrivateSignals: {},
 };
 
