@@ -1,7 +1,6 @@
 export type RelationOpenWorld =
   | 'local_life'
   | 'learning'
-  | 'work'
   | 'creative'
   | 'sport'
   | 'travel'
@@ -10,7 +9,6 @@ export type RelationOpenWorld =
 export const RELATION_OPEN_WORLD_OPTIONS: readonly RelationOpenWorld[] = [
   'local_life',
   'learning',
-  'work',
   'creative',
   'sport',
   'travel',
@@ -20,7 +18,6 @@ export const RELATION_OPEN_WORLD_OPTIONS: readonly RelationOpenWorld[] = [
 const RELATION_OPEN_WORLD_LABELS: Record<RelationOpenWorld, string> = {
   local_life: 'Local life',
   learning: 'Learning',
-  work: 'Work',
   creative: 'Creative',
   sport: 'Sport',
   travel: 'Travel',

@@ -20,6 +20,10 @@ describe('isRelationOpenWorld', () => {
     expect(isRelationOpenWorld('expertise')).toBe(false);
   });
 
+  it('returns false for work (removed from V0)', () => {
+    expect(isRelationOpenWorld('work')).toBe(false);
+  });
+
   it('returns false for non-string values', () => {
     expect(isRelationOpenWorld(undefined)).toBe(false);
     expect(isRelationOpenWorld(null)).toBe(false);
@@ -40,23 +44,25 @@ describe('sanitizeRelationOpenWorlds', () => {
     expect(sanitizeRelationOpenWorlds([])).toEqual([]);
   });
 
-  it('filters out invalid values and preserves valid ones', () => {
-    expect(sanitizeRelationOpenWorlds(['work', 'invalid', 'sport'])).toEqual(['work', 'sport']);
+  it('filters out invalid values, including work removed from V0', () => {
+    expect(sanitizeRelationOpenWorlds(['work', 'invalid', 'sport'])).toEqual(['sport']);
+    expect(sanitizeRelationOpenWorlds(['work', 'learning'])).toEqual(['learning']);
   });
 
   it('deduplicates repeated values', () => {
-    expect(sanitizeRelationOpenWorlds(['work', 'work', 'sport'])).toEqual(['work', 'sport']);
+    expect(sanitizeRelationOpenWorlds(['sport', 'sport', 'culture'])).toEqual(['sport', 'culture']);
   });
 
   it('enforces max 3 worlds', () => {
-    const input = ['local_life', 'learning', 'work', 'creative'];
+    const input = ['local_life', 'learning', 'creative', 'sport'];
     const result = sanitizeRelationOpenWorlds(input);
     expect(result).toHaveLength(3);
+    expect(result).toEqual(['local_life', 'learning', 'creative']);
   });
 
   it('returns results in canonical order regardless of input order', () => {
-    const result = sanitizeRelationOpenWorlds(['sport', 'local_life', 'work']);
-    expect(result).toEqual(['local_life', 'work', 'sport']);
+    const result = sanitizeRelationOpenWorlds(['sport', 'local_life', 'culture']);
+    expect(result).toEqual(['local_life', 'sport', 'culture']);
   });
 
   it('canonical order with max 3 — first 3 valid in input, sorted canonically', () => {
@@ -69,10 +75,9 @@ describe('sanitizeRelationOpenWorlds', () => {
 });
 
 describe('getRelationOpenWorldLabel', () => {
-  it('returns the correct label for each world', () => {
+  it('returns the correct label for each V0 world', () => {
     expect(getRelationOpenWorldLabel('local_life')).toBe('Local life');
     expect(getRelationOpenWorldLabel('learning')).toBe('Learning');
-    expect(getRelationOpenWorldLabel('work')).toBe('Work');
     expect(getRelationOpenWorldLabel('creative')).toBe('Creative');
     expect(getRelationOpenWorldLabel('sport')).toBe('Sport');
     expect(getRelationOpenWorldLabel('travel')).toBe('Travel');

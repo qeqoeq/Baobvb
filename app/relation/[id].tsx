@@ -1060,7 +1060,7 @@ export default function RelationDetailScreen() {
         <View style={styles.openWorldsBlock}>
           <Text style={styles.openWorldsEyebrow}>{'PRIVATE WORLDS'}</Text>
           <Text style={styles.openWorldsCaption}>
-            {'Keep a private sense of where this path can lead.'}
+            {'Only on this device — up to 3.'}
           </Text>
           <View style={styles.openWorldsChipRow}>
             {RELATION_OPEN_WORLD_OPTIONS.map((world) => {
@@ -1901,6 +1901,11 @@ const styles = StyleSheet.create({
   // ── Private Worlds ──────────────────────────────────────────────────────────
 
   openWorldsBlock: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.soft,
+    padding: spacing.md,
     gap: spacing.sm,
   },
   openWorldsEyebrow: {
