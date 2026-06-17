@@ -152,3 +152,66 @@ export function deriveKeptPlaceWorldSignals(
 
   return RELATION_OPEN_WORLD_OPTIONS.filter((w) => collected.has(w));
 }
+
+// ─── World kept places ────────────────────────────────────────────────────────
+// Returns the kept places that contributed to a specific world signal.
+//
+// Output is { id, name, category, impression? } only. sourceRelationId and all
+// relational attribution are stripped at this boundary — they cannot surface in
+// the UI by construction.
+
+export type WorldKeptPlaceInput = {
+  id: string;
+  name: string;
+  category: string;
+  personalFit: string;
+  impression?: string;
+  sourceRelationId?: string | null;
+};
+
+export type WorldKeptPlaceItem = {
+  id: string;
+  name: string;
+  category: string;
+  impression?: string;
+};
+
+export function deriveWorldKeptPlaces(
+  world: RelationOpenWorld,
+  places: WorldKeptPlaceInput[],
+  relations: TrustedWorldMapRelationInput[],
+  evaluations: TrustedWorldMapEvaluationInput[],
+): WorldKeptPlaceItem[] {
+  if (!isRelationOpenWorld(world)) return [];
+
+  const relationsById = new Map(relations.map((r) => [r.id, r]));
+  const evalByRelationId = new Map(evaluations.map((e) => [e.relationId, e]));
+  const result: WorldKeptPlaceItem[] = [];
+
+  for (const place of places) {
+    if (place.personalFit !== 'kept') continue;
+    if (!place.sourceRelationId) continue;
+
+    const relation = relationsById.get(place.sourceRelationId);
+    if (!relation) continue;
+
+    const evaluation = evalByRelationId.get(relation.id);
+    const isRevealed = relation.localState?.revealSnapshot?.revealed === true;
+    const trustRating = evaluation?.ratings?.trust ?? null;
+    const isArchived = relation.archived === true;
+
+    if (!canUsePrivateOpenWorlds({ isRevealed, trustRating, isArchived })) continue;
+
+    const eligibleWorlds = sanitizeRelationOpenWorlds(relation.privateOpenWorlds);
+    if (!eligibleWorlds.includes(world)) continue;
+
+    result.push({
+      id: place.id,
+      name: place.name,
+      category: place.category,
+      ...(place.impression !== undefined ? { impression: place.impression } : {}),
+    });
+  }
+
+  return result;
+}

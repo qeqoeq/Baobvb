@@ -4,6 +4,7 @@ import {
   canUsePrivateOpenWorlds,
   deriveKeptPlaceWorldSignals,
   deriveTrustedWorldMap,
+  deriveWorldKeptPlaces,
   getRelationOpenWorldLabel,
   isRelationOpenWorld,
   RELATION_OPEN_WORLD_OPTIONS,
@@ -11,6 +12,7 @@ import {
   type KeptPlaceWorldSignalPlaceInput,
   type TrustedWorldMapEvaluationInput,
   type TrustedWorldMapRelationInput,
+  type WorldKeptPlaceInput,
 } from './relation-open-worlds';
 
 describe('isRelationOpenWorld', () => {
@@ -344,6 +346,147 @@ describe('deriveKeptPlaceWorldSignals', () => {
     expect(Array.isArray(result)).toBe(true);
     result.forEach((item) => expect(typeof item).toBe('string'));
     expect(result).toEqual(['creative', 'travel']);
+  });
+});
+
+describe('deriveWorldKeptPlaces', () => {
+  function makePlace(overrides: Partial<WorldKeptPlaceInput> = {}): WorldKeptPlaceInput {
+    return {
+      id: 'p1',
+      name: 'Café Test',
+      category: 'cafe',
+      personalFit: 'kept',
+      impression: 'Nice place.',
+      sourceRelationId: 'r1',
+      ...overrides,
+    };
+  }
+
+  function makeRelation(
+    overrides: Partial<TrustedWorldMapRelationInput> & { id?: string } = {},
+  ): TrustedWorldMapRelationInput {
+    return {
+      id: 'r1',
+      archived: false,
+      privateOpenWorlds: ['local_life'],
+      localState: { revealSnapshot: { revealed: true } },
+      ...overrides,
+    };
+  }
+
+  function makeEval(
+    relationId: string,
+    trust: number | null | undefined = 4,
+  ): TrustedWorldMapEvaluationInput {
+    return { relationId, ratings: { trust } };
+  }
+
+  it('returns [] if world value is invalid', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'] });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(deriveWorldKeptPlaces('unknown_world' as any, [makePlace()], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('returns [] when no places are provided', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'] });
+    expect(deriveWorldKeptPlaces('local_life', [], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('ignores places without sourceRelationId', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'] });
+    expect(deriveWorldKeptPlaces('local_life', [makePlace({ sourceRelationId: undefined })], [r], [makeEval('r1')])).toEqual([]);
+    expect(deriveWorldKeptPlaces('local_life', [makePlace({ sourceRelationId: null })], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('ignores places with personalFit saved, tried, not_for_me', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'] });
+    expect(deriveWorldKeptPlaces('local_life', [makePlace({ personalFit: 'saved' })], [r], [makeEval('r1')])).toEqual([]);
+    expect(deriveWorldKeptPlaces('local_life', [makePlace({ personalFit: 'tried' })], [r], [makeEval('r1')])).toEqual([]);
+    expect(deriveWorldKeptPlaces('local_life', [makePlace({ personalFit: 'not_for_me' })], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('ignores places whose source relation is absent from the relation list', () => {
+    const r = makeRelation({ id: 'r1', privateOpenWorlds: ['local_life'] });
+    expect(deriveWorldKeptPlaces('local_life', [makePlace({ sourceRelationId: 'r-unknown' })], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('ignores places via non-revealed relations', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'], localState: { revealSnapshot: { revealed: false } } });
+    expect(deriveWorldKeptPlaces('local_life', [makePlace()], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('ignores places via relations with trust < 4', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'] });
+    expect(deriveWorldKeptPlaces('local_life', [makePlace()], [r], [makeEval('r1', 3)])).toEqual([]);
+    expect(deriveWorldKeptPlaces('local_life', [makePlace()], [r], [makeEval('r1', 1)])).toEqual([]);
+  });
+
+  it('ignores places via archived relations', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'], archived: true });
+    expect(deriveWorldKeptPlaces('local_life', [makePlace()], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('returns kept places whose source relation includes the requested world', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life', 'culture'] });
+    const result = deriveWorldKeptPlaces('local_life', [makePlace()], [r], [makeEval('r1')]);
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('Café Test');
+    expect(result[0].category).toBe('cafe');
+    expect(result[0].impression).toBe('Nice place.');
+  });
+
+  it('does not return places when source relation does not include the requested world', () => {
+    const r = makeRelation({ privateOpenWorlds: ['learning'] });
+    expect(deriveWorldKeptPlaces('local_life', [makePlace()], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('output items never contain sourceRelationId', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'] });
+    const result = deriveWorldKeptPlaces('local_life', [makePlace()], [r], [makeEval('r1')]);
+    expect(result).toHaveLength(1);
+    expect('sourceRelationId' in result[0]).toBe(false);
+  });
+
+  it('output items never contain relation id or relation name', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'] });
+    const result = deriveWorldKeptPlaces('local_life', [makePlace()], [r], [makeEval('r1')]);
+    expect(result).toHaveLength(1);
+    expect('relationId' in result[0]).toBe(false);
+    expect('relationName' in result[0]).toBe(false);
+  });
+
+  it('output items contain id, name, category, and impression when present', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'] });
+    const p = makePlace({ id: 'p42', name: 'Spot Test', category: 'spot', impression: 'Peaceful.' });
+    const result = deriveWorldKeptPlaces('local_life', [p], [r], [makeEval('r1')]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({ id: 'p42', name: 'Spot Test', category: 'spot', impression: 'Peaceful.' });
+  });
+
+  it('returns multiple places contributing to the same world', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'] });
+    const p1 = makePlace({ id: 'p1', name: 'Place A', sourceRelationId: 'r1' });
+    const p2 = makePlace({ id: 'p2', name: 'Place B', sourceRelationId: 'r1' });
+    const result = deriveWorldKeptPlaces('local_life', [p1, p2], [r], [makeEval('r1')]);
+    expect(result).toHaveLength(2);
+    expect(result.map((i) => i.name)).toEqual(['Place A', 'Place B']);
+  });
+
+  it('preserves the order of input places', () => {
+    const r = makeRelation({ privateOpenWorlds: ['learning'] });
+    const p1 = makePlace({ id: 'p1', name: 'First', sourceRelationId: 'r1' });
+    const p2 = makePlace({ id: 'p2', name: 'Second', sourceRelationId: 'r1' });
+    const p3 = makePlace({ id: 'p3', name: 'Third', sourceRelationId: 'r1' });
+    const result = deriveWorldKeptPlaces('learning', [p1, p2, p3], [r], [makeEval('r1')]);
+    expect(result.map((i) => i.name)).toEqual(['First', 'Second', 'Third']);
+  });
+
+  it('omits impression from output when place has none', () => {
+    const r = makeRelation({ privateOpenWorlds: ['local_life'] });
+    const p = makePlace({ impression: undefined });
+    const result = deriveWorldKeptPlaces('local_life', [p], [r], [makeEval('r1')]);
+    expect(result).toHaveLength(1);
+    expect(result[0].impression).toBeUndefined();
   });
 });
 

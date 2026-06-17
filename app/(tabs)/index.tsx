@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useMemo } from 'react';
+import { Fragment, useCallback, useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -245,11 +245,23 @@ export default function CircleScreen() {
           {trustedWorlds.length > 0 && (
             <View style={styles.worldsStrip}>
               <Text style={styles.worldsStripEyebrow}>{'OPEN WORLDS'}</Text>
-              <Text style={styles.worldsStripWorlds}>
-                {trustedWorlds.map(getRelationOpenWorldLabel).join(' · ')}
-              </Text>
+              <View style={styles.worldsStripWorldsRow}>
+                {trustedWorlds.map((world, index) => (
+                  <Fragment key={world}>
+                    {index > 0 ? <Text style={styles.worldsStripWorlds}>{' · '}</Text> : null}
+                    <Pressable
+                      onPress={() => {
+                        if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        router.push(`/world/${world}`);
+                      }}
+                    >
+                      <Text style={styles.worldsStripWorlds}>{getRelationOpenWorldLabel(world)}</Text>
+                    </Pressable>
+                  </Fragment>
+                ))}
+              </View>
               <Text style={styles.worldsStripCaption}>
-                {'Private signals from your Bao — not paths yet.'}
+                {'Private signals from your Bao.'}
               </Text>
             </View>
           )}
@@ -418,6 +430,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs + 2,
     gap: 4,
+  },
+  worldsStripWorldsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
   },
   worldsStripEyebrow: {
     fontSize: 10,
