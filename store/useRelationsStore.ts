@@ -850,6 +850,12 @@ const SEED_PLACES: Place[] = [
   { id: 'seed-place-7', name: 'Le Fond du Couloir', category: 'bar', personalFit: 'kept', impression: 'Found on my own. Good enough to return.', createdAt: '2026-01-15T22:00:00Z' },
   // Via route '6' — saved → excluded from signal derivation (no territory proof)
   { id: 'seed-place-8', name: 'Rue Basse', category: 'bar', personalFit: 'saved', createdAt: '2026-04-10T11:00:00Z', sourceRelationId: '6' },
+  // Via route '8' — spot × 1 kept → surfaces learning + creative worlds from this route
+  { id: 'seed-place-9', name: 'La Fonderie', category: 'spot', personalFit: 'kept', impression: 'Workshop space with room to think.', createdAt: '2026-03-22T11:00:00Z', sourceRelationId: '8' },
+  // Via route '11' — spot × 1 kept → surfaces sport + local_life worlds from this route
+  { id: 'seed-place-10', name: 'Parc du Matin', category: 'spot', personalFit: 'kept', impression: 'Early hours, open space, easy rhythm.', createdAt: '2026-04-05T08:30:00Z', sourceRelationId: '11' },
+  // Via route '13' — cafe × 1 kept → reinforces learning + sport worlds from this route
+  { id: 'seed-place-11', name: 'Café Long', category: 'cafe', personalFit: 'kept', impression: 'Works for long sessions.', createdAt: '2026-04-12T10:00:00Z', sourceRelationId: '13' },
 ];
 const PLACE_CATEGORIES: PlaceCategory[] = ['restaurant', 'cafe', 'bar', 'spot', 'other'];
 const REVEAL_UNLOCK_DELAY_MS = 90_000;
@@ -859,7 +865,7 @@ const REVEAL_UNLOCK_DELAY_MS = 90_000;
  * On mismatch with persisted state, the store resets to fresh seed.
  * This ensures dev/demo devices always get the latest data.
  */
-const SEED_VERSION = 8;
+const SEED_VERSION = 9;
 
 type PersistedState = StoreState & { seedVersion?: number };
 
