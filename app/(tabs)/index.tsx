@@ -21,7 +21,7 @@ import {
   type MapMember,
 } from '../../lib/circle-node-state';
 import {
-  deriveTrustedWorldMap,
+  deriveKeptPlaceWorldSignals,
   getRelationOpenWorldLabel,
 } from '../../lib/relation-open-worlds';
 import { useRelationsStore } from '../../store/useRelationsStore';
@@ -29,7 +29,7 @@ import { useRelationsStore } from '../../store/useRelationsStore';
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CircleScreen() {
-  const { me, relations, evaluations } = useRelationsStore();
+  const { me, relations, evaluations, places } = useRelationsStore();
   const { width: screenWidth } = useWindowDimensions();
   const { bottom: bottomInset } = useSafeAreaInsets();
   const atlasSize = screenWidth;
@@ -101,8 +101,8 @@ export default function CircleScreen() {
   );
 
   const trustedWorlds = useMemo(
-    () => deriveTrustedWorldMap(relations, evaluations),
-    [relations, evaluations],
+    () => deriveKeptPlaceWorldSignals(places, relations, evaluations),
+    [places, relations, evaluations],
   );
 
   // Active forming only: cooking_reveal or waiting_other_side WITH a private reading.
