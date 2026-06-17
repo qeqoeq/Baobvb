@@ -99,3 +99,56 @@ export function deriveTrustedWorldMap(
 
   return RELATION_OPEN_WORLD_OPTIONS.filter((w) => collected.has(w));
 }
+
+// ─── Kept-place world signals ─────────────────────────────────────────────────
+// Non-attributive derivation of RelationOpenWorld signals from kept places.
+//
+// Doctrine:
+//   A kept place sourced via an eligible relation carries a world signal from
+//   that relation's privateOpenWorlds. This is behavioral evidence — not a
+//   declared preference — that those worlds have produced something real.
+//
+//   The output is strictly RelationOpenWorld[]. No relation ids, place ids,
+//   counts, scores, confidence, or evidence surfaces. Attribution is fully
+//   stripped: only the world dimensions survive aggregation.
+//
+// Gate (same as deriveTrustedWorldMap):
+//   relation.localState.revealSnapshot.revealed === true
+//   AND trustRating >= 4
+//   AND !archived
+
+export type KeptPlaceWorldSignalPlaceInput = {
+  personalFit: string;
+  sourceRelationId?: string | null;
+};
+
+export function deriveKeptPlaceWorldSignals(
+  places: KeptPlaceWorldSignalPlaceInput[],
+  relations: TrustedWorldMapRelationInput[],
+  evaluations: TrustedWorldMapEvaluationInput[],
+): RelationOpenWorld[] {
+  const relationsById = new Map(relations.map((r) => [r.id, r]));
+  const evalByRelationId = new Map(evaluations.map((e) => [e.relationId, e]));
+  const collected = new Set<RelationOpenWorld>();
+
+  for (const place of places) {
+    if (place.personalFit !== 'kept') continue;
+    if (!place.sourceRelationId) continue;
+
+    const relation = relationsById.get(place.sourceRelationId);
+    if (!relation) continue;
+
+    const evaluation = evalByRelationId.get(relation.id);
+    const isRevealed = relation.localState?.revealSnapshot?.revealed === true;
+    const trustRating = evaluation?.ratings?.trust ?? null;
+    const isArchived = relation.archived === true;
+
+    if (!canUsePrivateOpenWorlds({ isRevealed, trustRating, isArchived })) continue;
+
+    for (const world of sanitizeRelationOpenWorlds(relation.privateOpenWorlds)) {
+      collected.add(world);
+    }
+  }
+
+  return RELATION_OPEN_WORLD_OPTIONS.filter((w) => collected.has(w));
+}

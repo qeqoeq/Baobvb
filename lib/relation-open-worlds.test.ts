@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   canUsePrivateOpenWorlds,
+  deriveKeptPlaceWorldSignals,
   deriveTrustedWorldMap,
   getRelationOpenWorldLabel,
   isRelationOpenWorld,
   RELATION_OPEN_WORLD_OPTIONS,
   sanitizeRelationOpenWorlds,
+  type KeptPlaceWorldSignalPlaceInput,
   type TrustedWorldMapEvaluationInput,
   type TrustedWorldMapRelationInput,
 } from './relation-open-worlds';
@@ -203,6 +205,144 @@ describe('deriveTrustedWorldMap', () => {
     result.forEach((item) => {
       expect(typeof item).toBe('string');
     });
+    expect(result).toEqual(['creative', 'travel']);
+  });
+});
+
+describe('deriveKeptPlaceWorldSignals', () => {
+  function makePlace(overrides: Partial<KeptPlaceWorldSignalPlaceInput> = {}): KeptPlaceWorldSignalPlaceInput {
+    return { personalFit: 'kept', sourceRelationId: 'r1', ...overrides };
+  }
+
+  function makeRelation(
+    overrides: Partial<TrustedWorldMapRelationInput> & { id?: string } = {},
+  ): TrustedWorldMapRelationInput {
+    return {
+      id: 'r1',
+      archived: false,
+      privateOpenWorlds: undefined,
+      localState: { revealSnapshot: { revealed: true } },
+      ...overrides,
+    };
+  }
+
+  function makeEval(
+    relationId: string,
+    trust: number | null | undefined = 4,
+  ): TrustedWorldMapEvaluationInput {
+    return { relationId, ratings: { trust } };
+  }
+
+  it('returns [] when no places are provided', () => {
+    expect(deriveKeptPlaceWorldSignals([], [], [])).toEqual([]);
+  });
+
+  it('returns [] when no place is kept', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'] });
+    expect(deriveKeptPlaceWorldSignals([makePlace({ personalFit: 'saved' })], [r], [makeEval('r1')])).toEqual([]);
+    expect(deriveKeptPlaceWorldSignals([makePlace({ personalFit: 'tried' })], [r], [makeEval('r1')])).toEqual([]);
+    expect(deriveKeptPlaceWorldSignals([makePlace({ personalFit: 'not_for_me' })], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('ignores kept places without a sourceRelationId', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'] });
+    expect(deriveKeptPlaceWorldSignals([makePlace({ sourceRelationId: undefined })], [r], [makeEval('r1')])).toEqual([]);
+    expect(deriveKeptPlaceWorldSignals([makePlace({ sourceRelationId: null })], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('ignores kept places whose source relation is missing from the relation list', () => {
+    const r = makeRelation({ id: 'r1', privateOpenWorlds: ['sport'] });
+    const place = makePlace({ sourceRelationId: 'r-unknown' });
+    expect(deriveKeptPlaceWorldSignals([place], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('ignores kept places via non-revealed relations', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'], localState: { revealSnapshot: { revealed: false } } });
+    expect(deriveKeptPlaceWorldSignals([makePlace()], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('ignores kept places via relations with trust < 4', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'] });
+    expect(deriveKeptPlaceWorldSignals([makePlace()], [r], [makeEval('r1', 3)])).toEqual([]);
+    expect(deriveKeptPlaceWorldSignals([makePlace()], [r], [makeEval('r1', 1)])).toEqual([]);
+  });
+
+  it('ignores kept places via relations with null trust', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'] });
+    expect(deriveKeptPlaceWorldSignals([makePlace()], [r], [makeEval('r1', null)])).toEqual([]);
+  });
+
+  it('ignores kept places via archived relations', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'], archived: true });
+    expect(deriveKeptPlaceWorldSignals([makePlace()], [r], [makeEval('r1')])).toEqual([]);
+  });
+
+  it('ignores kept places when no evaluation exists for the source relation', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport'] });
+    expect(deriveKeptPlaceWorldSignals([makePlace()], [r], [])).toEqual([]);
+  });
+
+  it('collects worlds from eligible kept-place routes', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport', 'learning'] });
+    const result = deriveKeptPlaceWorldSignals([makePlace()], [r], [makeEval('r1')]);
+    expect(result).toEqual(['learning', 'sport']);
+  });
+
+  it('two kept places via the same relation yield worlds once only', () => {
+    const p1 = makePlace({ sourceRelationId: 'r1' });
+    const p2 = makePlace({ sourceRelationId: 'r1' });
+    const r = makeRelation({ id: 'r1', privateOpenWorlds: ['travel', 'culture'] });
+    const result = deriveKeptPlaceWorldSignals([p1, p2], [r], [makeEval('r1')]);
+    expect(result).toEqual(['travel', 'culture']);
+  });
+
+  it('two different relations sharing a world produce it once', () => {
+    const p1 = makePlace({ sourceRelationId: 'r1' });
+    const p2 = makePlace({ sourceRelationId: 'r2' });
+    const r1 = makeRelation({ id: 'r1', privateOpenWorlds: ['sport'] });
+    const r2 = makeRelation({ id: 'r2', privateOpenWorlds: ['sport', 'travel'] });
+    const result = deriveKeptPlaceWorldSignals([p1, p2], [r1, r2], [makeEval('r1'), makeEval('r2')]);
+    expect(result).toEqual(['sport', 'travel']);
+  });
+
+  it('returns worlds in canonical order regardless of relation or place order', () => {
+    const r = makeRelation({ privateOpenWorlds: ['culture', 'local_life', 'sport'] });
+    const result = deriveKeptPlaceWorldSignals([makePlace()], [r], [makeEval('r1')]);
+    expect(result).toEqual(['local_life', 'sport', 'culture']);
+  });
+
+  it('sanitizes invalid world values in relation privateOpenWorlds', () => {
+    const r = makeRelation({ privateOpenWorlds: ['sport', 'invalid_world', 42] });
+    expect(deriveKeptPlaceWorldSignals([makePlace()], [r], [makeEval('r1')])).toEqual(['sport']);
+  });
+
+  it('ignores legacy work value in relation privateOpenWorlds', () => {
+    const r = makeRelation({ privateOpenWorlds: ['work', 'learning'] });
+    expect(deriveKeptPlaceWorldSignals([makePlace()], [r], [makeEval('r1')])).toEqual(['learning']);
+  });
+
+  it('eligible and ineligible routes together — only eligible contribute', () => {
+    const pEligible = makePlace({ sourceRelationId: 'r1' });
+    const pIneligible = makePlace({ sourceRelationId: 'r2' });
+    const rEligible = makeRelation({ id: 'r1', privateOpenWorlds: ['sport'] });
+    const rIneligible = makeRelation({
+      id: 'r2',
+      privateOpenWorlds: ['culture'],
+      localState: { revealSnapshot: { revealed: false } },
+    });
+    const result = deriveKeptPlaceWorldSignals(
+      [pEligible, pIneligible],
+      [rEligible, rIneligible],
+      [makeEval('r1'), makeEval('r2')],
+    );
+    expect(result).toEqual(['sport']);
+  });
+
+  it('output is strictly RelationOpenWorld[] — no ids, counts, scores, or evidence', () => {
+    const r = makeRelation({ privateOpenWorlds: ['travel', 'creative'] });
+    const result = deriveKeptPlaceWorldSignals([makePlace()], [r], [makeEval('r1')]);
+    expect(Array.isArray(result)).toBe(true);
+    result.forEach((item) => expect(typeof item).toBe('string'));
     expect(result).toEqual(['creative', 'travel']);
   });
 });
