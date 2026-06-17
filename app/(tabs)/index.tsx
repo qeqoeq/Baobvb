@@ -242,19 +242,18 @@ export default function CircleScreen() {
               )}
             </View>
           )}
+          {trustedWorlds.length > 0 && (
+            <View style={styles.worldsStrip}>
+              <Text style={styles.worldsStripEyebrow}>{'OPEN WORLDS'}</Text>
+              <Text style={styles.worldsStripWorlds}>
+                {trustedWorlds.map(getRelationOpenWorldLabel).join(' · ')}
+              </Text>
+              <Text style={styles.worldsStripCaption}>
+                {'Private signals from your Bao — not paths yet.'}
+              </Text>
+            </View>
+          )}
         </View>
-
-        {trustedWorlds.length > 0 && (
-          <View style={styles.worldsStrip}>
-            <Text style={styles.worldsStripEyebrow}>{'OPEN WORLDS'}</Text>
-            <Text style={styles.worldsStripWorlds}>
-              {trustedWorlds.map(getRelationOpenWorldLabel).join(' · ')}
-            </Text>
-            <Text style={styles.worldsStripCaption}>
-              {'Private signals from your Bao — not paths yet.'}
-            </Text>
-          </View>
-        )}
       </View>
 
     </View>
@@ -414,7 +413,8 @@ const styles = StyleSheet.create({
   },
 
   worldsStrip: {
-    marginTop: spacing.xs + 2,
+    borderTopWidth: 1,
+    borderTopColor: colors.accent.warmGold + '12',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs + 2,
     gap: 4,
@@ -422,13 +422,13 @@ const styles = StyleSheet.create({
   worldsStripEyebrow: {
     fontSize: 10,
     fontWeight: '700',
-    color: colors.text.muted,
+    color: colors.accent.warmGold + 'AA',
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
   worldsStripWorlds: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.text.secondary,
     lineHeight: 18,
   },
