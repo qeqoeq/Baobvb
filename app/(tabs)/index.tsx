@@ -20,6 +20,10 @@ import {
   getCircleNodeStatus,
   type MapMember,
 } from '../../lib/circle-node-state';
+import {
+  deriveTrustedWorldMap,
+  getRelationOpenWorldLabel,
+} from '../../lib/relation-open-worlds';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -96,6 +100,11 @@ export default function CircleScreen() {
     [readings],
   );
 
+  const trustedWorlds = useMemo(
+    () => deriveTrustedWorldMap(relations, evaluations),
+    [relations, evaluations],
+  );
+
   // Active forming only: cooking_reveal or waiting_other_side WITH a private reading.
   // Excludes unread/private contacts (snap status waiting_other_side, no reading yet) —
   // those are not in an active Baobab flow and should not count as "forming".
@@ -149,7 +158,10 @@ export default function CircleScreen() {
 
       <View style={styles.header}>
         <View style={styles.headerTitleBlock}>
-          <Text style={styles.headerKicker}>{'BAOBAB'}</Text>
+          <View style={styles.headerBrand}>
+            <View style={styles.baobabMark} />
+            <Text style={styles.headerKicker}>{'BAOBAB'}</Text>
+          </View>
           <Text style={styles.headerTitle}>Your Bao</Text>
         </View>
         <View style={styles.headerRight}>
@@ -231,6 +243,18 @@ export default function CircleScreen() {
             </View>
           )}
         </View>
+
+        {trustedWorlds.length > 0 && (
+          <View style={styles.worldsStrip}>
+            <Text style={styles.worldsStripEyebrow}>{'OPEN WORLDS'}</Text>
+            <Text style={styles.worldsStripWorlds}>
+              {trustedWorlds.map(getRelationOpenWorldLabel).join(' · ')}
+            </Text>
+            <Text style={styles.worldsStripCaption}>
+              {'Private signals from your Bao — not paths yet.'}
+            </Text>
+          </View>
+        )}
       </View>
 
     </View>
@@ -371,6 +395,48 @@ const styles = StyleSheet.create({
   worldCardHintDivider: {
     fontSize: 10,
     color: colors.text.muted,
+  },
+
+  headerBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  baobabMark: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent.warmGold,
+    shadowColor: colors.accent.warmGold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 5,
+  },
+
+  worldsStrip: {
+    marginTop: spacing.xs + 2,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs + 2,
+    gap: 4,
+  },
+  worldsStripEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.text.muted,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  worldsStripWorlds: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.text.secondary,
+    lineHeight: 18,
+  },
+  worldsStripCaption: {
+    fontSize: 10,
+    color: colors.text.muted,
+    lineHeight: 15,
+    opacity: 0.8,
   },
 
   emptyPrompt: {
