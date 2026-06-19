@@ -14,11 +14,11 @@ import {
 import { useRelationsStore } from '@/store/useRelationsStore';
 
 export default function PlacesScreen() {
-  const { places } = useRelationsStore();
+  const { places, relations, evaluations } = useRelationsStore();
 
   const territory = useMemo(
-    () => deriveTrustWorldTerritory(deriveRouteTerritorySignals(places)),
-    [places],
+    () => deriveTrustWorldTerritory(deriveRouteTerritorySignals(places, relations, evaluations)),
+    [places, relations, evaluations],
   );
 
   const territoryCategories = territory.categories.filter(
