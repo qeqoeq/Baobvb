@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/constants/colors';
@@ -27,45 +27,68 @@ export default function PlaceDetailScreen() {
 
   if (!place) {
     return (
-      <View style={styles.missingScreen}>
-        <View style={styles.missingCard}>
-          <Text style={styles.missingTitle}>Place not found</Text>
-          <Text style={styles.missingText}>
-            This place is not available anymore in your local memory.
-          </Text>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>Back</Text>
-          </Pressable>
+      <>
+        <Stack.Screen
+          options={{
+            title: '',
+            headerStyle: { backgroundColor: colors.background.primary },
+            headerTintColor: colors.text.primary,
+            headerShadowVisible: false,
+            headerBackTitle: '',
+          }}
+        />
+        <View style={styles.missingScreen}>
+          <View style={styles.missingCard}>
+            <Text style={styles.missingTitle}>Place not found</Text>
+            <Text style={styles.missingText}>
+              This place is not available anymore in your local memory.
+            </Text>
+            <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <Text style={styles.backButtonText}>Back</Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
+      </>
     );
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.heroCard}>
-        <Text style={styles.kicker}>{getPlaceCategoryLabel(place.category)}</Text>
-        <Text style={styles.title}>{place.name}</Text>
-        <Text style={styles.fit}>{getPlaceFitLabel(place.personalFit)}</Text>
-      </View>
+    <>
+      <Stack.Screen
+        options={{
+          title: place.name,
+          headerStyle: { backgroundColor: colors.background.primary },
+          headerTintColor: colors.text.primary,
+          headerShadowVisible: false,
+          headerBackTitle: '',
+          headerBackButtonDisplayMode: 'minimal',
+        }}
+      />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <View style={styles.heroCard}>
+          <Text style={styles.kicker}>{getPlaceCategoryLabel(place.category)}</Text>
+          <Text style={styles.title}>{place.name}</Text>
+          <Text style={styles.fit}>{getPlaceFitLabel(place.personalFit)}</Text>
+        </View>
 
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionLabel}>Reading</Text>
-        <Text style={styles.readingText}>{getPlaceReading(place)}</Text>
-      </View>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionLabel}>Reading</Text>
+          <Text style={styles.readingText}>{getPlaceReading(place)}</Text>
+        </View>
 
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionLabel}>Added</Text>
-        <Text style={styles.metaText}>{formatPlaceDate(place.createdAt)}</Text>
-      </View>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionLabel}>Added</Text>
+          <Text style={styles.metaText}>{formatPlaceDate(place.createdAt)}</Text>
+        </View>
 
-      <Pressable
-        onPress={() => router.push(`../place/edit/${place.id}`)}
-        style={styles.editButton}
-      >
-        <Text style={styles.editButtonText}>Edit this place</Text>
-      </Pressable>
-    </ScrollView>
+        <Pressable
+          onPress={() => router.push(`../place/edit/${place.id}`)}
+          style={styles.editButton}
+        >
+          <Text style={styles.editButtonText}>Edit this place</Text>
+        </Pressable>
+      </ScrollView>
+    </>
   );
 }
 
