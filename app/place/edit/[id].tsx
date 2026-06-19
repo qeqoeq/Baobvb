@@ -9,6 +9,7 @@ import {
   PLACE_CATEGORY_LABELS,
   PLACE_PERSONAL_FIT_CAPTURE_OPTIONS,
   PLACE_PERSONAL_FIT_LABELS,
+  PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION,
 } from '@/lib/places';
 import type { PlaceQuickSignal } from '@/lib/place-quick-signal';
 import type { RelationOpenWorld } from '@/lib/relation-open-worlds';
@@ -120,8 +121,8 @@ export default function EditPlaceScreen() {
           })}
         </View>
 
-        {/* "Went there" maps to personalFit 'kept' for now.
-            Quality still lives in quickSignal.repeatDesire, not in personalFit. */}
+        {/* "Save for later" is personal memory, not experience evidence.
+            "Went there" remains the current trigger for quickSignal. */}
         <Text style={styles.inputLabel}>Your experience</Text>
         <View style={styles.rowWrap}>
           {PLACE_PERSONAL_FIT_CAPTURE_OPTIONS.map((item) => {
@@ -139,6 +140,22 @@ export default function EditPlaceScreen() {
             );
           })}
         </View>
+
+        <Pressable
+          onPress={() => handlePersonalFitChange(PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION.id)}
+          style={styles.saveForLaterLink}
+        >
+          <Text
+            style={[
+              styles.saveForLaterLinkText,
+              personalFit === PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION.id &&
+                styles.saveForLaterLinkTextActive,
+            ]}
+          >
+            {personalFit === PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION.id ? '✓ ' : ''}
+            {PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION.label}
+          </Text>
+        </Pressable>
 
         {noteVisible ? (
           <>
@@ -289,6 +306,18 @@ const styles = StyleSheet.create({
   },
   fitChipTextActive: {
     color: colors.text.primary,
+  },
+  saveForLaterLink: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+  },
+  saveForLaterLinkText: {
+    color: colors.text.muted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  saveForLaterLinkTextActive: {
+    color: colors.accent.mutedSage,
   },
   addNoteLink: {
     alignSelf: 'flex-start',

@@ -12,7 +12,10 @@ import {
 import { PlaceQuickSignalSheet } from '@/components/place/PlaceQuickSignalSheet';
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
-import { PLACE_PERSONAL_FIT_CAPTURE_OPTIONS } from '@/lib/places';
+import {
+  PLACE_PERSONAL_FIT_CAPTURE_OPTIONS,
+  PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION,
+} from '@/lib/places';
 import type { PlaceQuickSignal } from '@/lib/place-quick-signal';
 import {
   type PlaceCategory,
@@ -127,8 +130,8 @@ export default function AddPlaceScreen() {
           })}
         </View>
 
-        {/* "Went there" maps to personalFit 'kept' for now.
-            Quality still lives in quickSignal.repeatDesire, not in personalFit. */}
+        {/* "Save for later" is personal memory, not experience evidence.
+            "Went there" remains the current trigger for quickSignal. */}
         <Text style={styles.label}>Your experience</Text>
         <View style={styles.rowWrap}>
           {PLACE_PERSONAL_FIT_CAPTURE_OPTIONS.map((item) => {
@@ -146,6 +149,22 @@ export default function AddPlaceScreen() {
             );
           })}
         </View>
+
+        <Pressable
+          onPress={() => handlePersonalFitChange(PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION.id)}
+          style={styles.saveForLaterLink}
+        >
+          <Text
+            style={[
+              styles.saveForLaterLinkText,
+              personalFit === PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION.id &&
+                styles.saveForLaterLinkTextActive,
+            ]}
+          >
+            {personalFit === PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION.id ? '✓ ' : ''}
+            {PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION.label}
+          </Text>
+        </Pressable>
 
         {noteVisible ? (
           <>
@@ -283,6 +302,18 @@ const styles = StyleSheet.create({
   },
   fitTextActive: {
     color: colors.text.primary,
+  },
+  saveForLaterLink: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+  },
+  saveForLaterLinkText: {
+    color: colors.text.muted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  saveForLaterLinkTextActive: {
+    color: colors.accent.mutedSage,
   },
   addNoteLink: {
     alignSelf: 'flex-start',
