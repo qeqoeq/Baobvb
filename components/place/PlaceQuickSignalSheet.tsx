@@ -70,11 +70,6 @@ export function PlaceQuickSignalSheet({
     onChange({ ...value, outcome });
   };
 
-  const setRepeatDesire = (repeatDesire: boolean) => {
-    setTouched(true);
-    onChange({ ...value, repeatDesire });
-  };
-
   const setShareSafe = (shareSafe: boolean) => {
     setTouched(true);
     onChange({ ...value, shareSafe });
@@ -146,22 +141,7 @@ export function PlaceQuickSignalSheet({
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.question}>Worth returning?</Text>
-          <View style={styles.row}>
-            <YesNoChip
-              label="Yes"
-              active={value.repeatDesire === true}
-              onPress={() => setRepeatDesire(true)}
-            />
-            <YesNoChip
-              label="No"
-              active={value.repeatDesire === false}
-              onPress={() => setRepeatDesire(false)}
-            />
-          </View>
-        </View>
-
+        {/* repeatDesire is legacy-only in UI; outcome is the active verdict. */}
         <View style={styles.section}>
           <Text style={styles.question}>Would you send someone here?</Text>
           <View style={styles.row}>
