@@ -12,21 +12,14 @@ import {
 import { PlaceQuickSignalSheet } from '@/components/place/PlaceQuickSignalSheet';
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
-import { PLACE_PERSONAL_FIT_LABELS } from '@/lib/places';
+import { PLACE_PERSONAL_FIT_CAPTURE_OPTIONS } from '@/lib/places';
 import type { PlaceQuickSignal } from '@/lib/place-quick-signal';
-import {
-  getRelationOpenWorldLabel,
-  RELATION_OPEN_WORLD_OPTIONS,
-  type RelationOpenWorld,
-} from '@/lib/relation-open-worlds';
 import {
   type PlaceCategory,
   type PlaceCreateInput,
   type PlacePersonalFit,
   useRelationsStore,
 } from '@/store/useRelationsStore';
-
-const WORLD_FIT_MAX = 2;
 
 const CATEGORIES: { id: PlaceCategory; label: string }[] = [
   { id: 'restaurant', label: 'Restaurant' },
@@ -35,8 +28,6 @@ const CATEGORIES: { id: PlaceCategory; label: string }[] = [
   { id: 'spot', label: 'Spot' },
   { id: 'other', label: 'Other' },
 ];
-
-const FITS: PlacePersonalFit[] = ['saved', 'tried', 'kept', 'not_for_me'];
 
 export default function AddPlaceScreen() {
   const { addPlace } = useRelationsStore();
@@ -50,7 +41,7 @@ export default function AddPlaceScreen() {
   const [category, setCategory] = useState<PlaceCategory>('other');
   const [personalFit, setPersonalFit] = useState<PlaceCreateInput['personalFit']>('saved');
   const [impression, setImpression] = useState('');
-  const [worldFit, setWorldFit] = useState<RelationOpenWorld[]>([]);
+  const [noteVisible, setNoteVisible] = useState(false);
   const [quickSignal, setQuickSignal] = useState<PlaceQuickSignal>({});
   const [quickSignalVisible, setQuickSignalVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +68,6 @@ export default function AddPlaceScreen() {
       personalFit,
       impression,
       sourceRelationId: sourceRelationIdParam,
-      worldFit,
       quickSignal,
     });
     if (!created) {
@@ -137,77 +127,44 @@ export default function AddPlaceScreen() {
           })}
         </View>
 
+        {/* "Went there" maps to personalFit 'kept' for now.
+            Quality still lives in quickSignal.repeatDesire, not in personalFit. */}
         <Text style={styles.label}>Your experience</Text>
         <View style={styles.rowWrap}>
-          {FITS.map((fit) => {
-            const active = fit === personalFit;
+          {PLACE_PERSONAL_FIT_CAPTURE_OPTIONS.map((item) => {
+            const active = item.id === personalFit;
             return (
               <Pressable
-                key={fit}
-                onPress={() => handlePersonalFitChange(fit)}
+                key={item.id}
+                onPress={() => handlePersonalFitChange(item.id)}
                 style={[styles.fitChip, active && styles.fitChipActive]}
               >
                 <Text style={[styles.fitText, active && styles.fitTextActive]}>
-                  {PLACE_PERSONAL_FIT_LABELS[fit]}
+                  {item.label}
                 </Text>
               </Pressable>
             );
           })}
         </View>
 
-        <Text style={styles.label}>Short impression (optional)</Text>
-        <TextInput
-          value={impression}
-          onChangeText={setImpression}
-          placeholder="One discreet line to remember."
-          placeholderTextColor={colors.text.muted}
-          style={[styles.input, styles.inputArea]}
-          multiline
-          maxLength={120}
-        />
-
-        <View style={styles.worldFitBlock}>
-          <Text style={styles.worldFitEyebrow}>{'WORLD FIT'}</Text>
-          <Text style={styles.worldFitCaption}>
-            {'Which world does this place open for you?'}
-          </Text>
-          <View style={styles.worldFitChipRow}>
-            {RELATION_OPEN_WORLD_OPTIONS.map((world) => {
-              const selected = worldFit.includes(world);
-              const atMax = worldFit.length >= WORLD_FIT_MAX;
-              const disabled = !selected && atMax;
-              return (
-                <Pressable
-                  key={world}
-                  onPress={() => {
-                    setWorldFit((current) =>
-                      selected
-                        ? current.filter((w) => w !== world)
-                        : current.length >= WORLD_FIT_MAX
-                          ? current
-                          : [...current, world],
-                    );
-                  }}
-                  disabled={disabled}
-                  style={[
-                    styles.worldFitChip,
-                    selected && styles.worldFitChipSelected,
-                    disabled && styles.worldFitChipDisabled,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.worldFitChipText,
-                      selected && styles.worldFitChipTextSelected,
-                    ]}
-                  >
-                    {getRelationOpenWorldLabel(world)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+        {noteVisible ? (
+          <>
+            <Text style={styles.label}>Short impression (optional)</Text>
+            <TextInput
+              value={impression}
+              onChangeText={setImpression}
+              placeholder="One discreet line to remember."
+              placeholderTextColor={colors.text.muted}
+              style={[styles.input, styles.inputArea]}
+              multiline
+              maxLength={120}
+            />
+          </>
+        ) : (
+          <Pressable onPress={() => setNoteVisible(true)} style={styles.addNoteLink}>
+            <Text style={styles.addNoteLinkText}>Add a note</Text>
+          </Pressable>
+        )}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -327,52 +284,14 @@ const styles = StyleSheet.create({
   fitTextActive: {
     color: colors.text.primary,
   },
-  worldFitBlock: {
-    backgroundColor: colors.background.tertiary,
-    borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border.soft,
-    padding: spacing.md,
-    gap: spacing.sm,
+  addNoteLink: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
   },
-  worldFitEyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 2.5,
+  addNoteLinkText: {
     color: colors.text.muted,
-  },
-  worldFitCaption: {
-    fontSize: 12,
-    color: colors.text.muted,
-    lineHeight: 18,
-  },
-  worldFitChipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  worldFitChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    backgroundColor: colors.background.secondary,
-  },
-  worldFitChipSelected: {
-    borderColor: colors.accent.warmGold,
-    backgroundColor: colors.accent.warmGold + '18',
-  },
-  worldFitChipDisabled: {
-    opacity: 0.4,
-  },
-  worldFitChipText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.text.secondary,
-  },
-  worldFitChipTextSelected: {
-    color: colors.accent.warmGold,
   },
   error: {
     color: '#A34A3B',

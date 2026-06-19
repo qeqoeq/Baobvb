@@ -43,6 +43,15 @@ export const PLACE_PERSONAL_FIT_LABELS: Record<PlacePersonalFit, string> = {
   not_for_me:  'Not for me',
 };
 
+export const PLACE_PERSONAL_FIT_CAPTURE_OPTIONS: {
+  id: 'saved' | 'kept' | 'not_for_me';
+  label: string;
+}[] = [
+  { id: 'saved', label: 'Want to try' },
+  { id: 'kept', label: 'Went there' },
+  { id: 'not_for_me', label: 'Not for me' },
+];
+
 const PLACE_PERSONAL_FIT_FALLBACKS: Record<PlacePersonalFit, string> = {
   saved:      'Saved for later.',
   tried:      'Tried once.',
