@@ -21,6 +21,8 @@ import {
   type RelationDepth,
 } from '../lib/relation-model';
 import {
+  isRelationOpenWorld,
+  RELATION_OPEN_WORLD_OPTIONS,
   sanitizeRelationOpenWorlds,
   type RelationOpenWorld,
 } from '../lib/relation-open-worlds';
@@ -182,6 +184,13 @@ export type Place = {
   impression?: string;
   createdAt: string;
   sourceRelationId?: string;
+  /**
+   * Direct world intention declared by the user on this place. Optional,
+   * max 2 worlds, canonical order preserved by sanitizePlaceWorldFit.
+   * Not displayed on Place Detail. Feeds Open Worlds directly — no
+   * sourceRelationId or relation gate required.
+   */
+  worldFit?: RelationOpenWorld[];
 };
 
 export type MeProfile = {
@@ -846,16 +855,22 @@ const SEED_PLACES: Place[] = [
   { id: 'seed-place-5', name: 'Jardin Haut', category: 'spot', personalFit: 'kept', impression: 'Open-air place that felt easy to return to.', createdAt: '2026-02-20T16:00:00Z', sourceRelationId: '10' },
   // Via route '10' — restaurant × 1 kept → second observed signal for restaurant territory
   { id: 'seed-place-6', name: 'Atelier Nord', category: 'restaurant', personalFit: 'kept', impression: 'Simple menu, strong sense of place.', createdAt: '2026-04-02T19:30:00Z', sourceRelationId: '10' },
-  // No sourceRelationId — bar kept → confirms exclusion from territory derivation
-  { id: 'seed-place-7', name: 'Le Fond du Couloir', category: 'bar', personalFit: 'kept', impression: 'Found on my own. Good enough to return.', createdAt: '2026-01-15T22:00:00Z' },
+  // No sourceRelationId — bar kept → confirms exclusion from territory derivation.
+  // worldFit added here: auto-discovered place, surfaced in Open Worlds by
+  // direct user qualification alone, with no relation involved.
+  { id: 'seed-place-7', name: 'Le Fond du Couloir', category: 'bar', personalFit: 'kept', impression: 'Found on my own. Good enough to return.', createdAt: '2026-01-15T22:00:00Z', worldFit: ['creative'] },
   // Via route '6' — saved → excluded from signal derivation (no territory proof)
   { id: 'seed-place-8', name: 'Rue Basse', category: 'bar', personalFit: 'saved', createdAt: '2026-04-10T11:00:00Z', sourceRelationId: '6' },
-  // Via route '8' — spot × 1 kept → surfaces learning + creative worlds from this route
-  { id: 'seed-place-9', name: 'La Fonderie', category: 'spot', personalFit: 'kept', impression: 'Workshop space with room to think.', createdAt: '2026-03-22T11:00:00Z', sourceRelationId: '8' },
+  // Via route '8' — spot × 1 kept → surfaces learning + creative worlds from this route.
+  // worldFit added here too: proves direct + relation-inferred worlds coexist
+  // on the same place (relation gives learning/creative, worldFit adds travel).
+  { id: 'seed-place-9', name: 'La Fonderie', category: 'spot', personalFit: 'kept', impression: 'Workshop space with room to think.', createdAt: '2026-03-22T11:00:00Z', sourceRelationId: '8', worldFit: ['travel'] },
   // Via route '11' — spot × 1 kept → surfaces sport + local_life worlds from this route
   { id: 'seed-place-10', name: 'Parc du Matin', category: 'spot', personalFit: 'kept', impression: 'Early hours, open space, easy rhythm.', createdAt: '2026-04-05T08:30:00Z', sourceRelationId: '11' },
   // Via route '13' — cafe × 1 kept → reinforces learning + sport worlds from this route
   { id: 'seed-place-11', name: 'Café Long', category: 'cafe', personalFit: 'kept', impression: 'Works for long sessions.', createdAt: '2026-04-12T10:00:00Z', sourceRelationId: '13' },
+  // No sourceRelationId — kept with two worldFit worlds → proves max-2 direct qualification
+  { id: 'seed-place-12', name: 'Studio Lent', category: 'spot', personalFit: 'kept', impression: 'Off-hours, no pressure, good for tinkering.', createdAt: '2026-04-20T15:00:00Z', worldFit: ['sport', 'culture'] },
 ];
 const PLACE_CATEGORIES: PlaceCategory[] = ['restaurant', 'cafe', 'bar', 'spot', 'other'];
 const REVEAL_UNLOCK_DELAY_MS = 90_000;
@@ -865,7 +880,7 @@ const REVEAL_UNLOCK_DELAY_MS = 90_000;
  * On mismatch with persisted state, the store resets to fresh seed.
  * This ensures dev/demo devices always get the latest data.
  */
-const SEED_VERSION = 9;
+const SEED_VERSION = 10;
 
 type PersistedState = StoreState & { seedVersion?: number };
 
@@ -947,6 +962,23 @@ function sanitizePlaceSourceRelationId(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/**
+ * Sanitizes a place's direct worldFit qualification. Max 2 worlds (stricter
+ * than sanitizeRelationOpenWorlds' max 3 for relation.privateOpenWorlds),
+ * optional, canonical order, invalid values dropped, no duplicates.
+ */
+function sanitizePlaceWorldFit(value: unknown): RelationOpenWorld[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const seen = new Set<RelationOpenWorld>();
+  for (const item of value) {
+    if (!isRelationOpenWorld(item)) continue;
+    seen.add(item);
+    if (seen.size === 2) break;
+  }
+  const result = RELATION_OPEN_WORLD_OPTIONS.filter((w) => seen.has(w));
+  return result.length > 0 ? result : undefined;
 }
 
 function normalizeSideIdentityStatus(
@@ -1226,6 +1258,9 @@ loadPersistedState<PersistedState>().then((persisted) => {
           const hydratedSourceRelationId = sanitizePlaceSourceRelationId(
             (place as Record<string, unknown>).sourceRelationId,
           );
+          const hydratedWorldFit = sanitizePlaceWorldFit(
+            (place as Record<string, unknown>).worldFit,
+          );
           acc.push({
             id:
               typeof place.id === 'string' && place.id.length > 0
@@ -1246,6 +1281,7 @@ loadPersistedState<PersistedState>().then((persisted) => {
                 ? place.createdAt
                 : new Date().toISOString(),
             ...(hydratedSourceRelationId !== undefined ? { sourceRelationId: hydratedSourceRelationId } : {}),
+            ...(hydratedWorldFit !== undefined ? { worldFit: hydratedWorldFit } : {}),
           });
 
           return acc;
@@ -1580,6 +1616,7 @@ export type PlaceCreateInput = {
   personalFit: PlacePersonalFit;
   impression?: string;
   sourceRelationId?: string;
+  worldFit?: RelationOpenWorld[];
 };
 
 export type PlaceUpdateInput = {
@@ -1587,6 +1624,7 @@ export type PlaceUpdateInput = {
   category: PlaceCategory;
   personalFit: PlacePersonalFit;
   impression?: string;
+  worldFit?: RelationOpenWorld[];
 };
 
 // ── progressive private signals ────────────────────────────────────────
@@ -1621,6 +1659,7 @@ function pushPlace(input: PlaceCreateInput): Place | null {
   const personalFit = sanitizePlacePersonalFit(input.personalFit);
   const cleanImpression = input.impression?.trim();
   const sourceRelationId = sanitizePlaceSourceRelationId(input.sourceRelationId);
+  const worldFit = sanitizePlaceWorldFit(input.worldFit);
   const place: Place = {
     id: `p-${Date.now()}`,
     name: cleanName,
@@ -1629,6 +1668,7 @@ function pushPlace(input: PlaceCreateInput): Place | null {
     impression: cleanImpression ? cleanImpression : undefined,
     createdAt: new Date().toISOString(),
     ...(sourceRelationId !== undefined ? { sourceRelationId } : {}),
+    ...(worldFit !== undefined ? { worldFit } : {}),
   };
   state.places = [place, ...state.places];
   emitChange();
@@ -1643,17 +1683,20 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
   const category = sanitizePlaceCategory(update.category);
   const personalFit = sanitizePlacePersonalFit(update.personalFit);
   const cleanImpression = update.impression?.trim();
+  const worldFit = sanitizePlaceWorldFit(update.worldFit);
 
   let didUpdate = false;
   state.places = state.places.map((place) => {
     if (place.id !== id) return place;
     didUpdate = true;
+    const { worldFit: _previousWorldFit, ...rest } = place;
     return {
-      ...place,
+      ...rest,
       name: cleanName,
       category,
       personalFit,
       impression: cleanImpression ? cleanImpression : undefined,
+      ...(worldFit !== undefined ? { worldFit } : {}),
     };
   });
 

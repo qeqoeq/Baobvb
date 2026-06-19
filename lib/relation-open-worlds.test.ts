@@ -347,6 +347,55 @@ describe('deriveKeptPlaceWorldSignals', () => {
     result.forEach((item) => expect(typeof item).toBe('string'));
     expect(result).toEqual(['creative', 'travel']);
   });
+
+  // ── direct worldFit (Source A) ─────────────────────────────────────────
+  describe('direct worldFit (Source A)', () => {
+    it('a kept place without sourceRelationId but with worldFit feeds the world', () => {
+      const place = makePlace({ sourceRelationId: undefined, worldFit: ['learning'] });
+      expect(deriveKeptPlaceWorldSignals([place], [], [])).toEqual(['learning']);
+    });
+
+    it('a non-kept place with worldFit contributes nothing', () => {
+      const place = makePlace({ personalFit: 'saved', sourceRelationId: undefined, worldFit: ['learning'] });
+      expect(deriveKeptPlaceWorldSignals([place], [], [])).toEqual([]);
+    });
+
+    it('invalid worldFit values are ignored', () => {
+      const place = makePlace({
+        sourceRelationId: undefined,
+        worldFit: ['invalid_world', 'sport', 'work'] as unknown as string[],
+      });
+      expect(deriveKeptPlaceWorldSignals([place], [], [])).toEqual(['sport']);
+    });
+
+    it('worldFit beyond max is truncated and deduplicated', () => {
+      const place = makePlace({
+        sourceRelationId: undefined,
+        worldFit: ['sport', 'sport', 'learning', 'creative', 'travel'] as unknown as string[],
+      });
+      const result = deriveKeptPlaceWorldSignals([place], [], []);
+      // sanitizeRelationOpenWorlds caps at 3, dedupes, canonical order
+      expect(result).toEqual(['learning', 'creative', 'sport']);
+    });
+
+    it('direct worldFit and relation source on the same place do not duplicate a shared world', () => {
+      const r = makeRelation({ id: 'r1', privateOpenWorlds: ['sport'] });
+      const place = makePlace({ sourceRelationId: 'r1', worldFit: ['sport', 'travel'] });
+      const result = deriveKeptPlaceWorldSignals([place], [r], [makeEval('r1')]);
+      expect(result).toEqual(['sport', 'travel']);
+    });
+
+    it('worldFit respects canonical order regardless of input order', () => {
+      const place = makePlace({ sourceRelationId: undefined, worldFit: ['culture', 'local_life'] });
+      expect(deriveKeptPlaceWorldSignals([place], [], [])).toEqual(['local_life', 'culture']);
+    });
+
+    it('legacy relational rules still pass unaffected by worldFit support', () => {
+      const r = makeRelation({ privateOpenWorlds: ['sport', 'learning'] });
+      const result = deriveKeptPlaceWorldSignals([makePlace()], [r], [makeEval('r1')]);
+      expect(result).toEqual(['learning', 'sport']);
+    });
+  });
 });
 
 describe('deriveWorldKeptPlaces', () => {
@@ -487,6 +536,64 @@ describe('deriveWorldKeptPlaces', () => {
     const result = deriveWorldKeptPlaces('local_life', [p], [r], [makeEval('r1')]);
     expect(result).toHaveLength(1);
     expect(result[0].impression).toBeUndefined();
+  });
+
+  // ── direct worldFit (Source A) ─────────────────────────────────────────
+  describe('direct worldFit (Source A)', () => {
+    it('a kept place without sourceRelationId but with worldFit appears in the World Detail', () => {
+      const p = makePlace({ sourceRelationId: undefined, worldFit: ['local_life'] });
+      const result = deriveWorldKeptPlaces('local_life', [p], [], []);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('p1');
+    });
+
+    it('a place with sourceRelationId but no worldFit still appears via relation', () => {
+      const r = makeRelation({ privateOpenWorlds: ['local_life'] });
+      const p = makePlace({ sourceRelationId: 'r1', worldFit: undefined });
+      const result = deriveWorldKeptPlaces('local_life', [p], [r], [makeEval('r1')]);
+      expect(result).toHaveLength(1);
+    });
+
+    it('a place eligible via both worldFit and relation appears only once', () => {
+      const r = makeRelation({ id: 'r1', privateOpenWorlds: ['local_life'] });
+      const p = makePlace({ sourceRelationId: 'r1', worldFit: ['local_life'] });
+      const result = deriveWorldKeptPlaces('local_life', [p], [r], [makeEval('r1')]);
+      expect(result).toHaveLength(1);
+    });
+
+    it('a non-kept place with worldFit is ignored', () => {
+      const p = makePlace({ personalFit: 'saved', sourceRelationId: undefined, worldFit: ['local_life'] });
+      expect(deriveWorldKeptPlaces('local_life', [p], [], [])).toEqual([]);
+    });
+
+    it('worldFit is never present in the output item', () => {
+      const p = makePlace({ sourceRelationId: undefined, worldFit: ['local_life'] });
+      const result = deriveWorldKeptPlaces('local_life', [p], [], []);
+      expect(result).toHaveLength(1);
+      expect('worldFit' in result[0]).toBe(false);
+    });
+
+    it('sourceRelationId is never present in the output item', () => {
+      const p = makePlace({ sourceRelationId: undefined, worldFit: ['local_life'] });
+      const result = deriveWorldKeptPlaces('local_life', [p], [], []);
+      expect(result).toHaveLength(1);
+      expect('sourceRelationId' in result[0]).toBe(false);
+    });
+
+    it('output is exactly { id, name, category, impression? } for a worldFit-only place', () => {
+      const p = makePlace({
+        id: 'p9',
+        name: 'Quiet Yard',
+        category: 'spot',
+        impression: 'Found it myself.',
+        sourceRelationId: undefined,
+        worldFit: ['local_life'],
+      });
+      const result = deriveWorldKeptPlaces('local_life', [p], [], []);
+      expect(result).toEqual([
+        { id: 'p9', name: 'Quiet Yard', category: 'spot', impression: 'Found it myself.' },
+      ]);
+    });
   });
 });
 

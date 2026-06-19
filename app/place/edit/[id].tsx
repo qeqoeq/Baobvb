@@ -9,6 +9,11 @@ import {
   PLACE_PERSONAL_FIT_LABELS,
 } from '@/lib/places';
 import {
+  getRelationOpenWorldLabel,
+  RELATION_OPEN_WORLD_OPTIONS,
+  type RelationOpenWorld,
+} from '@/lib/relation-open-worlds';
+import {
   type PlaceCategory,
   type PlacePersonalFit,
   type PlaceUpdateInput,
@@ -25,6 +30,8 @@ const CATEGORIES: { id: PlaceCategory; label: string }[] = [
 
 const FITS: PlacePersonalFit[] = ['saved', 'tried', 'kept', 'not_for_me'];
 
+const WORLD_FIT_MAX = 2;
+
 export default function EditPlaceScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const { places, updatePlace } = useRelationsStore();
@@ -36,6 +43,7 @@ export default function EditPlaceScreen() {
     place?.personalFit ?? 'saved',
   );
   const [impression, setImpression] = useState(place?.impression ?? '');
+  const [worldFit, setWorldFit] = useState<RelationOpenWorld[]>(place?.worldFit ?? []);
   const [error, setError] = useState<string | null>(null);
 
   if (!place) {
@@ -58,6 +66,7 @@ export default function EditPlaceScreen() {
       category,
       personalFit,
       impression,
+      worldFit,
     });
 
     if (!ok) {
@@ -133,6 +142,49 @@ export default function EditPlaceScreen() {
           multiline
           maxLength={120}
         />
+
+        <View style={styles.worldFitBlock}>
+          <Text style={styles.worldFitEyebrow}>{'WORLD FIT'}</Text>
+          <Text style={styles.worldFitCaption}>
+            {'Which world does this place open for you?'}
+          </Text>
+          <View style={styles.rowWrap}>
+            {RELATION_OPEN_WORLD_OPTIONS.map((world) => {
+              const selected = worldFit.includes(world);
+              const atMax = worldFit.length >= WORLD_FIT_MAX;
+              const disabled = !selected && atMax;
+              return (
+                <Pressable
+                  key={world}
+                  onPress={() => {
+                    setWorldFit((current) =>
+                      selected
+                        ? current.filter((w) => w !== world)
+                        : current.length >= WORLD_FIT_MAX
+                          ? current
+                          : [...current, world],
+                    );
+                  }}
+                  disabled={disabled}
+                  style={[
+                    styles.worldFitChip,
+                    selected && styles.worldFitChipSelected,
+                    disabled && styles.worldFitChipDisabled,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.worldFitChipText,
+                      selected && styles.worldFitChipTextSelected,
+                    ]}
+                  >
+                    {getRelationOpenWorldLabel(world)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -247,6 +299,48 @@ const styles = StyleSheet.create({
   },
   fitChipTextActive: {
     color: colors.text.primary,
+  },
+  worldFitBlock: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.soft,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  worldFitEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 2.5,
+    color: colors.text.muted,
+  },
+  worldFitCaption: {
+    fontSize: 12,
+    color: colors.text.muted,
+    lineHeight: 18,
+  },
+  worldFitChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.secondary,
+  },
+  worldFitChipSelected: {
+    borderColor: colors.accent.warmGold,
+    backgroundColor: colors.accent.warmGold + '18',
+  },
+  worldFitChipDisabled: {
+    opacity: 0.4,
+  },
+  worldFitChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.secondary,
+  },
+  worldFitChipTextSelected: {
+    color: colors.accent.warmGold,
   },
   error: {
     color: colors.accent.softCoral,

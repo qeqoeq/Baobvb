@@ -104,15 +104,18 @@ export function deriveTrustedWorldMap(
 // Non-attributive derivation of RelationOpenWorld signals from kept places.
 //
 // Doctrine:
-//   A kept place sourced via an eligible relation carries a world signal from
-//   that relation's privateOpenWorlds. This is behavioral evidence — not a
-//   declared preference — that those worlds have produced something real.
+//   A kept place can carry a world signal from two sources:
+//     A. Direct worldFit — the user's own qualification of the place. No
+//        relation gate: it is the user's intention on their own object.
+//     B. Relation source — a kept place sourced via an eligible relation
+//        carries a world signal from that relation's privateOpenWorlds.
+//        This is behavioral evidence, not a declared preference.
 //
 //   The output is strictly RelationOpenWorld[]. No relation ids, place ids,
 //   counts, scores, confidence, or evidence surfaces. Attribution is fully
 //   stripped: only the world dimensions survive aggregation.
 //
-// Gate (same as deriveTrustedWorldMap):
+// Gate for source B only (same as deriveTrustedWorldMap):
 //   relation.localState.revealSnapshot.revealed === true
 //   AND trustRating >= 4
 //   AND !archived
@@ -120,6 +123,12 @@ export function deriveTrustedWorldMap(
 export type KeptPlaceWorldSignalPlaceInput = {
   personalFit: string;
   sourceRelationId?: string | null;
+  /**
+   * Direct world intention declared by the user on their own object.
+   * No relation gate — this is the user's own qualification, not behavioral
+   * evidence routed through a relation.
+   */
+  worldFit?: readonly string[] | readonly RelationOpenWorld[];
 };
 
 export function deriveKeptPlaceWorldSignals(
@@ -133,6 +142,13 @@ export function deriveKeptPlaceWorldSignals(
 
   for (const place of places) {
     if (place.personalFit !== 'kept') continue;
+
+    // Source A — direct worldFit declared by the user. No relation gate.
+    for (const world of sanitizeRelationOpenWorlds(place.worldFit)) {
+      collected.add(world);
+    }
+
+    // Source B — relation source (behavioral evidence via an eligible relation).
     if (!place.sourceRelationId) continue;
 
     const relation = relationsById.get(place.sourceRelationId);
@@ -167,6 +183,12 @@ export type WorldKeptPlaceInput = {
   personalFit: string;
   impression?: string;
   sourceRelationId?: string | null;
+  /**
+   * Direct world intention declared by the user on their own object.
+   * No relation gate — this is the user's own qualification, not behavioral
+   * evidence routed through a relation.
+   */
+  worldFit?: readonly string[] | readonly RelationOpenWorld[];
 };
 
 export type WorldKeptPlaceItem = {
@@ -190,20 +212,25 @@ export function deriveWorldKeptPlaces(
 
   for (const place of places) {
     if (place.personalFit !== 'kept') continue;
-    if (!place.sourceRelationId) continue;
 
-    const relation = relationsById.get(place.sourceRelationId);
-    if (!relation) continue;
+    const hasDirectWorldFit = sanitizeRelationOpenWorlds(place.worldFit).includes(world);
 
-    const evaluation = evalByRelationId.get(relation.id);
-    const isRevealed = relation.localState?.revealSnapshot?.revealed === true;
-    const trustRating = evaluation?.ratings?.trust ?? null;
-    const isArchived = relation.archived === true;
+    let hasRelationWorld = false;
+    if (place.sourceRelationId) {
+      const relation = relationsById.get(place.sourceRelationId);
+      if (relation) {
+        const evaluation = evalByRelationId.get(relation.id);
+        const isRevealed = relation.localState?.revealSnapshot?.revealed === true;
+        const trustRating = evaluation?.ratings?.trust ?? null;
+        const isArchived = relation.archived === true;
 
-    if (!canUsePrivateOpenWorlds({ isRevealed, trustRating, isArchived })) continue;
+        if (canUsePrivateOpenWorlds({ isRevealed, trustRating, isArchived })) {
+          hasRelationWorld = sanitizeRelationOpenWorlds(relation.privateOpenWorlds).includes(world);
+        }
+      }
+    }
 
-    const eligibleWorlds = sanitizeRelationOpenWorlds(relation.privateOpenWorlds);
-    if (!eligibleWorlds.includes(world)) continue;
+    if (!hasDirectWorldFit && !hasRelationWorld) continue;
 
     result.push({
       id: place.id,
