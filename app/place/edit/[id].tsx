@@ -35,6 +35,7 @@ export default function EditPlaceScreen() {
 
   const [name, setName] = useState(place?.name ?? '');
   const [category, setCategory] = useState<PlaceCategory>(place?.category ?? 'other');
+  const [identityHint, setIdentityHint] = useState(place?.identityHint ?? '');
   const [personalFit, setPersonalFit] = useState<PlaceUpdateInput['personalFit']>(
     place?.personalFit ?? 'saved',
   );
@@ -74,6 +75,7 @@ export default function EditPlaceScreen() {
       impression,
       worldFit,
       quickSignal,
+      identityHint,
     });
 
     if (!ok) {
@@ -120,6 +122,16 @@ export default function EditPlaceScreen() {
             );
           })}
         </View>
+
+        <Text style={styles.inputLabel}>Address or link (optional)</Text>
+        <TextInput
+          value={identityHint}
+          onChangeText={setIdentityHint}
+          placeholder="Google Maps, website, or address"
+          placeholderTextColor={colors.text.muted}
+          style={styles.input}
+        />
+        <Text style={styles.identityHintHint}>Only to recognize it later.</Text>
 
         {/* "Save for later" is personal memory, not experience evidence.
             "Went there" remains the current trigger for quickSignal. */}
@@ -263,6 +275,11 @@ const styles = StyleSheet.create({
   inputArea: {
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  identityHintHint: {
+    color: colors.text.muted,
+    fontSize: 11,
+    marginTop: -spacing.xs,
   },
   rowWrap: {
     flexDirection: 'row',

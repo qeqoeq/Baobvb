@@ -201,6 +201,12 @@ export type Place = {
    * algorithm's repeat-desire / share-safety / context-fit reasoning only.
    */
   quickSignal?: PlaceQuickSignal;
+  /**
+   * Manual, optional free-text hint (address, link, or any landmark) to
+   * help the user recognize this place later. Local memory only — never
+   * geocoded, never fetched, never used by any derivation in this sprint.
+   */
+  identityHint?: string;
 };
 
 export type MeProfile = {
@@ -978,6 +984,19 @@ function sanitizePlaceSourceRelationId(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+const PLACE_IDENTITY_HINT_MAX_LENGTH = 180;
+
+/**
+ * Free-text memory aid (address, link, landmark). Trim only — no URL
+ * parsing, no geocoding, no normalization. Truncated, never rejected.
+ */
+function sanitizePlaceIdentityHint(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return undefined;
+  return trimmed.slice(0, PLACE_IDENTITY_HINT_MAX_LENGTH);
+}
+
 /**
  * Sanitizes a place's direct worldFit qualification. Max 2 worlds (stricter
  * than sanitizeRelationOpenWorlds' max 3 for relation.privateOpenWorlds),
@@ -1275,6 +1294,9 @@ loadPersistedState<PersistedState>().then((persisted) => {
           const hydratedWorldFit = sanitizePlaceWorldFit(
             (place as Record<string, unknown>).worldFit,
           );
+          const hydratedIdentityHint = sanitizePlaceIdentityHint(
+            (place as Record<string, unknown>).identityHint,
+          );
           const hydratedPersonalFit = sanitizePlacePersonalFit(
             (place as Record<string, unknown>).personalFit ??
             (place as Record<string, unknown>).rating,
@@ -1304,6 +1326,7 @@ loadPersistedState<PersistedState>().then((persisted) => {
             ...(hydratedSourceRelationId !== undefined ? { sourceRelationId: hydratedSourceRelationId } : {}),
             ...(hydratedWorldFit !== undefined ? { worldFit: hydratedWorldFit } : {}),
             ...(hydratedQuickSignal !== undefined ? { quickSignal: hydratedQuickSignal } : {}),
+            ...(hydratedIdentityHint !== undefined ? { identityHint: hydratedIdentityHint } : {}),
           });
 
           return acc;
@@ -1640,6 +1663,7 @@ export type PlaceCreateInput = {
   sourceRelationId?: string;
   worldFit?: RelationOpenWorld[];
   quickSignal?: PlaceQuickSignal;
+  identityHint?: string;
 };
 
 export type PlaceUpdateInput = {
@@ -1649,6 +1673,7 @@ export type PlaceUpdateInput = {
   impression?: string;
   worldFit?: RelationOpenWorld[];
   quickSignal?: PlaceQuickSignal;
+  identityHint?: string;
 };
 
 // ── progressive private signals ────────────────────────────────────────
@@ -1684,6 +1709,7 @@ function pushPlace(input: PlaceCreateInput): Place | null {
   const cleanImpression = input.impression?.trim();
   const sourceRelationId = sanitizePlaceSourceRelationId(input.sourceRelationId);
   const worldFit = sanitizePlaceWorldFit(input.worldFit);
+  const identityHint = sanitizePlaceIdentityHint(input.identityHint);
   // Word-of-mouth signal only has value if the place is actually kept.
   const quickSignal =
     personalFit === 'kept' ? sanitizePlaceQuickSignal(input.quickSignal) : undefined;
@@ -1697,6 +1723,7 @@ function pushPlace(input: PlaceCreateInput): Place | null {
     ...(sourceRelationId !== undefined ? { sourceRelationId } : {}),
     ...(worldFit !== undefined ? { worldFit } : {}),
     ...(quickSignal !== undefined ? { quickSignal } : {}),
+    ...(identityHint !== undefined ? { identityHint } : {}),
   };
   state.places = [place, ...state.places];
   emitChange();
@@ -1712,6 +1739,7 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
   const personalFit = sanitizePlacePersonalFit(update.personalFit);
   const cleanImpression = update.impression?.trim();
   const worldFit = sanitizePlaceWorldFit(update.worldFit);
+  const identityHint = sanitizePlaceIdentityHint(update.identityHint);
   // Word-of-mouth signal only has value if the place is actually kept.
   const quickSignal =
     personalFit === 'kept' ? sanitizePlaceQuickSignal(update.quickSignal) : undefined;
@@ -1720,7 +1748,12 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
   state.places = state.places.map((place) => {
     if (place.id !== id) return place;
     didUpdate = true;
-    const { worldFit: _previousWorldFit, quickSignal: _previousQuickSignal, ...rest } = place;
+    const {
+      worldFit: _previousWorldFit,
+      quickSignal: _previousQuickSignal,
+      identityHint: _previousIdentityHint,
+      ...rest
+    } = place;
     return {
       ...rest,
       name: cleanName,
@@ -1729,6 +1762,7 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
       impression: cleanImpression ? cleanImpression : undefined,
       ...(worldFit !== undefined ? { worldFit } : {}),
       ...(quickSignal !== undefined ? { quickSignal } : {}),
+      ...(identityHint !== undefined ? { identityHint } : {}),
     };
   });
 

@@ -42,6 +42,7 @@ export default function AddPlaceScreen() {
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState<PlaceCategory>('other');
+  const [identityHint, setIdentityHint] = useState('');
   const [personalFit, setPersonalFit] = useState<PlaceCreateInput['personalFit']>('saved');
   const [impression, setImpression] = useState('');
   const [noteVisible, setNoteVisible] = useState(false);
@@ -72,6 +73,7 @@ export default function AddPlaceScreen() {
       impression,
       sourceRelationId: sourceRelationIdParam,
       quickSignal,
+      identityHint,
     });
     if (!created) {
       setError('Unable to save this place right now.');
@@ -129,6 +131,16 @@ export default function AddPlaceScreen() {
             );
           })}
         </View>
+
+        <Text style={styles.label}>Address or link (optional)</Text>
+        <TextInput
+          value={identityHint}
+          onChangeText={setIdentityHint}
+          placeholder="Google Maps, website, or address"
+          placeholderTextColor={colors.text.muted}
+          style={styles.input}
+        />
+        <Text style={styles.identityHintHint}>Only to recognize it later.</Text>
 
         {/* "Save for later" is personal memory, not experience evidence.
             "Went there" remains the current trigger for quickSignal. */}
@@ -259,6 +271,11 @@ const styles = StyleSheet.create({
   inputArea: {
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  identityHintHint: {
+    color: colors.text.muted,
+    fontSize: 11,
+    marginTop: -spacing.xs,
   },
   rowWrap: {
     flexDirection: 'row',

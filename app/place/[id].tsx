@@ -81,6 +81,13 @@ export default function PlaceDetailScreen() {
           <Text style={styles.metaText}>{formatPlaceDate(place.createdAt)}</Text>
         </View>
 
+        {place.identityHint ? (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionLabel}>Identity</Text>
+            <Text style={styles.metaText}>{place.identityHint}</Text>
+          </View>
+        ) : null}
+
         <Pressable
           onPress={() => router.push(`../place/edit/${place.id}`)}
           style={styles.editButton}
