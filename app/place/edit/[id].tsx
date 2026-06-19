@@ -126,7 +126,7 @@ export default function EditPlaceScreen() {
           })}
         </View>
 
-        <Text style={styles.inputLabel}>How does it fit?</Text>
+        <Text style={styles.inputLabel}>Your experience</Text>
         <View style={styles.rowWrap}>
           {FITS.map((fit) => {
             const active = fit === personalFit;
@@ -219,6 +219,7 @@ export default function EditPlaceScreen() {
         value={quickSignal}
         onChange={setQuickSignal}
         onDismiss={() => setQuickSignalVisible(false)}
+        category={category}
       />
     </ScrollView>
   );

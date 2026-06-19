@@ -862,9 +862,9 @@ const SEED_PLACES: Place[] = [
   // Via route '6' — cafe tried → exercises triedCount; no signal alone
   { id: 'seed-place-3', name: 'Passage Verde', category: 'cafe', personalFit: 'tried', createdAt: '2026-03-18T14:00:00Z', sourceRelationId: '6' },
   // Via route '6' — restaurant × 1 kept → strength 'observed'
-  // quickSignal added here: shareSafe true — proves the word-of-mouth
-  // safety signal alone, without repeatDesire or contextFit.
-  { id: 'seed-place-4', name: 'Maison Luma', category: 'restaurant', personalFit: 'kept', impression: 'Warm dinner spot with a calm rhythm.', createdAt: '2026-01-28T20:00:00Z', sourceRelationId: '6', quickSignal: { shareSafe: true } },
+  // quickSignal added here: full shape — verdict, contextFit, and 1-5
+  // restaurantDimensions together, for realistic device testing.
+  { id: 'seed-place-4', name: 'Maison Luma', category: 'restaurant', personalFit: 'kept', impression: 'Warm dinner spot with a calm rhythm.', createdAt: '2026-01-28T20:00:00Z', sourceRelationId: '6', quickSignal: { repeatDesire: true, shareSafe: true, contextFit: ['deep_talk', 'calm'], restaurantDimensions: { food: 5, service: 4, atmosphere: 3, value: 4, cleanliness: 2 } } },
   // Via route '10' — spot × 1 kept → strength 'observed'
   { id: 'seed-place-5', name: 'Jardin Haut', category: 'spot', personalFit: 'kept', impression: 'Open-air place that felt easy to return to.', createdAt: '2026-02-20T16:00:00Z', sourceRelationId: '10' },
   // Via route '10' — restaurant × 1 kept → second observed signal for restaurant territory
@@ -894,7 +894,7 @@ const REVEAL_UNLOCK_DELAY_MS = 90_000;
  * On mismatch with persisted state, the store resets to fresh seed.
  * This ensures dev/demo devices always get the latest data.
  */
-const SEED_VERSION = 11;
+const SEED_VERSION = 12;
 
 type PersistedState = StoreState & { seedVersion?: number };
 

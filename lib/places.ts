@@ -1,8 +1,13 @@
 import type { Place, PlaceCategory, PlacePersonalFit } from '@/store/useRelationsStore';
-import { PLACE_CONTEXT_FIT_OPTIONS, type PlaceContextFit } from './place-quick-signal';
+import {
+  PLACE_CONTEXT_FIT_OPTIONS,
+  RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS,
+  type PlaceContextFit,
+  type RestaurantExperienceDimension,
+} from './place-quick-signal';
 
-export { PLACE_CONTEXT_FIT_OPTIONS };
-export type { PlaceContextFit };
+export { PLACE_CONTEXT_FIT_OPTIONS, RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS };
+export type { PlaceContextFit, RestaurantExperienceDimension };
 
 export const PLACE_CONTEXT_FIT_LABELS: Record<PlaceContextFit, string> = {
   date: 'Date',
@@ -13,6 +18,14 @@ export const PLACE_CONTEXT_FIT_LABELS: Record<PlaceContextFit, string> = {
   deep_talk: 'Deep talk',
   calm: 'Calm',
   discovery: 'Discovery',
+};
+
+export const RESTAURANT_EXPERIENCE_DIMENSION_LABELS: Record<RestaurantExperienceDimension, string> = {
+  food: 'Food quality',
+  service: 'Service',
+  atmosphere: 'Atmosphere',
+  value: 'Value for price',
+  cleanliness: 'Cleanliness',
 };
 
 export const PLACE_CATEGORY_LABELS: Record<PlaceCategory, string> = {

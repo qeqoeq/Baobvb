@@ -137,7 +137,7 @@ export default function AddPlaceScreen() {
           })}
         </View>
 
-        <Text style={styles.label}>How does it fit?</Text>
+        <Text style={styles.label}>Your experience</Text>
         <View style={styles.rowWrap}>
           {FITS.map((fit) => {
             const active = fit === personalFit;
@@ -225,6 +225,7 @@ export default function AddPlaceScreen() {
         value={quickSignal}
         onChange={setQuickSignal}
         onDismiss={() => setQuickSignalVisible(false)}
+        category={category}
       />
     </ScrollView>
   );

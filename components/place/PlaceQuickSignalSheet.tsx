@@ -1,22 +1,29 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
-import { PLACE_CONTEXT_FIT_LABELS } from '@/lib/places';
+import { PLACE_CONTEXT_FIT_LABELS, RESTAURANT_EXPERIENCE_DIMENSION_LABELS } from '@/lib/places';
 import {
   PLACE_CONTEXT_FIT_OPTIONS,
+  RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS,
   type PlaceContextFit,
+  type PlaceExperienceLevel,
   type PlaceQuickSignal,
+  type RestaurantExperienceDimension,
 } from '@/lib/place-quick-signal';
+import type { PlaceCategory } from '@/store/useRelationsStore';
 
 const CONTEXT_FIT_MAX = 2;
+const EXPERIENCE_LEVELS: readonly PlaceExperienceLevel[] = [1, 2, 3, 4, 5];
+const CATEGORIES_WITH_DIMENSIONS: readonly PlaceCategory[] = ['restaurant', 'cafe', 'bar'];
 
 type PlaceQuickSignalSheetProps = {
   visible: boolean;
   value: PlaceQuickSignal;
   onChange: (value: PlaceQuickSignal) => void;
   onDismiss: () => void;
+  category: PlaceCategory;
 };
 
 export function PlaceQuickSignalSheet({
@@ -24,18 +31,22 @@ export function PlaceQuickSignalSheet({
   value,
   onChange,
   onDismiss,
+  category,
 }: PlaceQuickSignalSheetProps) {
   const [touched, setTouched] = useState(false);
 
   const contextFit = value.contextFit ?? [];
+  const restaurantDimensions = value.restaurantDimensions ?? {};
+  const showDimensions = CATEGORIES_WITH_DIMENSIONS.includes(category);
 
   const showAcknowledgement = useMemo(
     () =>
       touched &&
       (value.repeatDesire !== undefined ||
         value.shareSafe !== undefined ||
-        contextFit.length > 0),
-    [touched, value.repeatDesire, value.shareSafe, contextFit.length],
+        contextFit.length > 0 ||
+        Object.keys(restaurantDimensions).length > 0),
+    [touched, value.repeatDesire, value.shareSafe, contextFit.length, restaurantDimensions],
   );
 
   const setRepeatDesire = (repeatDesire: boolean) => {
@@ -59,6 +70,17 @@ export function PlaceQuickSignalSheet({
     onChange({ ...value, contextFit: next });
   };
 
+  const setDimensionLevel = (
+    dimension: RestaurantExperienceDimension,
+    level: PlaceExperienceLevel,
+  ) => {
+    setTouched(true);
+    onChange({
+      ...value,
+      restaurantDimensions: { ...restaurantDimensions, [dimension]: level },
+    });
+  };
+
   return (
     <Modal
       visible={visible}
@@ -73,6 +95,11 @@ export function PlaceQuickSignalSheet({
         <Text style={styles.title}>A quick read</Text>
         <Text style={styles.caption}>Help Bao understand when this place fits.</Text>
 
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.section}>
           <Text style={styles.question}>Worth returning?</Text>
           <View style={styles.row}>
@@ -137,9 +164,39 @@ export function PlaceQuickSignalSheet({
           </View>
         </View>
 
+        {showDimensions ? (
+          <View style={styles.section}>
+            <Text style={styles.question}>A closer look</Text>
+            <Text style={styles.dimensionsCaption}>
+              Rate what mattered in this experience.
+            </Text>
+            {RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS.map((dimension) => (
+              <View key={dimension} style={styles.dimensionRow}>
+                <Text style={styles.dimensionLabel}>
+                  {RESTAURANT_EXPERIENCE_DIMENSION_LABELS[dimension]}
+                </Text>
+                <View style={styles.capsuleRow}>
+                  {EXPERIENCE_LEVELS.map((level) => {
+                    const currentLevel = restaurantDimensions[dimension];
+                    const active = currentLevel !== undefined && level <= currentLevel;
+                    return (
+                      <Pressable
+                        key={level}
+                        onPress={() => setDimensionLevel(dimension, level)}
+                        style={[styles.capsule, active && styles.capsuleActive]}
+                      />
+                    );
+                  })}
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         {showAcknowledgement ? (
           <Text style={styles.acknowledgement}>Your Bao learned this place.</Text>
         ) : null}
+        </ScrollView>
 
         <Pressable onPress={onDismiss} style={styles.doneButton}>
           <Text style={styles.doneButtonText}>Done</Text>
@@ -196,6 +253,12 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     fontSize: 13,
     lineHeight: 18,
+  },
+  scroll: {
+    maxHeight: 420,
+  },
+  scrollContent: {
+    gap: spacing.md,
   },
   section: {
     gap: spacing.sm,
@@ -255,6 +318,38 @@ const styles = StyleSheet.create({
   },
   contextChipTextSelected: {
     color: colors.accent.warmGold,
+  },
+  dimensionsCaption: {
+    fontSize: 12,
+    color: colors.text.muted,
+    lineHeight: 18,
+  },
+  dimensionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+  },
+  dimensionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text.secondary,
+  },
+  capsuleRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  capsule: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.tertiary,
+  },
+  capsuleActive: {
+    borderColor: colors.accent.warmGold,
+    backgroundColor: colors.accent.warmGold,
   },
   acknowledgement: {
     color: colors.text.muted,
