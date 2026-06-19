@@ -13,10 +13,12 @@ import {
   type PlaceQuickSignal,
   type PlaceQuickSignalOutcome,
   type RestaurantExperienceDimension,
+  type RestaurantExperienceDimensions,
 } from '@/lib/place-quick-signal';
 import type { PlaceCategory } from '@/store/useRelationsStore';
 
 const CONTEXT_FIT_MAX = 2;
+const DRIVER_DIMENSIONS_MAX = 2;
 const EXPERIENCE_LEVELS: readonly PlaceExperienceLevel[] = [1, 2, 3, 4, 5];
 const CATEGORIES_WITH_DIMENSIONS: readonly PlaceCategory[] = ['restaurant', 'cafe', 'bar'];
 
@@ -25,6 +27,13 @@ const OUTCOME_LABELS: Record<PlaceQuickSignalOutcome, string> = {
   depends: 'Depends',
   not_for_me: 'Not for me',
 };
+
+const DRIVER_QUESTION_BY_OUTCOME: Record<PlaceQuickSignalOutcome, string> = {
+  would_go_back: 'What made it work?',
+  depends: 'What made it uneven?',
+  not_for_me: "What didn't fit?",
+};
+const DRIVER_QUESTION_DEFAULT = 'What mattered most?';
 
 type PlaceQuickSignalSheetProps = {
   visible: boolean;
@@ -45,7 +54,18 @@ export function PlaceQuickSignalSheet({
 
   const contextFit = value.contextFit ?? [];
   const restaurantDimensions = value.restaurantDimensions ?? {};
-  const showDimensions = CATEGORIES_WITH_DIMENSIONS.includes(category);
+  // Legacy: a place rated before driverDimensions existed may already carry
+  // restaurantDimensions with no driverDimensions. We don't pre-populate
+  // driverDimensions from those keys — the safest option is to leave the
+  // model untouched and let "A closer look" stay hidden until the user
+  // actively picks a driver, exactly like a new place. Existing ratings
+  // are never erased; they simply aren't shown until their dimension is
+  // (re)selected as a driver.
+  const driverDimensions = value.driverDimensions ?? [];
+  const showDimensions = CATEGORIES_WITH_DIMENSIONS.includes(category) && driverDimensions.length > 0;
+  const driverQuestion = value.outcome
+    ? DRIVER_QUESTION_BY_OUTCOME[value.outcome]
+    : DRIVER_QUESTION_DEFAULT;
 
   const showAcknowledgement = useMemo(
     () =>
@@ -54,6 +74,7 @@ export function PlaceQuickSignalSheet({
         value.repeatDesire !== undefined ||
         value.shareSafe !== undefined ||
         contextFit.length > 0 ||
+        driverDimensions.length > 0 ||
         Object.keys(restaurantDimensions).length > 0),
     [
       touched,
@@ -61,6 +82,7 @@ export function PlaceQuickSignalSheet({
       value.repeatDesire,
       value.shareSafe,
       contextFit.length,
+      driverDimensions.length,
       restaurantDimensions,
     ],
   );
@@ -68,6 +90,24 @@ export function PlaceQuickSignalSheet({
   const setOutcome = (outcome: PlaceQuickSignalOutcome) => {
     setTouched(true);
     onChange({ ...value, outcome });
+  };
+
+  const toggleDriverDimension = (dimension: RestaurantExperienceDimension) => {
+    const selected = driverDimensions.includes(dimension);
+    setTouched(true);
+    if (selected) {
+      const nextDrivers = driverDimensions.filter((item) => item !== dimension);
+      const { [dimension]: _removed, ...rest } = restaurantDimensions;
+      const nextDimensions: RestaurantExperienceDimensions = rest;
+      onChange({
+        ...value,
+        driverDimensions: nextDrivers.length > 0 ? nextDrivers : undefined,
+        restaurantDimensions: Object.keys(nextDimensions).length > 0 ? nextDimensions : undefined,
+      });
+      return;
+    }
+    if (driverDimensions.length >= DRIVER_DIMENSIONS_MAX) return;
+    onChange({ ...value, driverDimensions: [...driverDimensions, dimension] });
   };
 
   const setShareSafe = (shareSafe: boolean) => {
@@ -141,6 +181,38 @@ export function PlaceQuickSignalSheet({
           </View>
         </View>
 
+        <View style={styles.section}>
+          <Text style={styles.question}>{driverQuestion}</Text>
+          <View style={styles.chipRow}>
+            {RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS.map((dimension) => {
+              const selected = driverDimensions.includes(dimension);
+              const atMax = driverDimensions.length >= DRIVER_DIMENSIONS_MAX;
+              const disabled = !selected && atMax;
+              return (
+                <Pressable
+                  key={dimension}
+                  onPress={() => toggleDriverDimension(dimension)}
+                  disabled={disabled}
+                  style={[
+                    styles.contextChip,
+                    selected && styles.contextChipSelected,
+                    disabled && styles.contextChipDisabled,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.contextChipText,
+                      selected && styles.contextChipTextSelected,
+                    ]}
+                  >
+                    {RESTAURANT_EXPERIENCE_DIMENSION_LABELS[dimension]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         {/* repeatDesire is legacy-only in UI; outcome is the active verdict. */}
         <View style={styles.section}>
           <Text style={styles.question}>Would you send someone here?</Text>
@@ -196,7 +268,7 @@ export function PlaceQuickSignalSheet({
             <Text style={styles.dimensionsCaption}>
               Rate what mattered in this experience.
             </Text>
-            {RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS.map((dimension) => (
+            {driverDimensions.map((dimension) => (
               <View key={dimension} style={styles.dimensionRow}>
                 <Text style={styles.dimensionLabel}>
                   {RESTAURANT_EXPERIENCE_DIMENSION_LABELS[dimension]}

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   hasPlaceQuickSignal,
   sanitizePlaceContextFit,
+  sanitizePlaceDriverDimensions,
   sanitizePlaceQuickSignal,
   sanitizePlaceQuickSignalOutcome,
   sanitizeRestaurantExperienceDimensions,
@@ -205,7 +206,70 @@ describe('sanitizePlaceQuickSignal — outcome', () => {
   });
 });
 
+describe('sanitizePlaceDriverDimensions', () => {
+  it('keeps a valid driver dimension', () => {
+    expect(sanitizePlaceDriverDimensions(['food'])).toEqual(['food']);
+  });
+
+  it('ignores invalid values', () => {
+    expect(sanitizePlaceDriverDimensions(['parking'])).toBeUndefined();
+    expect(sanitizePlaceDriverDimensions('food')).toBeUndefined();
+    expect(sanitizePlaceDriverDimensions(undefined)).toBeUndefined();
+  });
+
+  it('dedupes repeated dimensions', () => {
+    expect(sanitizePlaceDriverDimensions(['food', 'food', 'service'])).toEqual([
+      'food',
+      'service',
+    ]);
+  });
+
+  it('caps at max 2', () => {
+    const result = sanitizePlaceDriverDimensions(['food', 'service', 'atmosphere']);
+    expect(result).toHaveLength(2);
+  });
+
+  it('returns canonical catalog order regardless of input order', () => {
+    expect(sanitizePlaceDriverDimensions(['cleanliness', 'food'])).toEqual(['food', 'cleanliness']);
+  });
+
+  it('returns undefined for an empty array', () => {
+    expect(sanitizePlaceDriverDimensions([])).toBeUndefined();
+  });
+});
+
+describe('sanitizePlaceQuickSignal — driverDimensions', () => {
+  it('preserves driverDimensions on the signal', () => {
+    const result = sanitizePlaceQuickSignal({ driverDimensions: ['food', 'value'] });
+    expect(result).toEqual({ driverDimensions: ['food', 'value'] });
+  });
+
+  it('restaurantDimensions is unaffected by driverDimensions', () => {
+    const result = sanitizePlaceQuickSignal({
+      driverDimensions: ['cleanliness'],
+      restaurantDimensions: { cleanliness: 1, food: 4 },
+    });
+    expect(result).toEqual({
+      driverDimensions: ['cleanliness'],
+      restaurantDimensions: { cleanliness: 1, food: 4 },
+    });
+  });
+
+  it('legacy repeatDesire is preserved alongside driverDimensions', () => {
+    const result = sanitizePlaceQuickSignal({
+      driverDimensions: ['food'],
+      repeatDesire: true,
+    });
+    expect(result).toEqual({ driverDimensions: ['food'], repeatDesire: true });
+  });
+});
+
 describe('hasPlaceQuickSignal', () => {
+  it('returns true when driverDimensions alone is set', () => {
+    expect(hasPlaceQuickSignal({ driverDimensions: ['food'] })).toBe(true);
+  });
+
+
   it('returns false for undefined', () => {
     expect(hasPlaceQuickSignal(undefined)).toBe(false);
   });

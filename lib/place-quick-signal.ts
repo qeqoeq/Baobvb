@@ -59,6 +59,12 @@ export type PlaceQuickSignal = {
   repeatDesire?: boolean;
   shareSafe?: boolean;
   contextFit?: PlaceContextFit[];
+  /**
+   * Dimensions the user picked as having mattered for this outcome —
+   * gates which dimensions become notable in "A closer look". No rating
+   * without a driver chosen first.
+   */
+  driverDimensions?: RestaurantExperienceDimension[];
   restaurantDimensions?: RestaurantExperienceDimensions;
 };
 
@@ -119,6 +125,26 @@ export function isPlaceExperienceLevel(value: unknown): value is PlaceExperience
 }
 
 /**
+ * Max 2 driver dimensions, deduped, returned in canonical catalog order
+ * (same convention as sanitizePlaceContextFit) rather than input order —
+ * keeps rendering order stable regardless of selection order. Invalid
+ * values dropped silently. Legacy-safe: undefined input → undefined.
+ */
+export function sanitizePlaceDriverDimensions(
+  value: unknown,
+): RestaurantExperienceDimension[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const seen = new Set<RestaurantExperienceDimension>();
+  for (const item of value) {
+    if (!isRestaurantExperienceDimension(item)) continue;
+    seen.add(item);
+    if (seen.size === 2) break;
+  }
+  const result = RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS.filter((option) => seen.has(option));
+  return result.length > 0 ? result : undefined;
+}
+
+/**
  * Unknown dimensions and out-of-range/non-integer values are dropped
  * silently. 1 and 5 are preserved exactly — never treated as falsy.
  */
@@ -151,6 +177,7 @@ export function sanitizePlaceQuickSignal(value: unknown): PlaceQuickSignal | und
   const repeatDesire = sanitizeOptionalBoolean(raw.repeatDesire);
   const shareSafe = sanitizeOptionalBoolean(raw.shareSafe);
   const contextFit = sanitizePlaceContextFit(raw.contextFit);
+  const driverDimensions = sanitizePlaceDriverDimensions(raw.driverDimensions);
   const restaurantDimensions = sanitizeRestaurantExperienceDimensions(raw.restaurantDimensions);
 
   if (
@@ -158,6 +185,7 @@ export function sanitizePlaceQuickSignal(value: unknown): PlaceQuickSignal | und
     repeatDesire === undefined &&
     shareSafe === undefined &&
     contextFit === undefined &&
+    driverDimensions === undefined &&
     restaurantDimensions === undefined
   ) {
     return undefined;
@@ -168,6 +196,7 @@ export function sanitizePlaceQuickSignal(value: unknown): PlaceQuickSignal | und
     ...(repeatDesire !== undefined ? { repeatDesire } : {}),
     ...(shareSafe !== undefined ? { shareSafe } : {}),
     ...(contextFit !== undefined ? { contextFit } : {}),
+    ...(driverDimensions !== undefined ? { driverDimensions } : {}),
     ...(restaurantDimensions !== undefined ? { restaurantDimensions } : {}),
   };
 }
@@ -179,6 +208,7 @@ export function hasPlaceQuickSignal(value: PlaceQuickSignal | undefined): boolea
     value.repeatDesire !== undefined ||
     value.shareSafe !== undefined ||
     (value.contextFit !== undefined && value.contextFit.length > 0) ||
+    (value.driverDimensions !== undefined && value.driverDimensions.length > 0) ||
     (value.restaurantDimensions !== undefined &&
       Object.keys(value.restaurantDimensions).length > 0)
   );
