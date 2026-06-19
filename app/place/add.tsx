@@ -92,7 +92,7 @@ export default function AddPlaceScreen() {
         <Text style={styles.kicker}>Places</Text>
         <Text style={styles.title}>Save a place</Text>
         <Text style={styles.subtitle}>
-          Keep a simple, honest trace of where connection felt right.
+          Keep a simple, honest trace of places worth remembering.
         </Text>
       </View>
 
