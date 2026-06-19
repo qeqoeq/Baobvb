@@ -13,6 +13,33 @@ import {
   sanitizePlaceSourceRelationId,
   type RouteTerritorySignal,
 } from './places';
+import type {
+  TrustedWorldMapEvaluationInput,
+  TrustedWorldMapRelationInput,
+} from './relation-open-worlds';
+
+// ── trust gate fixtures for deriveRouteTerritorySignals ──────────────────────
+// Mirrors the gate already used by deriveTrustedWorldMap /
+// deriveKeptPlaceWorldSignals: revealed, not archived, trustRating >= 4.
+
+function trustedRelation(
+  id: string,
+  overrides: Partial<TrustedWorldMapRelationInput> = {},
+): TrustedWorldMapRelationInput {
+  return {
+    id,
+    archived: false,
+    localState: { revealSnapshot: { revealed: true } },
+    ...overrides,
+  };
+}
+
+function evaluationWithTrust(
+  relationId: string,
+  trust: number | null,
+): TrustedWorldMapEvaluationInput {
+  return { relationId, ratings: { trust } };
+}
 
 // ── getPlaceCategoryLabel ────────────────────────────────────────────────────
 
@@ -196,11 +223,13 @@ describe('deriveRouteTerritorySignals', () => {
     expect(deriveRouteTerritorySignals(places)).toEqual([]);
   });
 
-  it('kept + sourceRelationId + category produces an observed signal', () => {
+  it('kept + sourceRelationId + category produces an observed signal (trusted source)', () => {
     const places: Place[] = [
       { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
     ];
-    const signals = deriveRouteTerritorySignals(places);
+    const relations = [trustedRelation('rel-1')];
+    const evaluations = [evaluationWithTrust('rel-1', 5)];
+    const signals = deriveRouteTerritorySignals(places, relations, evaluations);
     expect(signals).toHaveLength(1);
     expect(signals[0]).toMatchObject({
       sourceRelationId: 'rel-1',
@@ -212,77 +241,137 @@ describe('deriveRouteTerritorySignals', () => {
     });
   });
 
-  it('two kept in same route+category → strength strong', () => {
+  it('two kept in same route+category → strength strong (trusted source)', () => {
     const places: Place[] = [
       { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
       { id: 'p-2', name: 'Café B', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
     ];
-    const signals = deriveRouteTerritorySignals(places);
+    const relations = [trustedRelation('rel-1')];
+    const evaluations = [evaluationWithTrust('rel-1', 5)];
+    const signals = deriveRouteTerritorySignals(places, relations, evaluations);
     expect(signals).toHaveLength(1);
     expect(signals[0].strength).toBe('strong');
     expect(signals[0].keptCount).toBe(2);
   });
 
-  it('tried without kept produces no signal', () => {
+  it('tried without kept produces no signal (trusted source)', () => {
     const places: Place[] = [
       { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'tried', sourceRelationId: 'rel-1' } as Place,
     ];
-    expect(deriveRouteTerritorySignals(places)).toEqual([]);
+    const relations = [trustedRelation('rel-1')];
+    const evaluations = [evaluationWithTrust('rel-1', 5)];
+    expect(deriveRouteTerritorySignals(places, relations, evaluations)).toEqual([]);
   });
 
-  it('tried + kept in same category → triedCount included in signal', () => {
+  it('tried + kept in same category → triedCount included in signal (trusted source)', () => {
     const places: Place[] = [
       { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
       { id: 'p-2', name: 'Café B', category: 'cafe', personalFit: 'tried', sourceRelationId: 'rel-1' } as Place,
     ];
-    const signals = deriveRouteTerritorySignals(places);
+    const relations = [trustedRelation('rel-1')];
+    const evaluations = [evaluationWithTrust('rel-1', 5)];
+    const signals = deriveRouteTerritorySignals(places, relations, evaluations);
     expect(signals).toHaveLength(1);
     expect(signals[0].keptCount).toBe(1);
     expect(signals[0].triedCount).toBe(1);
   });
 
-  it('evidencePlaceIds contains only kept IDs, not tried', () => {
+  it('evidencePlaceIds contains only kept IDs, not tried (trusted source)', () => {
     const places: Place[] = [
       { id: 'p-kept', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
       { id: 'p-tried', name: 'Café B', category: 'cafe', personalFit: 'tried', sourceRelationId: 'rel-1' } as Place,
     ];
-    const signals = deriveRouteTerritorySignals(places);
+    const relations = [trustedRelation('rel-1')];
+    const evaluations = [evaluationWithTrust('rel-1', 5)];
+    const signals = deriveRouteTerritorySignals(places, relations, evaluations);
     expect(signals[0].evidencePlaceIds).toEqual(['p-kept']);
     expect(signals[0].evidencePlaceIds).not.toContain('p-tried');
   });
 
-  it('multiple routes → separate signals per route', () => {
+  it('multiple routes → separate signals per route (both trusted)', () => {
     const places: Place[] = [
       { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
       { id: 'p-2', name: 'Café B', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-2' } as Place,
     ];
-    const signals = deriveRouteTerritorySignals(places);
+    const relations = [trustedRelation('rel-1'), trustedRelation('rel-2')];
+    const evaluations = [evaluationWithTrust('rel-1', 5), evaluationWithTrust('rel-2', 4)];
+    const signals = deriveRouteTerritorySignals(places, relations, evaluations);
     expect(signals).toHaveLength(2);
     expect(signals.map((s) => s.sourceRelationId)).toContain('rel-1');
     expect(signals.map((s) => s.sourceRelationId)).toContain('rel-2');
   });
 
-  it('same route, different categories → separate signals per category', () => {
+  it('same route, different categories → separate signals per category (trusted source)', () => {
     const places: Place[] = [
       { id: 'p-1', name: 'Café A', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
       { id: 'p-2', name: 'Bar B', category: 'bar', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
     ];
-    const signals = deriveRouteTerritorySignals(places);
+    const relations = [trustedRelation('rel-1')];
+    const evaluations = [evaluationWithTrust('rel-1', 5)];
+    const signals = deriveRouteTerritorySignals(places, relations, evaluations);
     expect(signals).toHaveLength(2);
     expect(signals.map((s) => s.category)).toContain('cafe');
     expect(signals.map((s) => s.category)).toContain('bar');
   });
 
-  it('result is sorted by sourceRelationId then category', () => {
+  it('result is sorted by sourceRelationId then category (both trusted)', () => {
     const places: Place[] = [
       { id: 'p-1', name: 'Restaurant A', category: 'restaurant', personalFit: 'kept', sourceRelationId: 'rel-2' } as Place,
       { id: 'p-2', name: 'Café B', category: 'cafe', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
       { id: 'p-3', name: 'Bar C', category: 'bar', personalFit: 'kept', sourceRelationId: 'rel-1' } as Place,
     ];
-    const signals = deriveRouteTerritorySignals(places);
+    const relations = [trustedRelation('rel-1'), trustedRelation('rel-2')];
+    const evaluations = [evaluationWithTrust('rel-1', 5), evaluationWithTrust('rel-2', 4)];
+    const signals = deriveRouteTerritorySignals(places, relations, evaluations);
     expect(signals[0]).toMatchObject({ sourceRelationId: 'rel-1', category: 'bar' });
     expect(signals[1]).toMatchObject({ sourceRelationId: 'rel-1', category: 'cafe' });
     expect(signals[2]).toMatchObject({ sourceRelationId: 'rel-2', category: 'restaurant' });
+  });
+
+  // ── trust gate coverage (X.38) ──────────────────────────────────────────────
+
+  describe('trust gate', () => {
+    const place: Place = {
+      id: 'p-1',
+      name: 'Café A',
+      category: 'cafe',
+      personalFit: 'kept',
+      sourceRelationId: 'rel-1',
+    } as Place;
+
+    it('relation source trust 5 → signal conserved', () => {
+      const relations = [trustedRelation('rel-1')];
+      const evaluations = [evaluationWithTrust('rel-1', 5)];
+      expect(deriveRouteTerritorySignals([place], relations, evaluations)).toHaveLength(1);
+    });
+
+    it('relation source trust 3 → signal excluded', () => {
+      const relations = [trustedRelation('rel-1')];
+      const evaluations = [evaluationWithTrust('rel-1', 3)];
+      expect(deriveRouteTerritorySignals([place], relations, evaluations)).toEqual([]);
+    });
+
+    it('relation source archived → signal excluded', () => {
+      const relations = [trustedRelation('rel-1', { archived: true })];
+      const evaluations = [evaluationWithTrust('rel-1', 5)];
+      expect(deriveRouteTerritorySignals([place], relations, evaluations)).toEqual([]);
+    });
+
+    it('relation source not revealed → signal excluded', () => {
+      const relations = [
+        trustedRelation('rel-1', { localState: { revealSnapshot: { revealed: false } } }),
+      ];
+      const evaluations = [evaluationWithTrust('rel-1', 5)];
+      expect(deriveRouteTerritorySignals([place], relations, evaluations)).toEqual([]);
+    });
+
+    it('relation source missing from input → signal excluded', () => {
+      expect(deriveRouteTerritorySignals([place], [], [])).toEqual([]);
+    });
+
+    it('relations/evaluations omitted entirely → fails closed, signal excluded', () => {
+      expect(deriveRouteTerritorySignals([place])).toEqual([]);
+    });
   });
 });
 

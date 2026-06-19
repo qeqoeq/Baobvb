@@ -5,6 +5,11 @@ import {
   type PlaceContextFit,
   type RestaurantExperienceDimension,
 } from './place-quick-signal';
+import {
+  canUsePrivateOpenWorlds,
+  type TrustedWorldMapEvaluationInput,
+  type TrustedWorldMapRelationInput,
+} from './relation-open-worlds';
 
 export { PLACE_CONTEXT_FIT_OPTIONS, RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS };
 export type { PlaceContextFit, RestaurantExperienceDimension };
@@ -109,6 +114,10 @@ export function sanitizePlaceSourceRelationId(value: unknown): string | undefine
 //   - tried alone is insufficient in V1: territory requires kept evidence
 //   - keptCount >= 2 → 'strong'; keptCount === 1 → 'observed'
 //   - evidencePlaceIds contains only kept place ids
+//   - a sourced place only contributes if its source relation passes the
+//     same trust gate as deriveTrustedWorldMap / deriveKeptPlaceWorldSignals:
+//     revealed, not archived, trustRating >= 4. Unknown/unverifiable sources
+//     (relations/evaluations omitted) fail closed — no signal is derived.
 
 export type RouteTerritorySignal = {
   sourceRelationId: string;
@@ -126,13 +135,30 @@ export type TrustWorldTerritory = {
   }>;
 };
 
-export function deriveRouteTerritorySignals(places: Place[]): RouteTerritorySignal[] {
+export function deriveRouteTerritorySignals(
+  places: Place[],
+  relations: TrustedWorldMapRelationInput[] = [],
+  evaluations: TrustedWorldMapEvaluationInput[] = [],
+): RouteTerritorySignal[] {
+  const relationsById = new Map(relations.map((r) => [r.id, r]));
+  const evalByRelationId = new Map(evaluations.map((e) => [e.relationId, e]));
+
   type GroupData = { kept: Place[]; tried: Place[] };
   const byRoute = new Map<string, Map<PlaceCategory, GroupData>>();
 
   for (const place of places) {
     if (!place.sourceRelationId) continue;
     if (place.personalFit === 'saved' || place.personalFit === 'not_for_me') continue;
+
+    const relation = relationsById.get(place.sourceRelationId);
+    if (!relation) continue;
+
+    const evaluation = evalByRelationId.get(relation.id);
+    const isRevealed = relation.localState?.revealSnapshot?.revealed === true;
+    const trustRating = evaluation?.ratings?.trust ?? null;
+    const isArchived = relation.archived === true;
+
+    if (!canUsePrivateOpenWorlds({ isRevealed, trustRating, isArchived })) continue;
 
     let byCat = byRoute.get(place.sourceRelationId);
     if (!byCat) {
