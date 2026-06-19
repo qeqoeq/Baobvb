@@ -26,6 +26,10 @@ import {
   sanitizeRelationOpenWorlds,
   type RelationOpenWorld,
 } from '../lib/relation-open-worlds';
+import {
+  sanitizePlaceQuickSignal,
+  type PlaceQuickSignal,
+} from '../lib/place-quick-signal';
 import { clearPersistedState, loadPersistedState, persistState } from '../lib/storage';
 import {
   findAssistedReconciliationSuggestionForRelation,
@@ -191,6 +195,12 @@ export type Place = {
    * sourceRelationId or relation gate required.
    */
   worldFit?: RelationOpenWorld[];
+  /**
+   * Private, optional word-of-mouth signal captured only when this place is
+   * kept. Never displayed as a score, rating, or count — feeds the
+   * algorithm's repeat-desire / share-safety / context-fit reasoning only.
+   */
+  quickSignal?: PlaceQuickSignal;
 };
 
 export type MeProfile = {
@@ -845,12 +855,16 @@ const SEED_ME: MeProfile = {
 
 const SEED_PLACES: Place[] = [
   // Via route '6' — cafe × 2 kept → keptCount 2 → strength 'strong' in territory derivation
-  { id: 'seed-place-1', name: 'Café Orée', category: 'cafe', personalFit: 'kept', impression: 'Quiet corner, easy to stay.', createdAt: '2026-02-10T10:00:00Z', sourceRelationId: '6' },
+  // quickSignal added here: repeatDesire true + contextFit max 2 — proves
+  // word-of-mouth signal coexists with route territory derivation.
+  { id: 'seed-place-1', name: 'Café Orée', category: 'cafe', personalFit: 'kept', impression: 'Quiet corner, easy to stay.', createdAt: '2026-02-10T10:00:00Z', sourceRelationId: '6', quickSignal: { repeatDesire: true, contextFit: ['deep_talk', 'calm'] } },
   { id: 'seed-place-2', name: 'Le Comptoir Calme', category: 'cafe', personalFit: 'kept', impression: 'Good light, no noise.', createdAt: '2026-03-05T09:30:00Z', sourceRelationId: '6' },
   // Via route '6' — cafe tried → exercises triedCount; no signal alone
   { id: 'seed-place-3', name: 'Passage Verde', category: 'cafe', personalFit: 'tried', createdAt: '2026-03-18T14:00:00Z', sourceRelationId: '6' },
   // Via route '6' — restaurant × 1 kept → strength 'observed'
-  { id: 'seed-place-4', name: 'Maison Luma', category: 'restaurant', personalFit: 'kept', impression: 'Warm dinner spot with a calm rhythm.', createdAt: '2026-01-28T20:00:00Z', sourceRelationId: '6' },
+  // quickSignal added here: shareSafe true — proves the word-of-mouth
+  // safety signal alone, without repeatDesire or contextFit.
+  { id: 'seed-place-4', name: 'Maison Luma', category: 'restaurant', personalFit: 'kept', impression: 'Warm dinner spot with a calm rhythm.', createdAt: '2026-01-28T20:00:00Z', sourceRelationId: '6', quickSignal: { shareSafe: true } },
   // Via route '10' — spot × 1 kept → strength 'observed'
   { id: 'seed-place-5', name: 'Jardin Haut', category: 'spot', personalFit: 'kept', impression: 'Open-air place that felt easy to return to.', createdAt: '2026-02-20T16:00:00Z', sourceRelationId: '10' },
   // Via route '10' — restaurant × 1 kept → second observed signal for restaurant territory
@@ -880,7 +894,7 @@ const REVEAL_UNLOCK_DELAY_MS = 90_000;
  * On mismatch with persisted state, the store resets to fresh seed.
  * This ensures dev/demo devices always get the latest data.
  */
-const SEED_VERSION = 10;
+const SEED_VERSION = 11;
 
 type PersistedState = StoreState & { seedVersion?: number };
 
@@ -1261,6 +1275,16 @@ loadPersistedState<PersistedState>().then((persisted) => {
           const hydratedWorldFit = sanitizePlaceWorldFit(
             (place as Record<string, unknown>).worldFit,
           );
+          const hydratedPersonalFit = sanitizePlacePersonalFit(
+            (place as Record<string, unknown>).personalFit ??
+            (place as Record<string, unknown>).rating,
+          );
+          // Word-of-mouth signal only has value if the place was actually
+          // kept — drop it on hydration otherwise, same rule as pushPlace/setPlace.
+          const hydratedQuickSignal =
+            hydratedPersonalFit === 'kept'
+              ? sanitizePlaceQuickSignal((place as Record<string, unknown>).quickSignal)
+              : undefined;
           acc.push({
             id:
               typeof place.id === 'string' && place.id.length > 0
@@ -1268,10 +1292,7 @@ loadPersistedState<PersistedState>().then((persisted) => {
                 : `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             name,
             category: sanitizePlaceCategory(place.category),
-            personalFit: sanitizePlacePersonalFit(
-              (place as Record<string, unknown>).personalFit ??
-              (place as Record<string, unknown>).rating,
-            ),
+            personalFit: hydratedPersonalFit,
             impression:
               typeof place.impression === 'string' && place.impression.trim().length > 0
                 ? place.impression.trim()
@@ -1282,6 +1303,7 @@ loadPersistedState<PersistedState>().then((persisted) => {
                 : new Date().toISOString(),
             ...(hydratedSourceRelationId !== undefined ? { sourceRelationId: hydratedSourceRelationId } : {}),
             ...(hydratedWorldFit !== undefined ? { worldFit: hydratedWorldFit } : {}),
+            ...(hydratedQuickSignal !== undefined ? { quickSignal: hydratedQuickSignal } : {}),
           });
 
           return acc;
@@ -1617,6 +1639,7 @@ export type PlaceCreateInput = {
   impression?: string;
   sourceRelationId?: string;
   worldFit?: RelationOpenWorld[];
+  quickSignal?: PlaceQuickSignal;
 };
 
 export type PlaceUpdateInput = {
@@ -1625,6 +1648,7 @@ export type PlaceUpdateInput = {
   personalFit: PlacePersonalFit;
   impression?: string;
   worldFit?: RelationOpenWorld[];
+  quickSignal?: PlaceQuickSignal;
 };
 
 // ── progressive private signals ────────────────────────────────────────
@@ -1660,6 +1684,9 @@ function pushPlace(input: PlaceCreateInput): Place | null {
   const cleanImpression = input.impression?.trim();
   const sourceRelationId = sanitizePlaceSourceRelationId(input.sourceRelationId);
   const worldFit = sanitizePlaceWorldFit(input.worldFit);
+  // Word-of-mouth signal only has value if the place is actually kept.
+  const quickSignal =
+    personalFit === 'kept' ? sanitizePlaceQuickSignal(input.quickSignal) : undefined;
   const place: Place = {
     id: `p-${Date.now()}`,
     name: cleanName,
@@ -1669,6 +1696,7 @@ function pushPlace(input: PlaceCreateInput): Place | null {
     createdAt: new Date().toISOString(),
     ...(sourceRelationId !== undefined ? { sourceRelationId } : {}),
     ...(worldFit !== undefined ? { worldFit } : {}),
+    ...(quickSignal !== undefined ? { quickSignal } : {}),
   };
   state.places = [place, ...state.places];
   emitChange();
@@ -1684,12 +1712,15 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
   const personalFit = sanitizePlacePersonalFit(update.personalFit);
   const cleanImpression = update.impression?.trim();
   const worldFit = sanitizePlaceWorldFit(update.worldFit);
+  // Word-of-mouth signal only has value if the place is actually kept.
+  const quickSignal =
+    personalFit === 'kept' ? sanitizePlaceQuickSignal(update.quickSignal) : undefined;
 
   let didUpdate = false;
   state.places = state.places.map((place) => {
     if (place.id !== id) return place;
     didUpdate = true;
-    const { worldFit: _previousWorldFit, ...rest } = place;
+    const { worldFit: _previousWorldFit, quickSignal: _previousQuickSignal, ...rest } = place;
     return {
       ...rest,
       name: cleanName,
@@ -1697,6 +1728,7 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
       personalFit,
       impression: cleanImpression ? cleanImpression : undefined,
       ...(worldFit !== undefined ? { worldFit } : {}),
+      ...(quickSignal !== undefined ? { quickSignal } : {}),
     };
   });
 

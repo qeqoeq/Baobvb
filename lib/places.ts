@@ -1,4 +1,19 @@
 import type { Place, PlaceCategory, PlacePersonalFit } from '@/store/useRelationsStore';
+import { PLACE_CONTEXT_FIT_OPTIONS, type PlaceContextFit } from './place-quick-signal';
+
+export { PLACE_CONTEXT_FIT_OPTIONS };
+export type { PlaceContextFit };
+
+export const PLACE_CONTEXT_FIT_LABELS: Record<PlaceContextFit, string> = {
+  date: 'Date',
+  friends: 'Friends',
+  family: 'Family',
+  work_focus: 'Work / focus',
+  quick_bite: 'Quick bite',
+  deep_talk: 'Deep talk',
+  calm: 'Calm',
+  discovery: 'Discovery',
+};
 
 export const PLACE_CATEGORY_LABELS: Record<PlaceCategory, string> = {
   restaurant: 'Restaurant',

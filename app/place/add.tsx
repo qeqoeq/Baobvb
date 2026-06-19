@@ -9,9 +9,11 @@ import {
   View,
 } from 'react-native';
 
+import { PlaceQuickSignalSheet } from '@/components/place/PlaceQuickSignalSheet';
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
 import { PLACE_PERSONAL_FIT_LABELS } from '@/lib/places';
+import type { PlaceQuickSignal } from '@/lib/place-quick-signal';
 import {
   getRelationOpenWorldLabel,
   RELATION_OPEN_WORLD_OPTIONS,
@@ -49,9 +51,18 @@ export default function AddPlaceScreen() {
   const [personalFit, setPersonalFit] = useState<PlaceCreateInput['personalFit']>('saved');
   const [impression, setImpression] = useState('');
   const [worldFit, setWorldFit] = useState<RelationOpenWorld[]>([]);
+  const [quickSignal, setQuickSignal] = useState<PlaceQuickSignal>({});
+  const [quickSignalVisible, setQuickSignalVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isValid = useMemo(() => name.trim().length > 0, [name]);
+
+  const handlePersonalFitChange = (fit: PlacePersonalFit) => {
+    setPersonalFit(fit);
+    if (fit === 'kept') {
+      setQuickSignalVisible(true);
+    }
+  };
 
   const handleSave = () => {
     const cleanName = name.trim();
@@ -67,6 +78,7 @@ export default function AddPlaceScreen() {
       impression,
       sourceRelationId: sourceRelationIdParam,
       worldFit,
+      quickSignal,
     });
     if (!created) {
       setError('Unable to save this place right now.');
@@ -132,7 +144,7 @@ export default function AddPlaceScreen() {
             return (
               <Pressable
                 key={fit}
-                onPress={() => setPersonalFit(fit)}
+                onPress={() => handlePersonalFitChange(fit)}
                 style={[styles.fitChip, active && styles.fitChipActive]}
               >
                 <Text style={[styles.fitText, active && styles.fitTextActive]}>
@@ -207,6 +219,13 @@ export default function AddPlaceScreen() {
           <Text style={styles.saveButtonText}>Save place</Text>
         </Pressable>
       </View>
+
+      <PlaceQuickSignalSheet
+        visible={quickSignalVisible}
+        value={quickSignal}
+        onChange={setQuickSignal}
+        onDismiss={() => setQuickSignalVisible(false)}
+      />
     </ScrollView>
   );
 }

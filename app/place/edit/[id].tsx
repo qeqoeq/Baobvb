@@ -2,12 +2,14 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { PlaceQuickSignalSheet } from '@/components/place/PlaceQuickSignalSheet';
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
 import {
   PLACE_CATEGORY_LABELS,
   PLACE_PERSONAL_FIT_LABELS,
 } from '@/lib/places';
+import type { PlaceQuickSignal } from '@/lib/place-quick-signal';
 import {
   getRelationOpenWorldLabel,
   RELATION_OPEN_WORLD_OPTIONS,
@@ -44,7 +46,16 @@ export default function EditPlaceScreen() {
   );
   const [impression, setImpression] = useState(place?.impression ?? '');
   const [worldFit, setWorldFit] = useState<RelationOpenWorld[]>(place?.worldFit ?? []);
+  const [quickSignal, setQuickSignal] = useState<PlaceQuickSignal>(place?.quickSignal ?? {});
+  const [quickSignalVisible, setQuickSignalVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handlePersonalFitChange = (fit: PlacePersonalFit) => {
+    if (fit === 'kept' && personalFit !== 'kept') {
+      setQuickSignalVisible(true);
+    }
+    setPersonalFit(fit);
+  };
 
   if (!place) {
     return (
@@ -67,6 +78,7 @@ export default function EditPlaceScreen() {
       personalFit,
       impression,
       worldFit,
+      quickSignal,
     });
 
     if (!ok) {
@@ -121,7 +133,7 @@ export default function EditPlaceScreen() {
             return (
               <Pressable
                 key={fit}
-                onPress={() => setPersonalFit(fit)}
+                onPress={() => handlePersonalFitChange(fit)}
                 style={[styles.fitChip, active && styles.fitChipActive]}
               >
                 <Text style={[styles.fitChipText, active && styles.fitChipTextActive]}>
@@ -186,12 +198,28 @@ export default function EditPlaceScreen() {
           </View>
         </View>
 
+        {personalFit === 'kept' ? (
+          <Pressable
+            onPress={() => setQuickSignalVisible(true)}
+            style={styles.refineButton}
+          >
+            <Text style={styles.refineButtonText}>Refine the read</Text>
+          </Pressable>
+        ) : null}
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Pressable onPress={onSave} style={styles.saveButton}>
           <Text style={styles.saveButtonText}>Save changes</Text>
         </Pressable>
       </View>
+
+      <PlaceQuickSignalSheet
+        visible={quickSignalVisible}
+        value={quickSignal}
+        onChange={setQuickSignal}
+        onDismiss={() => setQuickSignalVisible(false)}
+      />
     </ScrollView>
   );
 }
@@ -341,6 +369,15 @@ const styles = StyleSheet.create({
   },
   worldFitChipTextSelected: {
     color: colors.accent.warmGold,
+  },
+  refineButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+  },
+  refineButtonText: {
+    color: colors.text.muted,
+    fontSize: 13,
+    fontWeight: '600',
   },
   error: {
     color: colors.accent.softCoral,
