@@ -1,8 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Fragment, useCallback, useMemo } from 'react';
-import { Alert, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Fragment, useCallback, useMemo, useState } from 'react';
+import { Alert, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../../constants/colors';
@@ -33,6 +33,7 @@ export default function CircleScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const { bottom: bottomInset } = useSafeAreaInsets();
   const atlasSize = screenWidth;
+  const [actionMenuVisible, setActionMenuVisible] = useState(false);
 
   const readings = useMemo(
     () => getFoundationalReadings(relations, evaluations),
@@ -175,7 +176,7 @@ export default function CircleScreen() {
             style={styles.addPersonBtn}
             onPress={() => {
               if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('../relation/add');
+              setActionMenuVisible(true);
             }}
           >
             <Ionicons name="person-add-outline" size={20} color={colors.text.secondary} />
@@ -268,6 +269,41 @@ export default function CircleScreen() {
         </View>
       </View>
 
+      <Modal
+        visible={actionMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActionMenuVisible(false)}
+      >
+        <Pressable
+          style={styles.actionMenuBackdrop}
+          onPress={() => setActionMenuVisible(false)}
+        >
+          <Pressable style={styles.actionMenuCard} onPress={() => {}}>
+            <Pressable
+              style={styles.actionMenuRow}
+              onPress={() => {
+                setActionMenuVisible(false);
+                router.push('../relation/add');
+              }}
+            >
+              <Text style={styles.actionMenuRowText}>{'Start a reading'}</Text>
+              <Text style={styles.actionMenuRowSupport}>{'Understand a connection'}</Text>
+            </Pressable>
+            <View style={styles.actionMenuDivider} />
+            <Pressable
+              style={styles.actionMenuRow}
+              onPress={() => {
+                setActionMenuVisible(false);
+                router.push('../place/add');
+              }}
+            >
+              <Text style={styles.actionMenuRowText}>{'Keep a place'}</Text>
+              <Text style={styles.actionMenuRowSupport}>{'Keep a real-world trace'}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -343,6 +379,40 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.text.secondary,
     letterSpacing: 0.3,
+  },
+  actionMenuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  actionMenuCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.secondary,
+    overflow: 'hidden',
+  },
+  actionMenuRow: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    gap: 2,
+  },
+  actionMenuRowText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  actionMenuRowSupport: {
+    fontSize: 12,
+    color: colors.text.muted,
+  },
+  actionMenuDivider: {
+    height: 1,
+    backgroundColor: colors.border.soft,
   },
 
   atlasWrap: {
