@@ -44,7 +44,18 @@ export type RestaurantExperienceDimensions = Partial<
   Record<RestaurantExperienceDimension, PlaceExperienceLevel>
 >;
 
+// outcome is the new experience verdict; repeatDesire remains
+// legacy-compatible until the adaptive evidence model lands.
+export type PlaceQuickSignalOutcome = 'would_go_back' | 'depends' | 'not_for_me';
+
+export const PLACE_QUICK_SIGNAL_OUTCOME_OPTIONS: readonly PlaceQuickSignalOutcome[] = [
+  'would_go_back',
+  'depends',
+  'not_for_me',
+] as const;
+
 export type PlaceQuickSignal = {
+  outcome?: PlaceQuickSignalOutcome;
   repeatDesire?: boolean;
   shareSafe?: boolean;
   contextFit?: PlaceContextFit[];
@@ -75,6 +86,23 @@ export function sanitizePlaceContextFit(value: unknown): PlaceContextFit[] | und
 
 function sanitizeOptionalBoolean(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
+}
+
+export function isPlaceQuickSignalOutcome(value: unknown): value is PlaceQuickSignalOutcome {
+  return (
+    typeof value === 'string' &&
+    PLACE_QUICK_SIGNAL_OUTCOME_OPTIONS.includes(value as PlaceQuickSignalOutcome)
+  );
+}
+
+/**
+ * Invalid/unknown values are dropped silently — undefined if absent or
+ * malformed. Legacy-safe: never throws on old/unrelated data shapes.
+ */
+export function sanitizePlaceQuickSignalOutcome(
+  value: unknown,
+): PlaceQuickSignalOutcome | undefined {
+  return isPlaceQuickSignalOutcome(value) ? value : undefined;
 }
 
 export function isRestaurantExperienceDimension(
@@ -119,12 +147,14 @@ export function sanitizePlaceQuickSignal(value: unknown): PlaceQuickSignal | und
   if (!value || typeof value !== 'object') return undefined;
   const raw = value as Record<string, unknown>;
 
+  const outcome = sanitizePlaceQuickSignalOutcome(raw.outcome);
   const repeatDesire = sanitizeOptionalBoolean(raw.repeatDesire);
   const shareSafe = sanitizeOptionalBoolean(raw.shareSafe);
   const contextFit = sanitizePlaceContextFit(raw.contextFit);
   const restaurantDimensions = sanitizeRestaurantExperienceDimensions(raw.restaurantDimensions);
 
   if (
+    outcome === undefined &&
     repeatDesire === undefined &&
     shareSafe === undefined &&
     contextFit === undefined &&
@@ -134,6 +164,7 @@ export function sanitizePlaceQuickSignal(value: unknown): PlaceQuickSignal | und
   }
 
   return {
+    ...(outcome !== undefined ? { outcome } : {}),
     ...(repeatDesire !== undefined ? { repeatDesire } : {}),
     ...(shareSafe !== undefined ? { shareSafe } : {}),
     ...(contextFit !== undefined ? { contextFit } : {}),
@@ -144,6 +175,7 @@ export function sanitizePlaceQuickSignal(value: unknown): PlaceQuickSignal | und
 export function hasPlaceQuickSignal(value: PlaceQuickSignal | undefined): boolean {
   if (!value) return false;
   return (
+    value.outcome !== undefined ||
     value.repeatDesire !== undefined ||
     value.shareSafe !== undefined ||
     (value.contextFit !== undefined && value.contextFit.length > 0) ||

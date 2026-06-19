@@ -48,16 +48,15 @@ export const PLACE_PERSONAL_FIT_LABELS: Record<PlacePersonalFit, string> = {
   not_for_me:  'Not for me',
 };
 
-// "Your experience" only holds real lived evidence — a future intention is
-// not an experience. Save for later is captured as a separate, secondary
-// action (see PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION below).
+// "Have you been there?" only confirms a real visit happened — it is not
+// the verdict. The verdict (would go back / depends / not for me) lives in
+// the Quick Read, not as an entry-level chip. Save for later is captured as
+// a separate, secondary action (see PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION
+// below).
 export const PLACE_PERSONAL_FIT_CAPTURE_OPTIONS: {
-  id: 'kept' | 'not_for_me';
+  id: 'kept';
   label: string;
-}[] = [
-  { id: 'kept', label: 'Went there' },
-  { id: 'not_for_me', label: 'Not for me' },
-];
+}[] = [{ id: 'kept', label: 'Yes, I went' }];
 
 export const PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION: {
   id: 'saved';

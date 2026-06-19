@@ -4,6 +4,7 @@ import {
   hasPlaceQuickSignal,
   sanitizePlaceContextFit,
   sanitizePlaceQuickSignal,
+  sanitizePlaceQuickSignalOutcome,
   sanitizeRestaurantExperienceDimensions,
 } from './place-quick-signal';
 
@@ -148,6 +149,59 @@ describe('sanitizePlaceQuickSignal — restaurantDimensions', () => {
     expect(result).not.toHaveProperty('average');
     expect(result).not.toHaveProperty('score');
     expect(result).not.toHaveProperty('globalRating');
+  });
+});
+
+describe('sanitizePlaceQuickSignalOutcome', () => {
+  it('keeps a valid outcome', () => {
+    expect(sanitizePlaceQuickSignalOutcome('would_go_back')).toBe('would_go_back');
+    expect(sanitizePlaceQuickSignalOutcome('depends')).toBe('depends');
+    expect(sanitizePlaceQuickSignalOutcome('not_for_me')).toBe('not_for_me');
+  });
+
+  it('drops an invalid outcome', () => {
+    expect(sanitizePlaceQuickSignalOutcome('loved_it')).toBeUndefined();
+    expect(sanitizePlaceQuickSignalOutcome('')).toBeUndefined();
+    expect(sanitizePlaceQuickSignalOutcome(5)).toBeUndefined();
+    expect(sanitizePlaceQuickSignalOutcome(null)).toBeUndefined();
+  });
+});
+
+describe('sanitizePlaceQuickSignal — outcome', () => {
+  it('keeps a valid outcome on the signal', () => {
+    expect(sanitizePlaceQuickSignal({ outcome: 'would_go_back' })).toEqual({
+      outcome: 'would_go_back',
+    });
+  });
+
+  it('drops an invalid outcome without breaking the rest of the signal', () => {
+    const result = sanitizePlaceQuickSignal({ outcome: 'loved_it', shareSafe: true });
+    expect(result).toEqual({ shareSafe: true });
+  });
+
+  it('absent outcome does not break sanitization', () => {
+    const result = sanitizePlaceQuickSignal({ repeatDesire: true });
+    expect(result).toEqual({ repeatDesire: true });
+    expect(result).not.toHaveProperty('outcome');
+  });
+
+  it('legacy repeatDesire is preserved alongside outcome', () => {
+    const result = sanitizePlaceQuickSignal({
+      outcome: 'would_go_back',
+      repeatDesire: true,
+    });
+    expect(result).toEqual({ outcome: 'would_go_back', repeatDesire: true });
+  });
+
+  it('restaurantDimensions is unaffected by outcome', () => {
+    const result = sanitizePlaceQuickSignal({
+      outcome: 'not_for_me',
+      restaurantDimensions: { cleanliness: 1 },
+    });
+    expect(result).toEqual({
+      outcome: 'not_for_me',
+      restaurantDimensions: { cleanliness: 1 },
+    });
   });
 });
 

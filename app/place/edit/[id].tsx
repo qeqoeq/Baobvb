@@ -134,8 +134,12 @@ export default function EditPlaceScreen() {
         <Text style={styles.identityHintHint}>Only to recognize it later.</Text>
 
         {/* "Save for later" is personal memory, not experience evidence.
-            "Went there" remains the current trigger for quickSignal. */}
-        <Text style={styles.inputLabel}>Your experience</Text>
+            The verdict (would go back / depends / not for me) lives in the
+            Quick Read, not as an entry-level chip — see PlaceQuickSignalSheet.
+            Legacy places with personalFit 'not_for_me' still display correctly
+            via PLACE_PERSONAL_FIT_LABELS in the preview above; the chip below
+            simply won't show as active for them. */}
+        <Text style={styles.inputLabel}>Have you been there?</Text>
         <View style={styles.rowWrap}>
           {PLACE_PERSONAL_FIT_CAPTURE_OPTIONS.map((item) => {
             const active = item.id === personalFit;

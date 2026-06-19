@@ -6,10 +6,12 @@ import { radius, spacing } from '@/constants/spacing';
 import { PLACE_CONTEXT_FIT_LABELS, RESTAURANT_EXPERIENCE_DIMENSION_LABELS } from '@/lib/places';
 import {
   PLACE_CONTEXT_FIT_OPTIONS,
+  PLACE_QUICK_SIGNAL_OUTCOME_OPTIONS,
   RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS,
   type PlaceContextFit,
   type PlaceExperienceLevel,
   type PlaceQuickSignal,
+  type PlaceQuickSignalOutcome,
   type RestaurantExperienceDimension,
 } from '@/lib/place-quick-signal';
 import type { PlaceCategory } from '@/store/useRelationsStore';
@@ -17,6 +19,12 @@ import type { PlaceCategory } from '@/store/useRelationsStore';
 const CONTEXT_FIT_MAX = 2;
 const EXPERIENCE_LEVELS: readonly PlaceExperienceLevel[] = [1, 2, 3, 4, 5];
 const CATEGORIES_WITH_DIMENSIONS: readonly PlaceCategory[] = ['restaurant', 'cafe', 'bar'];
+
+const OUTCOME_LABELS: Record<PlaceQuickSignalOutcome, string> = {
+  would_go_back: 'Would go back',
+  depends: 'Depends',
+  not_for_me: 'Not for me',
+};
 
 type PlaceQuickSignalSheetProps = {
   visible: boolean;
@@ -42,12 +50,25 @@ export function PlaceQuickSignalSheet({
   const showAcknowledgement = useMemo(
     () =>
       touched &&
-      (value.repeatDesire !== undefined ||
+      (value.outcome !== undefined ||
+        value.repeatDesire !== undefined ||
         value.shareSafe !== undefined ||
         contextFit.length > 0 ||
         Object.keys(restaurantDimensions).length > 0),
-    [touched, value.repeatDesire, value.shareSafe, contextFit.length, restaurantDimensions],
+    [
+      touched,
+      value.outcome,
+      value.repeatDesire,
+      value.shareSafe,
+      contextFit.length,
+      restaurantDimensions,
+    ],
   );
+
+  const setOutcome = (outcome: PlaceQuickSignalOutcome) => {
+    setTouched(true);
+    onChange({ ...value, outcome });
+  };
 
   const setRepeatDesire = (repeatDesire: boolean) => {
     setTouched(true);
@@ -100,6 +121,31 @@ export function PlaceQuickSignalSheet({
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+        <View style={styles.section}>
+          <Text style={styles.question}>How did it land?</Text>
+          <View style={styles.chipRow}>
+            {PLACE_QUICK_SIGNAL_OUTCOME_OPTIONS.map((option) => {
+              const selected = value.outcome === option;
+              return (
+                <Pressable
+                  key={option}
+                  onPress={() => setOutcome(option)}
+                  style={[styles.outcomeChip, selected && styles.outcomeChipSelected]}
+                >
+                  <Text
+                    style={[
+                      styles.outcomeChipText,
+                      selected && styles.outcomeChipTextSelected,
+                    ]}
+                  >
+                    {OUTCOME_LABELS[option]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.question}>Worth returning?</Text>
           <View style={styles.row}>
@@ -295,6 +341,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  outcomeChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.tertiary,
+  },
+  outcomeChipSelected: {
+    borderColor: colors.accent.deepTeal,
+    backgroundColor: colors.accent.deepTeal + '1F',
+  },
+  outcomeChipText: {
+    color: colors.text.muted,
+    fontWeight: '600',
+  },
+  outcomeChipTextSelected: {
+    color: colors.text.primary,
   },
   contextChip: {
     paddingHorizontal: spacing.md,
