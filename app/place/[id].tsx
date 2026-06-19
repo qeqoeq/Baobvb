@@ -83,7 +83,7 @@ export default function PlaceDetailScreen() {
 
         {place.identityHint ? (
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionLabel}>Identity</Text>
+            <Text style={styles.sectionLabel}>Saved reference</Text>
             <Text style={styles.metaText}>{place.identityHint}</Text>
           </View>
         ) : null}

@@ -30,6 +30,7 @@ import {
   sanitizePlaceQuickSignal,
   type PlaceQuickSignal,
 } from '../lib/place-quick-signal';
+import { sanitizePlaceIdentityHint } from '../lib/place-identity-hint';
 import { clearPersistedState, loadPersistedState, persistState } from '../lib/storage';
 import {
   findAssistedReconciliationSuggestionForRelation,
@@ -982,19 +983,6 @@ function sanitizePlaceSourceRelationId(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
-}
-
-const PLACE_IDENTITY_HINT_MAX_LENGTH = 180;
-
-/**
- * Free-text memory aid (address, link, landmark). Trim only — no URL
- * parsing, no geocoding, no normalization. Truncated, never rejected.
- */
-function sanitizePlaceIdentityHint(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
-  if (trimmed.length === 0) return undefined;
-  return trimmed.slice(0, PLACE_IDENTITY_HINT_MAX_LENGTH);
 }
 
 /**

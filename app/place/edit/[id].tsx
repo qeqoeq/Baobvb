@@ -127,7 +127,7 @@ export default function EditPlaceScreen() {
         <TextInput
           value={identityHint}
           onChangeText={setIdentityHint}
-          placeholder="Google Maps, website, or address"
+          placeholder="Map link, website, or address"
           placeholderTextColor={colors.text.muted}
           style={styles.input}
         />
