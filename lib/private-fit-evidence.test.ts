@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildPrivateFitEvidenceSourceContext,
   derivePrivateFitEvidence,
   resolvePrivateFitEvidenceSourceTrust,
 } from './private-fit-evidence';
@@ -243,5 +244,134 @@ describe('derivePrivateFitEvidence does not auto-consume the source trust resolv
       // sourceTrustEligible intentionally omitted
     });
     expect(evidence.sourceTrustEligible).toBeUndefined();
+  });
+});
+
+describe('buildPrivateFitEvidenceSourceContext', () => {
+  const eligibleRelation = {
+    id: 'rel-1',
+    archived: false,
+    revealSnapshot: { revealed: true },
+  };
+  const eligibleEvaluation = { relationId: 'rel-1', ratings: { trust: 5 } };
+
+  it('sourceRelationId absent: returns personalFit/quickSignal, sourceTrustEligible stays undefined', () => {
+    const context = buildPrivateFitEvidenceSourceContext(
+      { personalFit: 'kept', quickSignal: { landingLevel: 4 } },
+      [],
+      [],
+    );
+    expect(context.personalFit).toBe('kept');
+    expect(context.quickSignal).toEqual({ landingLevel: 4 });
+    expect(context.sourceTrustEligible).toBeUndefined();
+    expect(context.sourceRelationId).toBeUndefined();
+  });
+
+  it('sourceRelationId present but no matching relation: id kept opaque, sourceTrustEligible stays undefined', () => {
+    const context = buildPrivateFitEvidenceSourceContext(
+      { personalFit: 'kept', sourceRelationId: 'rel-ghost' },
+      [eligibleRelation],
+      [eligibleEvaluation],
+    );
+    expect(context.sourceRelationId).toBe('rel-ghost');
+    expect(context.sourceTrustEligible).toBeUndefined();
+  });
+
+  it('relation found, revealed, trust >= 4, not archived: sourceTrustEligible true', () => {
+    const context = buildPrivateFitEvidenceSourceContext(
+      { personalFit: 'kept', sourceRelationId: 'rel-1' },
+      [eligibleRelation],
+      [eligibleEvaluation],
+    );
+    expect(context.sourceTrustEligible).toBe(true);
+  });
+
+  it('relation found but not revealed: sourceTrustEligible false', () => {
+    const context = buildPrivateFitEvidenceSourceContext(
+      { personalFit: 'kept', sourceRelationId: 'rel-1' },
+      [{ id: 'rel-1', archived: false, revealSnapshot: { revealed: false } }],
+      [eligibleEvaluation],
+    );
+    expect(context.sourceTrustEligible).toBe(false);
+  });
+
+  it('relation found but trust below 4: sourceTrustEligible false', () => {
+    const context = buildPrivateFitEvidenceSourceContext(
+      { personalFit: 'kept', sourceRelationId: 'rel-1' },
+      [eligibleRelation],
+      [{ relationId: 'rel-1', ratings: { trust: 3 } }],
+    );
+    expect(context.sourceTrustEligible).toBe(false);
+  });
+
+  it('relation found but archived: sourceTrustEligible false', () => {
+    const context = buildPrivateFitEvidenceSourceContext(
+      { personalFit: 'kept', sourceRelationId: 'rel-1' },
+      [{ id: 'rel-1', archived: true, revealSnapshot: { revealed: true } }],
+      [eligibleEvaluation],
+    );
+    expect(context.sourceTrustEligible).toBe(false);
+  });
+
+  it('relation found but evaluation missing: sourceTrustEligible false (known relation, null trust) — different from a missing relation', () => {
+    const contextWithMissingEvaluation = buildPrivateFitEvidenceSourceContext(
+      { personalFit: 'kept', sourceRelationId: 'rel-1' },
+      [eligibleRelation],
+      [], // no evaluation at all for rel-1
+    );
+    const contextWithMissingRelation = buildPrivateFitEvidenceSourceContext(
+      { personalFit: 'kept', sourceRelationId: 'rel-ghost' },
+      [],
+      [],
+    );
+    expect(contextWithMissingEvaluation.sourceTrustEligible).toBe(false);
+    expect(contextWithMissingRelation.sourceTrustEligible).toBeUndefined();
+  });
+
+  it('personalFit and quickSignal are passed through unchanged', () => {
+    const quickSignal = {
+      landingLevel: 5 as const,
+      driverDimensions: ['food' as const],
+      shareSafe: true,
+    };
+    const context = buildPrivateFitEvidenceSourceContext(
+      { personalFit: 'not_for_me', quickSignal },
+      [],
+      [],
+    );
+    expect(context.personalFit).toBe('not_for_me');
+    expect(context.quickSignal).toEqual(quickSignal);
+  });
+
+  it('does not call derivePrivateFitEvidence — no final-evidence-only keys leak into the context', () => {
+    const context = buildPrivateFitEvidenceSourceContext(
+      { personalFit: 'kept', sourceRelationId: 'rel-1', quickSignal: { landingLevel: 5 } },
+      [eligibleRelation],
+      [eligibleEvaluation],
+    );
+    expect(context).not.toHaveProperty('hasExperiencedSignal');
+    expect(context).not.toHaveProperty('missingSignals');
+    expect(context).not.toHaveProperty('selectedDrivers');
+    expect(context).not.toHaveProperty('dimensionSignals');
+  });
+
+  it('no forbidden key appears anywhere in the built context', () => {
+    const contexts = [
+      buildPrivateFitEvidenceSourceContext({ personalFit: 'kept' }, [], []),
+      buildPrivateFitEvidenceSourceContext(
+        { personalFit: 'kept', sourceRelationId: 'rel-1' },
+        [eligibleRelation],
+        [eligibleEvaluation],
+      ),
+    ];
+    const forbidden = [...FORBIDDEN_KEY_SUBSTRINGS, 'sourcename', 'recommendedby'];
+    for (const context of contexts) {
+      for (const key of Object.keys(context)) {
+        const lowerKey = key.toLowerCase();
+        for (const word of forbidden) {
+          expect(lowerKey).not.toContain(word.toLowerCase());
+        }
+      }
+    }
   });
 });

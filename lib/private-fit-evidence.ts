@@ -88,6 +88,85 @@ export function resolvePrivateFitEvidenceSourceTrust(
   return canUsePrivateOpenWorlds(params);
 }
 
+// ── Source context builder ───────────────────────────────────────────────
+// This builder assembles a PrivateFitEvidenceSourceContext for a single
+// place. It does NOT interpret evidence and never calls
+// derivePrivateFitEvidence — assembling a context and reading evidence
+// from it are two separate steps, kept separate on purpose.
+//
+// undefined sourceTrustEligible means "unknown" (no relation id, or no
+// matching relation found) — it is never coerced to false. false means a
+// matching relation was found and explicitly failed the trust gate (not
+// revealed, archived, or trust below threshold). These are different
+// facts and must never be conflated.
+
+/** Minimal place shape — never the full store Place type. */
+export type BuildPrivateFitEvidenceSourceContextPlaceInput = {
+  sourceRelationId?: string;
+  personalFit: PrivateFitEvidencePersonalFit;
+  quickSignal?: PlaceQuickSignal;
+};
+
+/** Minimal relation shape — never the full store Relation type. */
+export type BuildPrivateFitEvidenceSourceContextRelationInput = {
+  id: string;
+  archived?: boolean;
+  revealSnapshot?: { revealed?: boolean };
+};
+
+/** Minimal evaluation shape — never the full lib/evaluation.ts Evaluation type. */
+export type BuildPrivateFitEvidenceSourceContextEvaluationInput = {
+  relationId: string;
+  ratings?: { trust?: number | null };
+};
+
+/**
+ * Assembles a PrivateFitEvidenceSourceContext for one place. Resolves
+ * sourceTrustEligible via resolvePrivateFitEvidenceSourceTrust when (and
+ * only when) a matching relation is found. Never returns a relation name,
+ * avatar, handle, or any other human-identifying field — sourceRelationId
+ * is carried as an opaque identifier only.
+ */
+export function buildPrivateFitEvidenceSourceContext(
+  place: BuildPrivateFitEvidenceSourceContextPlaceInput,
+  relations: BuildPrivateFitEvidenceSourceContextRelationInput[],
+  evaluations: BuildPrivateFitEvidenceSourceContextEvaluationInput[],
+): PrivateFitEvidenceSourceContext {
+  const base: PrivateFitEvidenceSourceContext = {
+    personalFit: place.personalFit,
+    ...(place.quickSignal !== undefined ? { quickSignal: place.quickSignal } : {}),
+  };
+
+  if (place.sourceRelationId === undefined) {
+    // No source relation at all — sourceTrustEligible stays unknown, not false.
+    return base;
+  }
+
+  const relation = relations.find((candidate) => candidate.id === place.sourceRelationId);
+  if (!relation) {
+    // sourceRelationId is opaque and carried through, but with no relation
+    // to resolve, sourceTrustEligible stays unknown, not false.
+    return { ...base, sourceRelationId: place.sourceRelationId };
+  }
+
+  const isRevealed = relation.revealSnapshot?.revealed === true;
+  const isArchived = relation.archived === true;
+  const evaluation = evaluations.find((item) => item.relationId === relation.id);
+  const trustRating = evaluation?.ratings?.trust ?? null;
+
+  const sourceTrustEligible = resolvePrivateFitEvidenceSourceTrust({
+    isRevealed,
+    trustRating,
+    isArchived,
+  });
+
+  return {
+    ...base,
+    sourceRelationId: place.sourceRelationId,
+    sourceTrustEligible,
+  };
+}
+
 /**
  * Pure, non-scoring read of a single experience's private evidence.
  * Never returns a score, average, rank, estimate, or percentage — only
