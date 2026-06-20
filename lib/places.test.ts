@@ -9,6 +9,7 @@ import {
   getPlaceCategoryLabel,
   getPlaceFitLabel,
   getPlaceReading,
+  mergePlaceUpdate,
   sanitizePlacePersonalFit,
   sanitizePlaceSourceRelationId,
   type RouteTerritorySignal,
@@ -460,5 +461,156 @@ describe('sanitizePlaceSourceRelationId', () => {
     expect(sanitizePlaceSourceRelationId({})).toBeUndefined();
     expect(sanitizePlaceSourceRelationId([])).toBeUndefined();
     expect(sanitizePlaceSourceRelationId(true)).toBeUndefined();
+  });
+});
+
+// ── mergePlaceUpdate ─────────────────────────────────────────────────────────
+// Pure extraction of setPlace's fusion logic (X.45-test). Reproduces the
+// store's exact rules:
+//   - name/category/personalFit/impression are always overwritten by the
+//     update;
+//   - worldFit/quickSignal/identityHint are DROPPED from the existing place
+//     whenever the update omits them — they are not preserved by default.
+//     They are restored only if the update explicitly supplies a defined
+//     value. This mirrors setPlace's current behavior exactly; it is the
+//     caller (the UI screen) that re-supplies the current value on every
+//     save to make the field appear "preserved" to the user.
+
+function basePlace(overrides: Partial<Place> = {}): Place {
+  return {
+    id: 'p-1',
+    name: 'Café Orée',
+    category: 'cafe',
+    personalFit: 'kept',
+    createdAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
+describe('mergePlaceUpdate', () => {
+  it('overwrites name, category, personalFit, and impression from the update', () => {
+    const existing = basePlace({ impression: 'Old note' });
+    const result = mergePlaceUpdate(existing, {
+      name: 'New name',
+      category: 'restaurant',
+      personalFit: 'not_for_me',
+      impression: 'New note',
+    });
+    expect(result.name).toBe('New name');
+    expect(result.category).toBe('restaurant');
+    expect(result.personalFit).toBe('not_for_me');
+    expect(result.impression).toBe('New note');
+  });
+
+  it('sets impression to undefined when the update omits it', () => {
+    const existing = basePlace({ impression: 'Old note' });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+    });
+    expect(result.impression).toBeUndefined();
+  });
+
+  it('drops worldFit when the update omits it, even if it existed on the existing place', () => {
+    const existing = basePlace({ worldFit: ['culture'] });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+    });
+    expect(result.worldFit).toBeUndefined();
+  });
+
+  it('replaces worldFit when the update explicitly supplies it', () => {
+    const existing = basePlace({ worldFit: ['culture'] });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+      worldFit: ['travel', 'sport'],
+    });
+    expect(result.worldFit).toEqual(['travel', 'sport']);
+  });
+
+  it('drops quickSignal when the update omits it, even if it existed on the existing place', () => {
+    const existing = basePlace({ quickSignal: { landingLevel: 4 } });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+    });
+    expect(result.quickSignal).toBeUndefined();
+  });
+
+  it('replaces quickSignal when the update explicitly supplies it', () => {
+    const existing = basePlace({ quickSignal: { landingLevel: 4 } });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+      quickSignal: { landingLevel: 5, shareSafe: true },
+    });
+    expect(result.quickSignal).toEqual({ landingLevel: 5, shareSafe: true });
+  });
+
+  it('drops identityHint when the update omits it, even if it existed on the existing place', () => {
+    const existing = basePlace({ identityHint: '12 Rue de la Paix' });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+    });
+    expect(result.identityHint).toBeUndefined();
+  });
+
+  it('replaces identityHint when the update explicitly supplies it', () => {
+    const existing = basePlace({ identityHint: '12 Rue de la Paix' });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+      identityHint: 'maps.app.goo.gl/xyz',
+    });
+    expect(result.identityHint).toBe('maps.app.goo.gl/xyz');
+  });
+
+  it('does not mutate the existing place object', () => {
+    const existing = basePlace({ worldFit: ['culture'], identityHint: 'old hint' });
+    const existingSnapshot = { ...existing };
+    mergePlaceUpdate(existing, {
+      name: 'Changed',
+      category: 'restaurant',
+      personalFit: 'not_for_me',
+      worldFit: ['sport'],
+      identityHint: 'new hint',
+    });
+    expect(existing).toEqual(existingSnapshot);
+  });
+
+  it('preserves unrelated existing fields (id, createdAt, sourceRelationId) untouched', () => {
+    const existing = basePlace({ sourceRelationId: 'rel-1', createdAt: '2026-02-02T00:00:00Z' });
+    const result = mergePlaceUpdate(existing, {
+      name: 'New name',
+      category: 'restaurant',
+      personalFit: 'kept',
+    });
+    expect(result.id).toBe('p-1');
+    expect(result.createdAt).toBe('2026-02-02T00:00:00Z');
+    expect(result.sourceRelationId).toBe('rel-1');
+  });
+
+  it('introduces no scoring, ranking, or estimate key in the merged result', () => {
+    const existing = basePlace();
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+      quickSignal: { landingLevel: 5 },
+    });
+    const keys = Object.keys(result).map((k) => k.toLowerCase());
+    for (const forbidden of ['score', 'average', 'rank', 'estimate', 'percentage']) {
+      expect(keys.some((k) => k.includes(forbidden))).toBe(false);
+    }
   });
 });

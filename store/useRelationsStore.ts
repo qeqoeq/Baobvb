@@ -31,6 +31,7 @@ import {
   type PlaceQuickSignal,
 } from '../lib/place-quick-signal';
 import { sanitizePlaceIdentityHint } from '../lib/place-identity-hint';
+import { mergePlaceUpdate } from '../lib/places';
 import { clearPersistedState, loadPersistedState, persistState } from '../lib/storage';
 import {
   findAssistedReconciliationSuggestionForRelation,
@@ -1736,22 +1737,15 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
   state.places = state.places.map((place) => {
     if (place.id !== id) return place;
     didUpdate = true;
-    const {
-      worldFit: _previousWorldFit,
-      quickSignal: _previousQuickSignal,
-      identityHint: _previousIdentityHint,
-      ...rest
-    } = place;
-    return {
-      ...rest,
+    return mergePlaceUpdate(place, {
       name: cleanName,
       category,
       personalFit,
-      impression: cleanImpression ? cleanImpression : undefined,
-      ...(worldFit !== undefined ? { worldFit } : {}),
-      ...(quickSignal !== undefined ? { quickSignal } : {}),
-      ...(identityHint !== undefined ? { identityHint } : {}),
-    };
+      impression: cleanImpression,
+      worldFit,
+      quickSignal,
+      identityHint,
+    });
   });
 
   if (!didUpdate) return false;

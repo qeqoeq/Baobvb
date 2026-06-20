@@ -3,10 +3,12 @@ import {
   PLACE_CONTEXT_FIT_OPTIONS,
   RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS,
   type PlaceContextFit,
+  type PlaceQuickSignal,
   type RestaurantExperienceDimension,
 } from './place-quick-signal';
 import {
   canUsePrivateOpenWorlds,
+  type RelationOpenWorld,
   type TrustedWorldMapEvaluationInput,
   type TrustedWorldMapRelationInput,
 } from './relation-open-worlds';
@@ -225,4 +227,51 @@ export function deriveTrustWorldTerritory(
     .map(([category, strength]) => ({ category, strength }));
 
   return { categories };
+}
+
+// ── Place update merge (testability boundary) ──────────────────────────────
+// Pure extraction of setPlace's fusion logic, with no store/persistence
+// dependency, so the merge rules themselves are directly testable. The
+// caller (store/useRelationsStore.ts) is responsible for all sanitization
+// before calling this function — it receives already-sanitized values.
+
+export type MergePlaceUpdateInput = {
+  name: string;
+  category: PlaceCategory;
+  personalFit: PlacePersonalFit;
+  impression?: string;
+  worldFit?: RelationOpenWorld[];
+  quickSignal?: PlaceQuickSignal;
+  identityHint?: string;
+};
+
+/**
+ * Pure merge of an existing Place with an already-sanitized update.
+ * Reproduces setPlace's exact fusion rules:
+ *  - name/category/personalFit/impression are always overwritten by the
+ *    update (impression becomes undefined if the update's value is falsy);
+ *  - worldFit/quickSignal/identityHint are dropped from the existing place
+ *    and only restored if the update explicitly supplies a defined value —
+ *    they are NOT preserved by default when omitted from the update.
+ * Never mutates `existing`. Never touches persistence, emitChange, or the
+ * store — purely an object transformation.
+ */
+export function mergePlaceUpdate(existing: Place, update: MergePlaceUpdateInput): Place {
+  const {
+    worldFit: _previousWorldFit,
+    quickSignal: _previousQuickSignal,
+    identityHint: _previousIdentityHint,
+    ...rest
+  } = existing;
+
+  return {
+    ...rest,
+    name: update.name,
+    category: update.category,
+    personalFit: update.personalFit,
+    impression: update.impression ? update.impression : undefined,
+    ...(update.worldFit !== undefined ? { worldFit: update.worldFit } : {}),
+    ...(update.quickSignal !== undefined ? { quickSignal: update.quickSignal } : {}),
+    ...(update.identityHint !== undefined ? { identityHint: update.identityHint } : {}),
+  };
 }
