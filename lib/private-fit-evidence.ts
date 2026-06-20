@@ -19,6 +19,7 @@ import type {
   PlaceQuickSignal,
   RestaurantExperienceDimension,
 } from './place-quick-signal';
+import { canUsePrivateOpenWorlds } from './relation-open-worlds';
 
 // Mirrors store/useRelationsStore.ts PlacePersonalFit structurally, without
 // importing the store — this lib stays decoupled from store/UI concerns.
@@ -60,6 +61,32 @@ export type PrivateFitEvidence = {
   sourceTrustEligible?: boolean;
   missingSignals: PrivateFitEvidenceMissingSignal[];
 };
+
+// ── Source trust resolver ────────────────────────────────────────────────
+// This resolver is a provisional binary gate for whether a relational
+// source can be considered as qualitative evidence in the Private Fit
+// Evidence context. It does not measure rater calibration, standard
+// similarity, or the fine strength of a recommendation. Standalone by
+// design in this sprint — derivePrivateFitEvidence does not call it
+// automatically; a future caller wires its result into sourceTrustEligible.
+
+export type PrivateFitEvidenceSourceTrustContext = {
+  isRevealed: boolean;
+  trustRating: number | null;
+  isArchived?: boolean;
+};
+
+/**
+ * Delegates directly to canUsePrivateOpenWorlds — the same gate already
+ * used by deriveKeptPlaceWorldSignals and deriveRouteTerritorySignals.
+ * Returns a plain boolean only: no relation id, no name, no level, no
+ * score, no visible explanation.
+ */
+export function resolvePrivateFitEvidenceSourceTrust(
+  params: PrivateFitEvidenceSourceTrustContext,
+): boolean {
+  return canUsePrivateOpenWorlds(params);
+}
 
 /**
  * Pure, non-scoring read of a single experience's private evidence.

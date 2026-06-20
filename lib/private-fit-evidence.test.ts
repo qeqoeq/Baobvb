@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { derivePrivateFitEvidence } from './private-fit-evidence';
+import {
+  derivePrivateFitEvidence,
+  resolvePrivateFitEvidenceSourceTrust,
+} from './private-fit-evidence';
 
 const FORBIDDEN_KEY_SUBSTRINGS = [
   'score',
@@ -149,5 +152,96 @@ describe('derivePrivateFitEvidence', () => {
         }
       }
     }
+  });
+});
+
+describe('resolvePrivateFitEvidenceSourceTrust', () => {
+  it('returns true when revealed, trustRating >= 4, and not archived', () => {
+    expect(
+      resolvePrivateFitEvidenceSourceTrust({
+        isRevealed: true,
+        trustRating: 4,
+        isArchived: false,
+      }),
+    ).toBe(true);
+  });
+
+  it('returns true when isArchived is omitted entirely', () => {
+    expect(
+      resolvePrivateFitEvidenceSourceTrust({ isRevealed: true, trustRating: 5 }),
+    ).toBe(true);
+  });
+
+  it('returns false when not revealed', () => {
+    expect(
+      resolvePrivateFitEvidenceSourceTrust({
+        isRevealed: false,
+        trustRating: 5,
+        isArchived: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('returns false when trustRating is below 4', () => {
+    expect(
+      resolvePrivateFitEvidenceSourceTrust({
+        isRevealed: true,
+        trustRating: 3,
+        isArchived: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('returns false when trustRating is null', () => {
+    expect(
+      resolvePrivateFitEvidenceSourceTrust({
+        isRevealed: true,
+        trustRating: null,
+        isArchived: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('returns false when archived', () => {
+    expect(
+      resolvePrivateFitEvidenceSourceTrust({
+        isRevealed: true,
+        trustRating: 5,
+        isArchived: true,
+      }),
+    ).toBe(false);
+  });
+
+  it('returns a plain boolean with no forbidden key in sight', () => {
+    const result = resolvePrivateFitEvidenceSourceTrust({
+      isRevealed: true,
+      trustRating: 4,
+    });
+    expect(typeof result).toBe('boolean');
+  });
+});
+
+describe('derivePrivateFitEvidence does not auto-consume the source trust resolver', () => {
+  it('leaves sourceTrustEligible undefined / missing when not explicitly passed', () => {
+    const evidence = derivePrivateFitEvidence({
+      personalFit: 'kept',
+      quickSignal: { landingLevel: 4 },
+      sourceRelationId: 'rel-9',
+    });
+    expect(evidence.sourceTrustEligible).toBeUndefined();
+    expect(evidence.missingSignals).toContain('source_not_trust_eligible');
+  });
+
+  it('does not call resolvePrivateFitEvidenceSourceTrust internally — only reflects what is passed in', () => {
+    // Same isRevealed/trustRating/isArchived shape would resolve to true via
+    // resolvePrivateFitEvidenceSourceTrust, but derivePrivateFitEvidence has
+    // no way to know that unless the caller passes sourceTrustEligible itself.
+    const evidence = derivePrivateFitEvidence({
+      personalFit: 'kept',
+      quickSignal: { landingLevel: 4 },
+      sourceRelationId: 'rel-9',
+      // sourceTrustEligible intentionally omitted
+    });
+    expect(evidence.sourceTrustEligible).toBeUndefined();
   });
 });
