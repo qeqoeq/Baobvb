@@ -1,4 +1,5 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/constants/colors';
@@ -24,6 +25,9 @@ export default function PlaceDetailScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const { places, updatePlace } = useRelationsStore();
   const place = places.find((item) => item.id === params.id);
+  // Local-only UI feedback — never read from place.wentAgainAt, never
+  // persisted, resets whenever this screen unmounts/remounts.
+  const [wentAgainConfirmed, setWentAgainConfirmed] = useState(false);
 
   // Explicit, never auto-triggered. Omitting worldFit/quickSignal/
   // identityHint here is safe — X.45b preserves them by default.
@@ -35,6 +39,7 @@ export default function PlaceDetailScreen() {
       personalFit: place.personalFit,
       wentAgainAt: new Date().toISOString(),
     });
+    setWentAgainConfirmed(true);
   };
 
   if (!place) {
@@ -103,6 +108,9 @@ export default function PlaceDetailScreen() {
         <Pressable onPress={onWentAgain} style={styles.wentAgainButton}>
           <Text style={styles.wentAgainButtonText}>I went again</Text>
         </Pressable>
+        {wentAgainConfirmed ? (
+          <Text style={styles.wentAgainConfirmedText}>Saved privately</Text>
+        ) : null}
 
         <Pressable
           onPress={() => router.push(`../place/edit/${place.id}`)}
@@ -182,6 +190,11 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     fontSize: 13,
     fontWeight: '600',
+  },
+  wentAgainConfirmedText: {
+    color: colors.text.muted,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   editButton: {
     marginTop: spacing.xs,
