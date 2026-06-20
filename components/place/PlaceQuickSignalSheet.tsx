@@ -6,12 +6,13 @@ import { radius, spacing } from '@/constants/spacing';
 import { PLACE_CONTEXT_FIT_LABELS, RESTAURANT_EXPERIENCE_DIMENSION_LABELS } from '@/lib/places';
 import {
   PLACE_CONTEXT_FIT_OPTIONS,
-  PLACE_QUICK_SIGNAL_OUTCOME_OPTIONS,
+  PLACE_LANDING_LEVEL_LABELS,
+  PLACE_LANDING_LEVEL_OPTIONS,
   RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS,
   type PlaceContextFit,
   type PlaceExperienceLevel,
+  type PlaceLandingLevel,
   type PlaceQuickSignal,
-  type PlaceQuickSignalOutcome,
   type RestaurantExperienceDimension,
   type RestaurantExperienceDimensions,
 } from '@/lib/place-quick-signal';
@@ -22,16 +23,12 @@ const DRIVER_DIMENSIONS_MAX = 2;
 const EXPERIENCE_LEVELS: readonly PlaceExperienceLevel[] = [1, 2, 3, 4, 5];
 const CATEGORIES_WITH_DIMENSIONS: readonly PlaceCategory[] = ['restaurant', 'cafe', 'bar'];
 
-const OUTCOME_LABELS: Record<PlaceQuickSignalOutcome, string> = {
-  would_go_back: 'Would go back',
-  depends: 'Depends',
-  not_for_me: 'Not for me',
-};
-
-const DRIVER_QUESTION_BY_OUTCOME: Record<PlaceQuickSignalOutcome, string> = {
-  would_go_back: 'What made it work?',
-  depends: 'What made it uneven?',
-  not_for_me: "What didn't fit?",
+const DRIVER_QUESTION_BY_LANDING_LEVEL: Record<PlaceLandingLevel, string> = {
+  1: 'What went wrong?',
+  2: "What didn't fit?",
+  3: 'What made it uneven?',
+  4: 'What made it work?',
+  5: 'What made it exceptional?',
 };
 const DRIVER_QUESTION_DEFAULT = 'What mattered most?';
 
@@ -62,15 +59,23 @@ export function PlaceQuickSignalSheet({
   // are never erased; they simply aren't shown until their dimension is
   // (re)selected as a driver.
   const driverDimensions = value.driverDimensions ?? [];
-  const showDimensions = CATEGORIES_WITH_DIMENSIONS.includes(category) && driverDimensions.length > 0;
-  const driverQuestion = value.outcome
-    ? DRIVER_QUESTION_BY_OUTCOME[value.outcome]
-    : DRIVER_QUESTION_DEFAULT;
+  // category gate: a driver chip must always be able to open a notable
+  // dimension. restaurant/cafe/bar have a dimension catalog; spot/other
+  // don't — so the entire driver section (not just "A closer look") is
+  // hidden for them, never a visible chip with no signal behind it.
+  const allowsDriverDimensions = CATEGORIES_WITH_DIMENSIONS.includes(category);
+  const showDimensions = allowsDriverDimensions && driverDimensions.length > 0;
+  // outcome is legacy — no longer asked in UI, landingLevel is the active verdict.
+  const driverQuestion =
+    value.landingLevel !== undefined
+      ? DRIVER_QUESTION_BY_LANDING_LEVEL[value.landingLevel]
+      : DRIVER_QUESTION_DEFAULT;
 
   const showAcknowledgement = useMemo(
     () =>
       touched &&
-      (value.outcome !== undefined ||
+      (value.landingLevel !== undefined ||
+        value.outcome !== undefined ||
         value.repeatDesire !== undefined ||
         value.shareSafe !== undefined ||
         contextFit.length > 0 ||
@@ -78,6 +83,7 @@ export function PlaceQuickSignalSheet({
         Object.keys(restaurantDimensions).length > 0),
     [
       touched,
+      value.landingLevel,
       value.outcome,
       value.repeatDesire,
       value.shareSafe,
@@ -87,9 +93,9 @@ export function PlaceQuickSignalSheet({
     ],
   );
 
-  const setOutcome = (outcome: PlaceQuickSignalOutcome) => {
+  const setLandingLevel = (landingLevel: PlaceLandingLevel) => {
     setTouched(true);
-    onChange({ ...value, outcome });
+    onChange({ ...value, landingLevel });
   };
 
   const toggleDriverDimension = (dimension: RestaurantExperienceDimension) => {
@@ -158,62 +164,60 @@ export function PlaceQuickSignalSheet({
         >
         <View style={styles.section}>
           <Text style={styles.question}>How did it land?</Text>
-          <View style={styles.chipRow}>
-            {PLACE_QUICK_SIGNAL_OUTCOME_OPTIONS.map((option) => {
-              const selected = value.outcome === option;
+          <View style={styles.capsuleRow}>
+            {PLACE_LANDING_LEVEL_OPTIONS.map((level) => {
+              const active = value.landingLevel !== undefined && level <= value.landingLevel;
               return (
                 <Pressable
-                  key={option}
-                  onPress={() => setOutcome(option)}
-                  style={[styles.outcomeChip, selected && styles.outcomeChipSelected]}
-                >
-                  <Text
-                    style={[
-                      styles.outcomeChipText,
-                      selected && styles.outcomeChipTextSelected,
-                    ]}
-                  >
-                    {OUTCOME_LABELS[option]}
-                  </Text>
-                </Pressable>
+                  key={level}
+                  onPress={() => setLandingLevel(level)}
+                  style={[styles.capsule, active && styles.capsuleActive]}
+                />
               );
             })}
           </View>
+          {value.landingLevel !== undefined ? (
+            <Text style={styles.landingLevelCaption}>
+              {PLACE_LANDING_LEVEL_LABELS[value.landingLevel]}
+            </Text>
+          ) : null}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.question}>{driverQuestion}</Text>
-          <View style={styles.chipRow}>
-            {RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS.map((dimension) => {
-              const selected = driverDimensions.includes(dimension);
-              const atMax = driverDimensions.length >= DRIVER_DIMENSIONS_MAX;
-              const disabled = !selected && atMax;
-              return (
-                <Pressable
-                  key={dimension}
-                  onPress={() => toggleDriverDimension(dimension)}
-                  disabled={disabled}
-                  style={[
-                    styles.contextChip,
-                    selected && styles.contextChipSelected,
-                    disabled && styles.contextChipDisabled,
-                  ]}
-                >
-                  <Text
+        {allowsDriverDimensions ? (
+          <View style={styles.section}>
+            <Text style={styles.question}>{driverQuestion}</Text>
+            <View style={styles.chipRow}>
+              {RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS.map((dimension) => {
+                const selected = driverDimensions.includes(dimension);
+                const atMax = driverDimensions.length >= DRIVER_DIMENSIONS_MAX;
+                const disabled = !selected && atMax;
+                return (
+                  <Pressable
+                    key={dimension}
+                    onPress={() => toggleDriverDimension(dimension)}
+                    disabled={disabled}
                     style={[
-                      styles.contextChipText,
-                      selected && styles.contextChipTextSelected,
+                      styles.contextChip,
+                      selected && styles.contextChipSelected,
+                      disabled && styles.contextChipDisabled,
                     ]}
                   >
-                    {RESTAURANT_EXPERIENCE_DIMENSION_LABELS[dimension]}
-                  </Text>
-                </Pressable>
-              );
-            })}
+                    <Text
+                      style={[
+                        styles.contextChipText,
+                        selected && styles.contextChipTextSelected,
+                      ]}
+                    >
+                      {RESTAURANT_EXPERIENCE_DIMENSION_LABELS[dimension]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
-        </View>
+        ) : null}
 
-        {/* repeatDesire is legacy-only in UI; outcome is the active verdict. */}
+        {/* repeatDesire and outcome are legacy-only in UI; landingLevel is the active verdict. */}
         <View style={styles.section}>
           <Text style={styles.question}>Would you send someone here?</Text>
           <View style={styles.row}>
@@ -394,24 +398,10 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  outcomeChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 4,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-    backgroundColor: colors.background.tertiary,
-  },
-  outcomeChipSelected: {
-    borderColor: colors.accent.deepTeal,
-    backgroundColor: colors.accent.deepTeal + '1F',
-  },
-  outcomeChipText: {
-    color: colors.text.muted,
+  landingLevelCaption: {
+    fontSize: 12,
     fontWeight: '600',
-  },
-  outcomeChipTextSelected: {
-    color: colors.text.primary,
+    color: colors.accent.warmGold,
   },
   contextChip: {
     paddingHorizontal: spacing.md,

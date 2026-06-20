@@ -44,8 +44,9 @@ export type RestaurantExperienceDimensions = Partial<
   Record<RestaurantExperienceDimension, PlaceExperienceLevel>
 >;
 
-// outcome is the new experience verdict; repeatDesire remains
-// legacy-compatible until the adaptive evidence model lands.
+// outcome was the first experience verdict; it is now legacy. landingLevel
+// is the active verdict. repeatDesire remains legacy-compatible until the
+// adaptive evidence model lands.
 export type PlaceQuickSignalOutcome = 'would_go_back' | 'depends' | 'not_for_me';
 
 export const PLACE_QUICK_SIGNAL_OUTCOME_OPTIONS: readonly PlaceQuickSignalOutcome[] = [
@@ -54,13 +55,38 @@ export const PLACE_QUICK_SIGNAL_OUTCOME_OPTIONS: readonly PlaceQuickSignalOutcom
   'not_for_me',
 ] as const;
 
+/**
+ * Private intensity of experience — not a Yelp rating, not a public
+ * average, not a star, never displayed as a score. Used only to open the
+ * right follow-up questions (drivers, dimensions) and, later, to feed a
+ * private fit estimate.
+ *   1 = Avoid
+ *   2 = Not for me
+ *   3 = Depends
+ *   4 = Would go back
+ *   5 = Exceptional
+ */
+export type PlaceLandingLevel = 1 | 2 | 3 | 4 | 5;
+
+export const PLACE_LANDING_LEVEL_OPTIONS: readonly PlaceLandingLevel[] = [1, 2, 3, 4, 5] as const;
+
+export const PLACE_LANDING_LEVEL_LABELS: Record<PlaceLandingLevel, string> = {
+  1: 'Avoid',
+  2: 'Not for me',
+  3: 'Depends',
+  4: 'Would go back',
+  5: 'Exceptional',
+};
+
 export type PlaceQuickSignal = {
+  landingLevel?: PlaceLandingLevel;
+  /** @deprecated legacy verdict, superseded by landingLevel. */
   outcome?: PlaceQuickSignalOutcome;
   repeatDesire?: boolean;
   shareSafe?: boolean;
   contextFit?: PlaceContextFit[];
   /**
-   * Dimensions the user picked as having mattered for this outcome —
+   * Dimensions the user picked as having mattered for this experience —
    * gates which dimensions become notable in "A closer look". No rating
    * without a driver chosen first.
    */
@@ -109,6 +135,18 @@ export function sanitizePlaceQuickSignalOutcome(
   value: unknown,
 ): PlaceQuickSignalOutcome | undefined {
   return isPlaceQuickSignalOutcome(value) ? value : undefined;
+}
+
+export function isPlaceLandingLevel(value: unknown): value is PlaceLandingLevel {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5;
+}
+
+/**
+ * Accepts only the integers 1-5. Rejects 0, 6, decimals, strings, null.
+ * Legacy-safe: undefined input/output never throws.
+ */
+export function sanitizePlaceLandingLevel(value: unknown): PlaceLandingLevel | undefined {
+  return isPlaceLandingLevel(value) ? value : undefined;
 }
 
 export function isRestaurantExperienceDimension(
@@ -173,6 +211,7 @@ export function sanitizePlaceQuickSignal(value: unknown): PlaceQuickSignal | und
   if (!value || typeof value !== 'object') return undefined;
   const raw = value as Record<string, unknown>;
 
+  const landingLevel = sanitizePlaceLandingLevel(raw.landingLevel);
   const outcome = sanitizePlaceQuickSignalOutcome(raw.outcome);
   const repeatDesire = sanitizeOptionalBoolean(raw.repeatDesire);
   const shareSafe = sanitizeOptionalBoolean(raw.shareSafe);
@@ -181,6 +220,7 @@ export function sanitizePlaceQuickSignal(value: unknown): PlaceQuickSignal | und
   const restaurantDimensions = sanitizeRestaurantExperienceDimensions(raw.restaurantDimensions);
 
   if (
+    landingLevel === undefined &&
     outcome === undefined &&
     repeatDesire === undefined &&
     shareSafe === undefined &&
@@ -192,6 +232,7 @@ export function sanitizePlaceQuickSignal(value: unknown): PlaceQuickSignal | und
   }
 
   return {
+    ...(landingLevel !== undefined ? { landingLevel } : {}),
     ...(outcome !== undefined ? { outcome } : {}),
     ...(repeatDesire !== undefined ? { repeatDesire } : {}),
     ...(shareSafe !== undefined ? { shareSafe } : {}),
@@ -204,6 +245,7 @@ export function sanitizePlaceQuickSignal(value: unknown): PlaceQuickSignal | und
 export function hasPlaceQuickSignal(value: PlaceQuickSignal | undefined): boolean {
   if (!value) return false;
   return (
+    value.landingLevel !== undefined ||
     value.outcome !== undefined ||
     value.repeatDesire !== undefined ||
     value.shareSafe !== undefined ||

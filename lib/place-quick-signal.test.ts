@@ -4,6 +4,7 @@ import {
   hasPlaceQuickSignal,
   sanitizePlaceContextFit,
   sanitizePlaceDriverDimensions,
+  sanitizePlaceLandingLevel,
   sanitizePlaceQuickSignal,
   sanitizePlaceQuickSignalOutcome,
   sanitizeRestaurantExperienceDimensions,
@@ -264,11 +265,77 @@ describe('sanitizePlaceQuickSignal — driverDimensions', () => {
   });
 });
 
+describe('sanitizePlaceLandingLevel', () => {
+  it('keeps each valid level 1-5', () => {
+    expect(sanitizePlaceLandingLevel(1)).toBe(1);
+    expect(sanitizePlaceLandingLevel(2)).toBe(2);
+    expect(sanitizePlaceLandingLevel(3)).toBe(3);
+    expect(sanitizePlaceLandingLevel(4)).toBe(4);
+    expect(sanitizePlaceLandingLevel(5)).toBe(5);
+  });
+
+  it('rejects 0', () => {
+    expect(sanitizePlaceLandingLevel(0)).toBeUndefined();
+  });
+
+  it('rejects 6', () => {
+    expect(sanitizePlaceLandingLevel(6)).toBeUndefined();
+  });
+
+  it('rejects a decimal', () => {
+    expect(sanitizePlaceLandingLevel(3.5)).toBeUndefined();
+  });
+
+  it('rejects a string', () => {
+    expect(sanitizePlaceLandingLevel('4')).toBeUndefined();
+  });
+
+  it('rejects null', () => {
+    expect(sanitizePlaceLandingLevel(null)).toBeUndefined();
+  });
+
+  it('returns undefined when absent, without breaking', () => {
+    expect(sanitizePlaceLandingLevel(undefined)).toBeUndefined();
+  });
+});
+
+describe('sanitizePlaceQuickSignal — landingLevel', () => {
+  it('preserves landingLevel on the signal', () => {
+    expect(sanitizePlaceQuickSignal({ landingLevel: 4 })).toEqual({ landingLevel: 4 });
+  });
+
+  it('drops an invalid landingLevel without breaking the rest of the signal', () => {
+    const result = sanitizePlaceQuickSignal({ landingLevel: 6, shareSafe: true });
+    expect(result).toEqual({ shareSafe: true });
+  });
+
+  it('legacy outcome is preserved alongside landingLevel', () => {
+    const result = sanitizePlaceQuickSignal({ landingLevel: 4, outcome: 'would_go_back' });
+    expect(result).toEqual({ landingLevel: 4, outcome: 'would_go_back' });
+  });
+
+  it('legacy repeatDesire is preserved alongside landingLevel', () => {
+    const result = sanitizePlaceQuickSignal({ landingLevel: 1, repeatDesire: true });
+    expect(result).toEqual({ landingLevel: 1, repeatDesire: true });
+  });
+
+  it('driverDimensions is unaffected by landingLevel', () => {
+    const result = sanitizePlaceQuickSignal({
+      landingLevel: 5,
+      driverDimensions: ['food'],
+    });
+    expect(result).toEqual({ landingLevel: 5, driverDimensions: ['food'] });
+  });
+});
+
 describe('hasPlaceQuickSignal', () => {
+  it('returns true when landingLevel alone is set', () => {
+    expect(hasPlaceQuickSignal({ landingLevel: 1 })).toBe(true);
+  });
+
   it('returns true when driverDimensions alone is set', () => {
     expect(hasPlaceQuickSignal({ driverDimensions: ['food'] })).toBe(true);
   });
-
 
   it('returns false for undefined', () => {
     expect(hasPlaceQuickSignal(undefined)).toBe(false);
