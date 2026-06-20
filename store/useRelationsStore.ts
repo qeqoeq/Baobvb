@@ -209,6 +209,12 @@ export type Place = {
    * geocoded, never fetched, never used by any derivation in this sprint.
    */
   identityHint?: string;
+  /**
+   * Private signal of a declared repeat visit — never auto-triggered, only
+   * set when the user explicitly confirms "I went again". Never displayed
+   * as a counter, a "last visited" date, or any recommendation signal.
+   */
+  wentAgainAt?: string;
 };
 
 export type MeProfile = {
@@ -986,6 +992,15 @@ function sanitizePlaceSourceRelationId(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+// Private repeat-visit signal — never displayed as a counter or "last
+// visited" date. Omission always preserves any existing value; only an
+// explicit, valid replacement is ever written.
+function sanitizePlaceWentAgainAt(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 /**
  * Sanitizes a place's direct worldFit qualification. Max 2 worlds (stricter
  * than sanitizeRelationOpenWorlds' max 3 for relation.privateOpenWorlds),
@@ -1286,6 +1301,9 @@ loadPersistedState<PersistedState>().then((persisted) => {
           const hydratedIdentityHint = sanitizePlaceIdentityHint(
             (place as Record<string, unknown>).identityHint,
           );
+          const hydratedWentAgainAt = sanitizePlaceWentAgainAt(
+            (place as Record<string, unknown>).wentAgainAt,
+          );
           const hydratedPersonalFit = sanitizePlacePersonalFit(
             (place as Record<string, unknown>).personalFit ??
             (place as Record<string, unknown>).rating,
@@ -1316,6 +1334,7 @@ loadPersistedState<PersistedState>().then((persisted) => {
             ...(hydratedWorldFit !== undefined ? { worldFit: hydratedWorldFit } : {}),
             ...(hydratedQuickSignal !== undefined ? { quickSignal: hydratedQuickSignal } : {}),
             ...(hydratedIdentityHint !== undefined ? { identityHint: hydratedIdentityHint } : {}),
+            ...(hydratedWentAgainAt !== undefined ? { wentAgainAt: hydratedWentAgainAt } : {}),
           });
 
           return acc;
@@ -1663,6 +1682,9 @@ export type PlaceUpdateInput = {
   worldFit?: RelationOpenWorld[];
   quickSignal?: PlaceQuickSignal;
   identityHint?: string;
+  // Private repeat-visit signal. Omission preserves any existing value;
+  // never auto-set, never derived, never displayed as a counter.
+  wentAgainAt?: string;
 };
 
 // ── progressive private signals ────────────────────────────────────────
@@ -1755,6 +1777,11 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
         ? { provided: true, value: sanitizePlaceQuickSignal(update.quickSignal) }
         : { provided: false };
 
+  // wentAgainAt: omission always preserves (no explicit-clear case is
+  // needed for this signal — it never auto-triggers, and only a valid
+  // value ever replaces it).
+  const wentAgainAt = sanitizePlaceWentAgainAt(update.wentAgainAt);
+
   let didUpdate = false;
   state.places = state.places.map((place) => {
     if (place.id !== id) return place;
@@ -1767,6 +1794,7 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
       worldFit: worldFitField,
       quickSignal: quickSignalField,
       identityHint: identityHintField,
+      wentAgainAt,
     });
   });
 

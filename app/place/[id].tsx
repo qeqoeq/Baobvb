@@ -22,8 +22,20 @@ function formatPlaceDate(value: string): string {
 
 export default function PlaceDetailScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
-  const { places } = useRelationsStore();
+  const { places, updatePlace } = useRelationsStore();
   const place = places.find((item) => item.id === params.id);
+
+  // Explicit, never auto-triggered. Omitting worldFit/quickSignal/
+  // identityHint here is safe — X.45b preserves them by default.
+  const onWentAgain = () => {
+    if (!place) return;
+    updatePlace(place.id, {
+      name: place.name,
+      category: place.category,
+      personalFit: place.personalFit,
+      wentAgainAt: new Date().toISOString(),
+    });
+  };
 
   if (!place) {
     return (
@@ -87,6 +99,10 @@ export default function PlaceDetailScreen() {
             <Text style={styles.metaText}>{place.identityHint}</Text>
           </View>
         ) : null}
+
+        <Pressable onPress={onWentAgain} style={styles.wentAgainButton}>
+          <Text style={styles.wentAgainButtonText}>I went again</Text>
+        </Pressable>
 
         <Pressable
           onPress={() => router.push(`../place/edit/${place.id}`)}
@@ -157,6 +173,15 @@ const styles = StyleSheet.create({
   metaText: {
     color: colors.text.secondary,
     fontSize: 14,
+  },
+  wentAgainButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+  },
+  wentAgainButtonText: {
+    color: colors.text.muted,
+    fontSize: 13,
+    fontWeight: '600',
   },
   editButton: {
     marginTop: spacing.xs,

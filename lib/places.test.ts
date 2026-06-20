@@ -707,4 +707,79 @@ describe('mergePlaceUpdate', () => {
       expect(keys.some((k) => k.includes(forbidden))).toBe(false);
     }
   });
+
+  // ── wentAgainAt (X.46) ──────────────────────────────────────────────────
+  // Private repeat-visit signal. No explicit-clear case: omission always
+  // preserves; only a defined value ever replaces it.
+
+  it('wentAgainAt omitted: preserves the existing value', () => {
+    const existing = basePlace({ wentAgainAt: '2026-01-01T00:00:00Z' });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
+    });
+    expect(result.wentAgainAt).toBe('2026-01-01T00:00:00Z');
+  });
+
+  it('wentAgainAt explicitly supplied: replaces the existing value', () => {
+    const existing = basePlace({ wentAgainAt: '2026-01-01T00:00:00Z' });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
+      wentAgainAt: '2026-02-02T00:00:00Z',
+    });
+    expect(result.wentAgainAt).toBe('2026-02-02T00:00:00Z');
+  });
+
+  it('wentAgainAt absent on a place that never had it: stays undefined when omitted', () => {
+    const existing = basePlace();
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
+    });
+    expect(result.wentAgainAt).toBeUndefined();
+  });
+
+  it('wentAgainAt is set for the first time when supplied on a place that never had it', () => {
+    const existing = basePlace();
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
+      wentAgainAt: '2026-03-03T00:00:00Z',
+    });
+    expect(result.wentAgainAt).toBe('2026-03-03T00:00:00Z');
+  });
+
+  it('introduces no counter, visit-count, or "last visited" key alongside wentAgainAt', () => {
+    const existing = basePlace();
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
+      wentAgainAt: '2026-03-03T00:00:00Z',
+    });
+    const keys = Object.keys(result).map((k) => k.toLowerCase());
+    for (const forbidden of ['counter', 'count', 'lastvisited', 'streak', 'badge']) {
+      expect(keys.some((k) => k.includes(forbidden))).toBe(false);
+    }
+  });
 });

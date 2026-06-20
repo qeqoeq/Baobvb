@@ -253,6 +253,14 @@ export type MergePlaceUpdateInput = {
   worldFit: MergePlaceFieldUpdate<RelationOpenWorld[]>;
   quickSignal: MergePlaceFieldUpdate<PlaceQuickSignal>;
   identityHint: MergePlaceFieldUpdate<string>;
+  /**
+   * Private repeat-visit signal (X.46). Unlike worldFit/quickSignal/
+   * identityHint, this field has no explicit-clear use case: omission
+   * always preserves any existing value (via the `...rest` spread below —
+   * it is never destructured out of `existing`); only a defined, sanitized
+   * value ever replaces it.
+   */
+  wentAgainAt?: string;
 };
 
 /**
@@ -262,7 +270,9 @@ export type MergePlaceUpdateInput = {
  *    update (impression becomes undefined if the update's value is falsy);
  *  - worldFit/quickSignal/identityHint: { provided: false } preserves the
  *    existing value untouched; { provided: true, value } replaces it
- *    (value undefined clears the field, a defined value replaces it).
+ *    (value undefined clears the field, a defined value replaces it);
+ *  - wentAgainAt: omitted (undefined) preserves the existing value; a
+ *    defined value replaces it. No explicit-clear case for this field.
  * The quickSignal-only-if-kept invariant is NOT enforced here — it is the
  * caller's (setPlace's) responsibility to pass { provided: true, value:
  * undefined } for quickSignal whenever personalFit leaves 'kept', so this
@@ -291,5 +301,6 @@ export function mergePlaceUpdate(existing: Place, update: MergePlaceUpdateInput)
     ...(worldFit !== undefined ? { worldFit } : {}),
     ...(quickSignal !== undefined ? { quickSignal } : {}),
     ...(identityHint !== undefined ? { identityHint } : {}),
+    ...(update.wentAgainAt !== undefined ? { wentAgainAt: update.wentAgainAt } : {}),
   };
 }
