@@ -233,26 +233,40 @@ export function deriveTrustWorldTerritory(
 // Pure extraction of setPlace's fusion logic, with no store/persistence
 // dependency, so the merge rules themselves are directly testable. The
 // caller (store/useRelationsStore.ts) is responsible for all sanitization
-// before calling this function — it receives already-sanitized values.
+// and for detecting field presence before calling this function.
+//
+// Doctrine (X.45b): omitted optional structured fields are preserved;
+// explicit empty values clear them. After sanitization, an omission and an
+// explicit clear both collapse to `undefined` — so the caller must carry
+// "was this field provided at all" separately from "what did it sanitize
+// to". MergePlaceFieldUpdate captures exactly that distinction.
+
+export type MergePlaceFieldUpdate<T> =
+  | { provided: false }
+  | { provided: true; value: T | undefined };
 
 export type MergePlaceUpdateInput = {
   name: string;
   category: PlaceCategory;
   personalFit: PlacePersonalFit;
   impression?: string;
-  worldFit?: RelationOpenWorld[];
-  quickSignal?: PlaceQuickSignal;
-  identityHint?: string;
+  worldFit: MergePlaceFieldUpdate<RelationOpenWorld[]>;
+  quickSignal: MergePlaceFieldUpdate<PlaceQuickSignal>;
+  identityHint: MergePlaceFieldUpdate<string>;
 };
 
 /**
  * Pure merge of an existing Place with an already-sanitized update.
- * Reproduces setPlace's exact fusion rules:
+ * Reproduces setPlace's fusion rules:
  *  - name/category/personalFit/impression are always overwritten by the
  *    update (impression becomes undefined if the update's value is falsy);
- *  - worldFit/quickSignal/identityHint are dropped from the existing place
- *    and only restored if the update explicitly supplies a defined value —
- *    they are NOT preserved by default when omitted from the update.
+ *  - worldFit/quickSignal/identityHint: { provided: false } preserves the
+ *    existing value untouched; { provided: true, value } replaces it
+ *    (value undefined clears the field, a defined value replaces it).
+ * The quickSignal-only-if-kept invariant is NOT enforced here — it is the
+ * caller's (setPlace's) responsibility to pass { provided: true, value:
+ * undefined } for quickSignal whenever personalFit leaves 'kept', so this
+ * function never needs to know about personalFit's special case.
  * Never mutates `existing`. Never touches persistence, emitChange, or the
  * store — purely an object transformation.
  */
@@ -264,14 +278,18 @@ export function mergePlaceUpdate(existing: Place, update: MergePlaceUpdateInput)
     ...rest
   } = existing;
 
+  const worldFit = update.worldFit.provided ? update.worldFit.value : existing.worldFit;
+  const quickSignal = update.quickSignal.provided ? update.quickSignal.value : existing.quickSignal;
+  const identityHint = update.identityHint.provided ? update.identityHint.value : existing.identityHint;
+
   return {
     ...rest,
     name: update.name,
     category: update.category,
     personalFit: update.personalFit,
     impression: update.impression ? update.impression : undefined,
-    ...(update.worldFit !== undefined ? { worldFit: update.worldFit } : {}),
-    ...(update.quickSignal !== undefined ? { quickSignal: update.quickSignal } : {}),
-    ...(update.identityHint !== undefined ? { identityHint: update.identityHint } : {}),
+    ...(worldFit !== undefined ? { worldFit } : {}),
+    ...(quickSignal !== undefined ? { quickSignal } : {}),
+    ...(identityHint !== undefined ? { identityHint } : {}),
   };
 }

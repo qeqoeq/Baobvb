@@ -465,16 +465,20 @@ describe('sanitizePlaceSourceRelationId', () => {
 });
 
 // ── mergePlaceUpdate ─────────────────────────────────────────────────────────
-// Pure extraction of setPlace's fusion logic (X.45-test). Reproduces the
-// store's exact rules:
+// Pure extraction of setPlace's fusion logic (X.45-test, refined X.45b).
+// Doctrine (X.45b): omitted optional structured fields are preserved;
+// explicit empty values clear them.
 //   - name/category/personalFit/impression are always overwritten by the
 //     update;
-//   - worldFit/quickSignal/identityHint are DROPPED from the existing place
-//     whenever the update omits them — they are not preserved by default.
-//     They are restored only if the update explicitly supplies a defined
-//     value. This mirrors setPlace's current behavior exactly; it is the
-//     caller (the UI screen) that re-supplies the current value on every
-//     save to make the field appear "preserved" to the user.
+//   - worldFit/quickSignal/identityHint: { provided: false } preserves the
+//     existing value untouched; { provided: true, value: undefined }
+//     clears it; { provided: true, value: <defined> } replaces it.
+//   - mergePlaceUpdate does NOT enforce the quickSignal-only-if-kept
+//     invariant itself — that remains setPlace's responsibility (see
+//     store/useRelationsStore.ts), which is why a dedicated test below
+//     exercises that rule via the field shape setPlace would construct.
+
+const NOT_PROVIDED = { provided: false } as const;
 
 function basePlace(overrides: Partial<Place> = {}): Place {
   return {
@@ -495,6 +499,9 @@ describe('mergePlaceUpdate', () => {
       category: 'restaurant',
       personalFit: 'not_for_me',
       impression: 'New note',
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
     });
     expect(result.name).toBe('New name');
     expect(result.category).toBe('restaurant');
@@ -508,72 +515,153 @@ describe('mergePlaceUpdate', () => {
       name: existing.name,
       category: existing.category,
       personalFit: existing.personalFit,
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
     });
     expect(result.impression).toBeUndefined();
   });
 
-  it('drops worldFit when the update omits it, even if it existed on the existing place', () => {
+  // ── worldFit ────────────────────────────────────────────────────────────
+
+  it('worldFit omitted: preserves the existing value', () => {
     const existing = basePlace({ worldFit: ['culture'] });
     const result = mergePlaceUpdate(existing, {
       name: existing.name,
       category: existing.category,
       personalFit: existing.personalFit,
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
+    });
+    expect(result.worldFit).toEqual(['culture']);
+  });
+
+  it('worldFit explicitly empty: clears the field', () => {
+    const existing = basePlace({ worldFit: ['culture'] });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+      worldFit: { provided: true, value: undefined },
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
     });
     expect(result.worldFit).toBeUndefined();
   });
 
-  it('replaces worldFit when the update explicitly supplies it', () => {
+  it('worldFit explicitly supplied: replaces the existing value', () => {
     const existing = basePlace({ worldFit: ['culture'] });
     const result = mergePlaceUpdate(existing, {
       name: existing.name,
       category: existing.category,
       personalFit: existing.personalFit,
-      worldFit: ['travel', 'sport'],
+      worldFit: { provided: true, value: ['travel', 'sport'] },
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
     });
     expect(result.worldFit).toEqual(['travel', 'sport']);
   });
 
-  it('drops quickSignal when the update omits it, even if it existed on the existing place', () => {
+  // ── quickSignal ─────────────────────────────────────────────────────────
+
+  it('quickSignal omitted + personalFit kept: preserves the existing value', () => {
     const existing = basePlace({ quickSignal: { landingLevel: 4 } });
     const result = mergePlaceUpdate(existing, {
       name: existing.name,
       category: existing.category,
-      personalFit: existing.personalFit,
+      personalFit: 'kept',
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
+    });
+    expect(result.quickSignal).toEqual({ landingLevel: 4 });
+  });
+
+  it('quickSignal explicitly empty + personalFit kept: clears the field', () => {
+    const existing = basePlace({ quickSignal: { landingLevel: 4 } });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: 'kept',
+      worldFit: NOT_PROVIDED,
+      quickSignal: { provided: true, value: undefined },
+      identityHint: NOT_PROVIDED,
     });
     expect(result.quickSignal).toBeUndefined();
   });
 
-  it('replaces quickSignal when the update explicitly supplies it', () => {
+  it('quickSignal explicitly supplied + personalFit kept: replaces the existing value', () => {
     const existing = basePlace({ quickSignal: { landingLevel: 4 } });
     const result = mergePlaceUpdate(existing, {
       name: existing.name,
       category: existing.category,
-      personalFit: existing.personalFit,
-      quickSignal: { landingLevel: 5, shareSafe: true },
+      personalFit: 'kept',
+      worldFit: NOT_PROVIDED,
+      quickSignal: { provided: true, value: { landingLevel: 5, shareSafe: true } },
+      identityHint: NOT_PROVIDED,
     });
     expect(result.quickSignal).toEqual({ landingLevel: 5, shareSafe: true });
   });
 
-  it('drops identityHint when the update omits it, even if it existed on the existing place', () => {
+  it('quickSignal omitted + personalFit not kept: clears the field (mirrors setPlace forcing a clear)', () => {
+    // mergePlaceUpdate itself does not know about the kept-only invariant —
+    // this test exercises the exact field shape setPlace constructs when
+    // personalFit leaves 'kept': an explicit clear, never a preserve.
+    const existing = basePlace({ personalFit: 'kept', quickSignal: { landingLevel: 4 } });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: 'not_for_me',
+      worldFit: NOT_PROVIDED,
+      quickSignal: { provided: true, value: undefined },
+      identityHint: NOT_PROVIDED,
+    });
+    expect(result.quickSignal).toBeUndefined();
+  });
+
+  // ── identityHint ────────────────────────────────────────────────────────
+
+  it('identityHint omitted: preserves the existing value', () => {
     const existing = basePlace({ identityHint: '12 Rue de la Paix' });
     const result = mergePlaceUpdate(existing, {
       name: existing.name,
       category: existing.category,
       personalFit: existing.personalFit,
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
+    });
+    expect(result.identityHint).toBe('12 Rue de la Paix');
+  });
+
+  it('identityHint explicitly empty: clears the field', () => {
+    const existing = basePlace({ identityHint: '12 Rue de la Paix' });
+    const result = mergePlaceUpdate(existing, {
+      name: existing.name,
+      category: existing.category,
+      personalFit: existing.personalFit,
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: { provided: true, value: undefined },
     });
     expect(result.identityHint).toBeUndefined();
   });
 
-  it('replaces identityHint when the update explicitly supplies it', () => {
+  it('identityHint explicitly supplied: replaces the existing value', () => {
     const existing = basePlace({ identityHint: '12 Rue de la Paix' });
     const result = mergePlaceUpdate(existing, {
       name: existing.name,
       category: existing.category,
       personalFit: existing.personalFit,
-      identityHint: 'maps.app.goo.gl/xyz',
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: { provided: true, value: 'maps.app.goo.gl/xyz' },
     });
     expect(result.identityHint).toBe('maps.app.goo.gl/xyz');
   });
+
+  // ── invariants ──────────────────────────────────────────────────────────
 
   it('does not mutate the existing place object', () => {
     const existing = basePlace({ worldFit: ['culture'], identityHint: 'old hint' });
@@ -582,8 +670,9 @@ describe('mergePlaceUpdate', () => {
       name: 'Changed',
       category: 'restaurant',
       personalFit: 'not_for_me',
-      worldFit: ['sport'],
-      identityHint: 'new hint',
+      worldFit: { provided: true, value: ['sport'] },
+      quickSignal: NOT_PROVIDED,
+      identityHint: { provided: true, value: 'new hint' },
     });
     expect(existing).toEqual(existingSnapshot);
   });
@@ -594,6 +683,9 @@ describe('mergePlaceUpdate', () => {
       name: 'New name',
       category: 'restaurant',
       personalFit: 'kept',
+      worldFit: NOT_PROVIDED,
+      quickSignal: NOT_PROVIDED,
+      identityHint: NOT_PROVIDED,
     });
     expect(result.id).toBe('p-1');
     expect(result.createdAt).toBe('2026-02-02T00:00:00Z');
@@ -606,7 +698,9 @@ describe('mergePlaceUpdate', () => {
       name: existing.name,
       category: existing.category,
       personalFit: existing.personalFit,
-      quickSignal: { landingLevel: 5 },
+      worldFit: NOT_PROVIDED,
+      quickSignal: { provided: true, value: { landingLevel: 5 } },
+      identityHint: NOT_PROVIDED,
     });
     const keys = Object.keys(result).map((k) => k.toLowerCase());
     for (const forbidden of ['score', 'average', 'rank', 'estimate', 'percentage']) {

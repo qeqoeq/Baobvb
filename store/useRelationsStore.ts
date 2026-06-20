@@ -31,7 +31,7 @@ import {
   type PlaceQuickSignal,
 } from '../lib/place-quick-signal';
 import { sanitizePlaceIdentityHint } from '../lib/place-identity-hint';
-import { mergePlaceUpdate } from '../lib/places';
+import { mergePlaceUpdate, type MergePlaceFieldUpdate } from '../lib/places';
 import { clearPersistedState, loadPersistedState, persistState } from '../lib/storage';
 import {
   findAssistedReconciliationSuggestionForRelation,
@@ -1720,6 +1720,10 @@ function pushPlace(input: PlaceCreateInput): Place | null {
   return place;
 }
 
+// Omitted optional structured fields are preserved; explicit empty values
+// clear them. After sanitization, an omission and an explicit clear both
+// collapse to `undefined`, so presence in the raw update object — not the
+// sanitized value — is what decides preserve vs. clear/replace.
 function setPlace(id: string, update: PlaceUpdateInput): boolean {
   const cleanName = update.name.trim();
   if (!cleanName) return false;
@@ -1727,11 +1731,29 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
   const category = sanitizePlaceCategory(update.category);
   const personalFit = sanitizePlacePersonalFit(update.personalFit);
   const cleanImpression = update.impression?.trim();
-  const worldFit = sanitizePlaceWorldFit(update.worldFit);
-  const identityHint = sanitizePlaceIdentityHint(update.identityHint);
-  // Word-of-mouth signal only has value if the place is actually kept.
-  const quickSignal =
-    personalFit === 'kept' ? sanitizePlaceQuickSignal(update.quickSignal) : undefined;
+
+  const worldFitProvided = Object.prototype.hasOwnProperty.call(update, 'worldFit');
+  const identityHintProvided = Object.prototype.hasOwnProperty.call(update, 'identityHint');
+  const quickSignalProvided = Object.prototype.hasOwnProperty.call(update, 'quickSignal');
+
+  const worldFitField: MergePlaceFieldUpdate<RelationOpenWorld[]> = worldFitProvided
+    ? { provided: true, value: sanitizePlaceWorldFit(update.worldFit) }
+    : { provided: false };
+
+  const identityHintField: MergePlaceFieldUpdate<string> = identityHintProvided
+    ? { provided: true, value: sanitizePlaceIdentityHint(update.identityHint) }
+    : { provided: false };
+
+  // quickSignal only has value if the place is actually kept. Leaving
+  // 'kept' always clears it — even if the update omitted quickSignal —
+  // so this is an explicit clear ({ provided: true, value: undefined }),
+  // never a preserve ({ provided: false }).
+  const quickSignalField: MergePlaceFieldUpdate<PlaceQuickSignal> =
+    personalFit !== 'kept'
+      ? { provided: true, value: undefined }
+      : quickSignalProvided
+        ? { provided: true, value: sanitizePlaceQuickSignal(update.quickSignal) }
+        : { provided: false };
 
   let didUpdate = false;
   state.places = state.places.map((place) => {
@@ -1742,9 +1764,9 @@ function setPlace(id: string, update: PlaceUpdateInput): boolean {
       category,
       personalFit,
       impression: cleanImpression,
-      worldFit,
-      quickSignal,
-      identityHint,
+      worldFit: worldFitField,
+      quickSignal: quickSignalField,
+      identityHint: identityHintField,
     });
   });
 
