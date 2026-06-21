@@ -871,7 +871,10 @@ const SEED_PLACES: Place[] = [
   // Via route '6' — cafe × 2 kept → keptCount 2 → strength 'strong' in territory derivation
   // quickSignal added here: repeatDesire true + contextFit max 2 — proves
   // word-of-mouth signal coexists with route territory derivation.
-  { id: 'seed-place-1', name: 'Café Orée', category: 'cafe', personalFit: 'kept', impression: 'Quiet corner, easy to stay.', createdAt: '2026-02-10T10:00:00Z', sourceRelationId: '6', quickSignal: { repeatDesire: true, contextFit: ['deep_talk', 'calm'] } },
+  // wentAgainAt added here: covers one credible declared repeat visit for
+  // deriveRouteObjectUsagePresence — a presence fact only, never a
+  // frequency, a quality judgment, or a recommendation.
+  { id: 'seed-place-1', name: 'Café Orée', category: 'cafe', personalFit: 'kept', impression: 'Quiet corner, easy to stay.', createdAt: '2026-02-10T10:00:00Z', sourceRelationId: '6', quickSignal: { repeatDesire: true, contextFit: ['deep_talk', 'calm'] }, wentAgainAt: '2026-03-12T11:00:00Z' },
   { id: 'seed-place-2', name: 'Le Comptoir Calme', category: 'cafe', personalFit: 'kept', impression: 'Good light, no noise.', createdAt: '2026-03-05T09:30:00Z', sourceRelationId: '6' },
   // Via route '6' — cafe tried → exercises triedCount; no signal alone
   { id: 'seed-place-3', name: 'Passage Verde', category: 'cafe', personalFit: 'tried', createdAt: '2026-03-18T14:00:00Z', sourceRelationId: '6' },
@@ -908,7 +911,7 @@ const REVEAL_UNLOCK_DELAY_MS = 90_000;
  * On mismatch with persisted state, the store resets to fresh seed.
  * This ensures dev/demo devices always get the latest data.
  */
-const SEED_VERSION = 12;
+const SEED_VERSION = 13;
 
 type PersistedState = StoreState & { seedVersion?: number };
 
