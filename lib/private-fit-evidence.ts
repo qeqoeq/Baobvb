@@ -12,14 +12,19 @@
 // sourceRelationId is carried as an opaque identifier only — this module
 // never resolves it to a name or any visible attribution.
 
-import type {
-  PlaceContextFit,
-  PlaceExperienceLevel,
-  PlaceLandingLevel,
-  PlaceQuickSignal,
-  RestaurantExperienceDimension,
+import {
+  PLACE_CONTEXT_FIT_OPTIONS,
+  type PlaceContextFit,
+  type PlaceExperienceLevel,
+  type PlaceLandingLevel,
+  type PlaceQuickSignal,
+  type RestaurantExperienceDimension,
 } from './place-quick-signal';
-import { canUsePrivateOpenWorlds, type RelationOpenWorld } from './relation-open-worlds';
+import {
+  canUsePrivateOpenWorlds,
+  RELATION_OPEN_WORLD_OPTIONS,
+  type RelationOpenWorld,
+} from './relation-open-worlds';
 
 // Mirrors store/useRelationsStore.ts PlacePersonalFit structurally, without
 // importing the store — this lib stays decoupled from store/UI concerns.
@@ -363,5 +368,71 @@ export function deriveRouteObjectUsageSignal(
       : {}),
     hasDeclaredRepeatVisit: place.wentAgainAt !== undefined,
     ...(evidence.hasExperiencedSignal ? { evidence } : {}),
+  };
+}
+
+// ── Route-object usage presence (X.49) ───────────────────────────────────
+// Observes a list of places through deriveRouteObjectUsageSignal and
+// reports ONLY which world/context categories were ever seen across
+// trusted routes, and whether any repeat visit was ever declared.
+//
+// This is NOT an aggregator, NOT a dashboard, NOT a ranking, NOT a
+// recommendation, NOT a count. "Presence" is the right word: the output
+// says "this category was seen," never "how many," "how strong," or
+// "how good." Doctrine:
+//   - never returns the individual signals, the places, sourceRelationId,
+//     or evidence — only the union of categories and one boolean fact;
+//   - never returns an array length, a count, or any numeric field —
+//     there is nothing here to sort, rank, or average;
+//   - worlds/contexts are deduplicated and returned in canonical catalog
+//     order (RELATION_OPEN_WORLD_OPTIONS / PLACE_CONTEXT_FIT_OPTIONS),
+//     never in an order that implies importance or frequency.
+
+export type RouteObjectUsagePresence = {
+  worlds?: RelationOpenWorld[];
+  contexts?: PlaceContextFit[];
+  hasAnyDeclaredRepeatVisit: boolean;
+};
+
+/**
+ * Pure presence read over a list of places. Calls
+ * deriveRouteObjectUsageSignal for each place and unions the categorical
+ * signals it returns — never the signals themselves, never the places,
+ * never sourceRelationId, never evidence. Places that fail the trust gate
+ * (not kept, no source relation, source not trust-eligible) contribute
+ * nothing, exactly as deriveRouteObjectUsageSignal already fails closed
+ * for each of them individually.
+ */
+export function deriveRouteObjectUsagePresence(
+  places: RouteObjectUsagePlaceInput[],
+  relations: BuildPrivateFitEvidenceSourceContextRelationInput[],
+  evaluations: BuildPrivateFitEvidenceSourceContextEvaluationInput[],
+): RouteObjectUsagePresence {
+  const seenWorlds = new Set<RelationOpenWorld>();
+  const seenContexts = new Set<PlaceContextFit>();
+  let hasAnyDeclaredRepeatVisit = false;
+
+  for (const place of places) {
+    const signal = deriveRouteObjectUsageSignal(place, relations, evaluations);
+    if (!signal) continue;
+
+    for (const world of signal.worldFit ?? []) {
+      seenWorlds.add(world);
+    }
+    for (const context of signal.contextFit ?? []) {
+      seenContexts.add(context);
+    }
+    if (signal.hasDeclaredRepeatVisit) {
+      hasAnyDeclaredRepeatVisit = true;
+    }
+  }
+
+  const worlds = RELATION_OPEN_WORLD_OPTIONS.filter((world) => seenWorlds.has(world));
+  const contexts = PLACE_CONTEXT_FIT_OPTIONS.filter((context) => seenContexts.has(context));
+
+  return {
+    ...(worlds.length > 0 ? { worlds } : {}),
+    ...(contexts.length > 0 ? { contexts } : {}),
+    hasAnyDeclaredRepeatVisit,
   };
 }

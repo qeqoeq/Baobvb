@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildPrivateFitEvidenceSourceContext,
+  deriveRouteObjectUsagePresence,
   deriveRouteObjectUsageSignal,
   derivePrivateFitEvidence,
   resolvePrivateFitEvidenceSourceTrust,
@@ -520,5 +521,222 @@ describe('deriveRouteObjectUsageSignal', () => {
     // (grep across app/*, components/*, store/*). This test documents the
     // intent so the rule is visible alongside the function it protects.
     expect(typeof deriveRouteObjectUsageSignal).toBe('function');
+  });
+});
+
+describe('deriveRouteObjectUsagePresence', () => {
+  const eligibleRelation = {
+    id: 'rel-1',
+    archived: false,
+    revealSnapshot: { revealed: true },
+  };
+  const eligibleEvaluation = { relationId: 'rel-1', ratings: { trust: 5 } };
+
+  const otherEligibleRelation = {
+    id: 'rel-3',
+    archived: false,
+    revealSnapshot: { revealed: true },
+  };
+  const otherEligibleEvaluation = { relationId: 'rel-3', ratings: { trust: 4 } };
+
+  const notEligibleRelation = {
+    id: 'rel-2',
+    archived: false,
+    revealSnapshot: { revealed: false },
+  };
+  const lowTrustEvaluation = { relationId: 'rel-2', ratings: { trust: 2 } };
+
+  const relations = [eligibleRelation, otherEligibleRelation, notEligibleRelation];
+  const evaluations = [eligibleEvaluation, otherEligibleEvaluation, lowTrustEvaluation];
+
+  it('1. multiple kept places with eligible sources and varied worldFit/contextFit return deduplicated presence', () => {
+    const result = deriveRouteObjectUsagePresence(
+      [
+        {
+          personalFit: 'kept',
+          sourceRelationId: 'rel-1',
+          worldFit: ['culture'],
+          quickSignal: { contextFit: ['date'] },
+        },
+        {
+          personalFit: 'kept',
+          sourceRelationId: 'rel-3',
+          worldFit: ['travel'],
+          quickSignal: { contextFit: ['calm'] },
+        },
+      ],
+      relations,
+      evaluations,
+    );
+    // Canonical catalog order (RELATION_OPEN_WORLD_OPTIONS / PLACE_CONTEXT_FIT_OPTIONS),
+    // not insertion order — travel precedes culture in the world catalog.
+    expect(result.worlds).toEqual(['travel', 'culture']);
+    expect(result.contexts).toEqual(['date', 'calm']);
+  });
+
+  it('2. multiple places sharing the same world/context never produce a duplicate', () => {
+    const result = deriveRouteObjectUsagePresence(
+      [
+        {
+          personalFit: 'kept',
+          sourceRelationId: 'rel-1',
+          worldFit: ['culture'],
+          quickSignal: { contextFit: ['date'] },
+        },
+        {
+          personalFit: 'kept',
+          sourceRelationId: 'rel-3',
+          worldFit: ['culture'],
+          quickSignal: { contextFit: ['date'] },
+        },
+      ],
+      relations,
+      evaluations,
+    );
+    expect(result.worlds).toEqual(['culture']);
+    expect(result.contexts).toEqual(['date']);
+  });
+
+  it('3. a place from a non-eligible source contributes nothing', () => {
+    const result = deriveRouteObjectUsagePresence(
+      [
+        {
+          personalFit: 'kept',
+          sourceRelationId: 'rel-2',
+          worldFit: ['culture'],
+          quickSignal: { contextFit: ['date'] },
+        },
+      ],
+      relations,
+      evaluations,
+    );
+    expect(result.worlds).toBeUndefined();
+    expect(result.contexts).toBeUndefined();
+    expect(result.hasAnyDeclaredRepeatVisit).toBe(false);
+  });
+
+  it('4. a place without sourceRelationId contributes nothing', () => {
+    const result = deriveRouteObjectUsagePresence(
+      [{ personalFit: 'kept', worldFit: ['culture'] }],
+      relations,
+      evaluations,
+    );
+    expect(result.worlds).toBeUndefined();
+    expect(result.hasAnyDeclaredRepeatVisit).toBe(false);
+  });
+
+  it('5. a place with personalFit !== kept contributes nothing, even with an eligible source', () => {
+    const result = deriveRouteObjectUsagePresence(
+      [{ personalFit: 'saved', sourceRelationId: 'rel-1', worldFit: ['culture'] }],
+      relations,
+      evaluations,
+    );
+    expect(result.worlds).toBeUndefined();
+    expect(result.hasAnyDeclaredRepeatVisit).toBe(false);
+  });
+
+  it('6. hasAnyDeclaredRepeatVisit is true if at least one valid place declared a repeat visit', () => {
+    const result = deriveRouteObjectUsagePresence(
+      [
+        { personalFit: 'kept', sourceRelationId: 'rel-1' },
+        { personalFit: 'kept', sourceRelationId: 'rel-3', wentAgainAt: '2026-04-01T00:00:00Z' },
+      ],
+      relations,
+      evaluations,
+    );
+    expect(result.hasAnyDeclaredRepeatVisit).toBe(true);
+  });
+
+  it('7. hasAnyDeclaredRepeatVisit is false if no valid place declared a repeat visit', () => {
+    const result = deriveRouteObjectUsagePresence(
+      [
+        { personalFit: 'kept', sourceRelationId: 'rel-1' },
+        { personalFit: 'kept', sourceRelationId: 'rel-3' },
+      ],
+      relations,
+      evaluations,
+    );
+    expect(result.hasAnyDeclaredRepeatVisit).toBe(false);
+  });
+
+  it('8. never returns sourceRelationId', () => {
+    const result = deriveRouteObjectUsagePresence(
+      [{ personalFit: 'kept', sourceRelationId: 'rel-1', worldFit: ['culture'] }],
+      relations,
+      evaluations,
+    );
+    expect(result).not.toHaveProperty('sourceRelationId');
+  });
+
+  it('9. never returns evidence', () => {
+    const result = deriveRouteObjectUsagePresence(
+      [
+        {
+          personalFit: 'kept',
+          sourceRelationId: 'rel-1',
+          quickSignal: { landingLevel: 5, driverDimensions: ['food'], restaurantDimensions: { food: 5 } },
+        },
+      ],
+      relations,
+      evaluations,
+    );
+    expect(result).not.toHaveProperty('evidence');
+  });
+
+  it('10. no forbidden key appears anywhere in the output', () => {
+    const result = deriveRouteObjectUsagePresence(
+      [
+        {
+          personalFit: 'kept',
+          sourceRelationId: 'rel-1',
+          worldFit: ['culture'],
+          quickSignal: {
+            landingLevel: 5,
+            driverDimensions: ['food'],
+            restaurantDimensions: { food: 5 },
+            shareSafe: true,
+            contextFit: ['friends'],
+          },
+          wentAgainAt: '2026-04-01T00:00:00Z',
+        },
+        {
+          personalFit: 'kept',
+          sourceRelationId: 'rel-3',
+          worldFit: ['travel'],
+          quickSignal: { contextFit: ['calm'] },
+        },
+      ],
+      relations,
+      evaluations,
+    );
+    const forbidden = [
+      'score',
+      'rank',
+      'average',
+      'recommendation',
+      'best',
+      'confidence',
+      'percentage',
+      'count',
+      'total',
+      'frequency',
+      'items',
+      'places',
+      'sourcerelationid',
+      'evidence',
+      'landinglevel',
+      'dimensionsignals',
+    ];
+    const keys = Object.keys(result).map((k) => k.toLowerCase());
+    for (const word of forbidden) {
+      expect(keys.some((k) => k.includes(word))).toBe(false);
+    }
+  });
+
+  it('returns an empty-but-doctrinally-safe object when no place produces a valid signal', () => {
+    const result = deriveRouteObjectUsagePresence([], relations, evaluations);
+    expect(result.worlds).toBeUndefined();
+    expect(result.contexts).toBeUndefined();
+    expect(result.hasAnyDeclaredRepeatVisit).toBe(false);
   });
 });
