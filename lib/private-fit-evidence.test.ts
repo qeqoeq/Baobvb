@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildPrivateFitEvidenceSourceContext,
+  deriveRouteObjectUsageSignal,
   derivePrivateFitEvidence,
   resolvePrivateFitEvidenceSourceTrust,
 } from './private-fit-evidence';
@@ -373,5 +374,151 @@ describe('buildPrivateFitEvidenceSourceContext', () => {
         }
       }
     }
+  });
+});
+
+describe('deriveRouteObjectUsageSignal', () => {
+  const eligibleRelation = {
+    id: 'rel-1',
+    archived: false,
+    revealSnapshot: { revealed: true },
+  };
+  const eligibleEvaluation = { relationId: 'rel-1', ratings: { trust: 5 } };
+
+  const notEligibleRelation = {
+    id: 'rel-2',
+    archived: false,
+    revealSnapshot: { revealed: false },
+  };
+  const lowTrustEvaluation = { relationId: 'rel-2', ratings: { trust: 2 } };
+
+  it('1. kept place + eligible source + worldFit/contextFit/wentAgainAt: returns a rich descriptive signal', () => {
+    const result = deriveRouteObjectUsageSignal(
+      {
+        personalFit: 'kept',
+        sourceRelationId: 'rel-1',
+        worldFit: ['culture', 'travel'],
+        quickSignal: { contextFit: ['date', 'calm'] },
+        wentAgainAt: '2026-04-01T00:00:00Z',
+      },
+      [eligibleRelation],
+      [eligibleEvaluation],
+    );
+    expect(result).toBeDefined();
+    expect(result?.fromTrustedRoute).toBe(true);
+    expect(result?.worldFit).toEqual(['culture', 'travel']);
+    expect(result?.contextFit).toEqual(['date', 'calm']);
+    expect(result?.hasDeclaredRepeatVisit).toBe(true);
+  });
+
+  it('2. kept place + non-eligible source: returns undefined', () => {
+    const result = deriveRouteObjectUsageSignal(
+      { personalFit: 'kept', sourceRelationId: 'rel-2' },
+      [notEligibleRelation],
+      [lowTrustEvaluation],
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it('3. place without sourceRelationId: fails closed', () => {
+    const result = deriveRouteObjectUsageSignal(
+      { personalFit: 'kept' },
+      [eligibleRelation],
+      [eligibleEvaluation],
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it('4. place with personalFit !== kept: fails closed even with an eligible source', () => {
+    const result = deriveRouteObjectUsageSignal(
+      { personalFit: 'saved', sourceRelationId: 'rel-1' },
+      [eligibleRelation],
+      [eligibleEvaluation],
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it('5. kept place without wentAgainAt: valid partial signal with hasDeclaredRepeatVisit false', () => {
+    const result = deriveRouteObjectUsageSignal(
+      { personalFit: 'kept', sourceRelationId: 'rel-1' },
+      [eligibleRelation],
+      [eligibleEvaluation],
+    );
+    expect(result).toBeDefined();
+    expect(result?.hasDeclaredRepeatVisit).toBe(false);
+  });
+
+  it('6. kept place without contextFit/worldFit but eligible source: valid minimal signal', () => {
+    const result = deriveRouteObjectUsageSignal(
+      { personalFit: 'kept', sourceRelationId: 'rel-1' },
+      [eligibleRelation],
+      [eligibleEvaluation],
+    );
+    expect(result).toBeDefined();
+    expect(result?.fromTrustedRoute).toBe(true);
+    expect(result?.worldFit).toBeUndefined();
+    expect(result?.contextFit).toBeUndefined();
+  });
+
+  it('7. sourceRelationId is carried opaquely, never resolved to a name', () => {
+    const result = deriveRouteObjectUsageSignal(
+      { personalFit: 'kept', sourceRelationId: 'rel-1' },
+      [eligibleRelation],
+      [eligibleEvaluation],
+    );
+    expect(result?.sourceRelationId).toBe('rel-1');
+    expect(result).not.toHaveProperty('sourceName');
+    expect(result).not.toHaveProperty('relationName');
+  });
+
+  it('8. no forbidden key appears in the output', () => {
+    const result = deriveRouteObjectUsageSignal(
+      {
+        personalFit: 'kept',
+        sourceRelationId: 'rel-1',
+        worldFit: ['culture'],
+        quickSignal: {
+          landingLevel: 5,
+          driverDimensions: ['food'],
+          restaurantDimensions: { food: 5 },
+          shareSafe: true,
+          contextFit: ['friends'],
+        },
+        wentAgainAt: '2026-04-01T00:00:00Z',
+      },
+      [eligibleRelation],
+      [eligibleEvaluation],
+    );
+    expect(result).toBeDefined();
+    const forbidden = [
+      'score',
+      'rank',
+      'average',
+      'recommendation',
+      'best',
+      'confidence',
+      'count',
+      'total',
+      'percentage',
+    ];
+    const keys = Object.keys(result as object).map((k) => k.toLowerCase());
+    for (const word of forbidden) {
+      expect(keys.some((k) => k.includes(word))).toBe(false);
+    }
+    // Also check nested evidence, if present, for the same forbidden words.
+    if (result?.evidence) {
+      const evidenceKeys = Object.keys(result.evidence).map((k) => k.toLowerCase());
+      for (const word of forbidden) {
+        expect(evidenceKeys.some((k) => k.includes(word))).toBe(false);
+      }
+    }
+  });
+
+  it('9. is not imported by anything outside lib/private-fit-evidence.ts and its test', () => {
+    // This is a structural doctrine, not something a unit test can check by
+    // itself — enforced by the X.48 import scan in the sprint validation
+    // (grep across app/*, components/*, store/*). This test documents the
+    // intent so the rule is visible alongside the function it protects.
+    expect(typeof deriveRouteObjectUsageSignal).toBe('function');
   });
 });

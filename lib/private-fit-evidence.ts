@@ -19,7 +19,7 @@ import type {
   PlaceQuickSignal,
   RestaurantExperienceDimension,
 } from './place-quick-signal';
-import { canUsePrivateOpenWorlds } from './relation-open-worlds';
+import { canUsePrivateOpenWorlds, type RelationOpenWorld } from './relation-open-worlds';
 
 // Mirrors store/useRelationsStore.ts PlacePersonalFit structurally, without
 // importing the store — this lib stays decoupled from store/UI concerns.
@@ -255,5 +255,113 @@ export function derivePrivateFitEvidence(
       ? { sourceTrustEligible: context.sourceTrustEligible }
       : {}),
     missingSignals,
+  };
+}
+
+// ── Route-object usage derivation (X.48) ─────────────────────────────────
+// Pure, invisible, non-scoring assembly that connects a kept Place sourced
+// from a trusted relation to descriptive usage signals — worldFit,
+// contextFit, and a declared repeat visit. This is NOT a recommendation,
+// NOT a fit score, NOT a ranking input. It never says how good a place is
+// or whether it is "better" than another — only that a trusted route
+// produced this place, and what descriptive categories/signals are
+// attached to it.
+//
+// Doctrine:
+//   - fails closed (returns undefined) if sourceRelationId is absent, the
+//     source relation is not trust-eligible, or personalFit !== 'kept';
+//   - sourceRelationId is never resolved to a name — carried opaquely,
+//     exactly like the rest of this file;
+//   - wentAgainAt enriches the signal as a plain boolean fact (a repeat
+//     visit was declared) — never a count, never a frequency, never a date;
+//   - worldFit/contextFit are carried as descriptive categories only —
+//     never weighted, never compared, never used to rank one place above
+//     another;
+//   - the output has no sortable numeric field by construction (no score,
+//     rank, count, percentage) — it cannot be used as a ranking input
+//     without first inventing data that isn't here.
+
+/** Minimal place shape for this derivation — never the full store Place type. */
+export type RouteObjectUsagePlaceInput = {
+  sourceRelationId?: string;
+  personalFit: PrivateFitEvidencePersonalFit;
+  worldFit?: RelationOpenWorld[];
+  quickSignal?: PlaceQuickSignal;
+  /** Presence alone matters — never read as a date, count, or frequency. */
+  wentAgainAt?: string;
+};
+
+export type RouteObjectUsageSignal = {
+  /** Always true when this signal is returned — the trust gate already passed. */
+  fromTrustedRoute: true;
+  /** Opaque identifier only — never resolved to a name here. */
+  sourceRelationId: string;
+  /** Descriptive categories the user declared on this place, if any. */
+  worldFit?: RelationOpenWorld[];
+  /** Descriptive usage categories from the captured experience, if any. */
+  contextFit?: PlaceContextFit[];
+  /** A repeat visit was explicitly declared — a fact, never a count. */
+  hasDeclaredRepeatVisit: boolean;
+  /** Present only if a richer experience signal could also be derived. */
+  evidence?: PrivateFitEvidence;
+};
+
+/**
+ * Pure derivation connecting a single kept Place, sourced from a
+ * trust-eligible relation, to descriptive usage signals. Fails closed
+ * (returns undefined) whenever the source route cannot be trusted or the
+ * place was never kept — there is no partial-trust output.
+ *
+ * Never returns a score, rank, average, recommendation, "best" judgment,
+ * confidence value, count, total, or percentage. Never resolves
+ * sourceRelationId to a name. wentAgainAt is read only as a presence
+ * check — its value is discarded, never surfaced as a date or count.
+ */
+export function deriveRouteObjectUsageSignal(
+  place: RouteObjectUsagePlaceInput,
+  relations: BuildPrivateFitEvidenceSourceContextRelationInput[],
+  evaluations: BuildPrivateFitEvidenceSourceContextEvaluationInput[],
+): RouteObjectUsageSignal | undefined {
+  // Fail closed: only a kept place can carry a usage signal.
+  if (place.personalFit !== 'kept') return undefined;
+
+  // Fail closed: no source relation, no signal.
+  if (place.sourceRelationId === undefined) return undefined;
+
+  const relation = relations.find((candidate) => candidate.id === place.sourceRelationId);
+  if (!relation) return undefined;
+
+  const isRevealed = relation.revealSnapshot?.revealed === true;
+  const isArchived = relation.archived === true;
+  const evaluation = evaluations.find((item) => item.relationId === relation.id);
+  const trustRating = evaluation?.ratings?.trust ?? null;
+
+  const sourceTrustEligible = resolvePrivateFitEvidenceSourceTrust({
+    isRevealed,
+    trustRating,
+    isArchived,
+  });
+
+  // Fail closed: source exists but does not pass the trust gate.
+  if (!sourceTrustEligible) return undefined;
+
+  const context = buildPrivateFitEvidenceSourceContext(
+    { sourceRelationId: place.sourceRelationId, personalFit: place.personalFit, quickSignal: place.quickSignal },
+    relations,
+    evaluations,
+  );
+  const evidence = derivePrivateFitEvidence(context);
+
+  return {
+    fromTrustedRoute: true,
+    sourceRelationId: place.sourceRelationId,
+    ...(place.worldFit !== undefined && place.worldFit.length > 0
+      ? { worldFit: place.worldFit }
+      : {}),
+    ...(place.quickSignal?.contextFit !== undefined && place.quickSignal.contextFit.length > 0
+      ? { contextFit: place.quickSignal.contextFit }
+      : {}),
+    hasDeclaredRepeatVisit: place.wentAgainAt !== undefined,
+    ...(evidence.hasExperiencedSignal ? { evidence } : {}),
   };
 }
