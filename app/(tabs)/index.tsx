@@ -264,6 +264,14 @@ export default function CircleScreen() {
               <Text style={styles.worldsStripCaption}>
                 {'Private signals from your Bao.'}
               </Text>
+              <Pressable
+                onPress={() => {
+                  if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push('../place');
+                }}
+              >
+                <Text style={styles.worldsStripPlacesLink}>{'View your places →'}</Text>
+              </Pressable>
             </View>
           )}
         </View>
@@ -524,6 +532,12 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     lineHeight: 15,
     opacity: 0.8,
+  },
+  worldsStripPlacesLink: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.accent.warmGold,
+    marginTop: 2,
   },
 
   emptyPrompt: {

@@ -325,13 +325,26 @@ export default function RootLayout() {
         name="relation/edit/[id]"
         options={{ title: 'Edit relation', presentation: 'modal' }}
       />
-      {/* place/add is configured as a modal so it can be opened from relation context (X.11).
-          Other place/* routes remain parked — no production entry points exist yet. */}
+      {/* place/add is configured as a modal so it can be opened from relation context (X.11). */}
       <Stack.Screen
         name="place/add"
         options={{
           presentation: 'modal',
           title: 'Save a place',
+          headerStyle: { backgroundColor: colors.background.primary },
+          headerTintColor: colors.text.primary,
+          headerShadowVisible: false,
+        }}
+      />
+      {/* Place Index (X.65/X.71): dark header, no title (the screen already
+          carries its own BAOBAB branding inline), native back chevron kept —
+          same pattern already used for relation/[id] and through/[id]. */}
+      <Stack.Screen
+        name="place/index"
+        options={{
+          title: '',
+          headerBackTitle: '',
+          headerBackButtonDisplayMode: 'minimal',
           headerStyle: { backgroundColor: colors.background.primary },
           headerTintColor: colors.text.primary,
           headerShadowVisible: false,

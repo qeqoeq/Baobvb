@@ -874,22 +874,22 @@ const SEED_PLACES: Place[] = [
   // wentAgainAt added here: covers one credible declared repeat visit for
   // deriveRouteObjectUsagePresence — a presence fact only, never a
   // frequency, a quality judgment, or a recommendation.
-  { id: 'seed-place-1', name: 'Café Orée', category: 'cafe', personalFit: 'kept', impression: 'Quiet corner, easy to stay.', createdAt: '2026-02-10T10:00:00Z', sourceRelationId: '6', quickSignal: { repeatDesire: true, contextFit: ['deep_talk', 'calm'] }, wentAgainAt: '2026-03-12T11:00:00Z' },
+  { id: 'seed-place-1', name: 'Café Orée', category: 'cafe', personalFit: 'kept', impression: 'Quiet corner, easy to stay.', createdAt: '2026-02-10T10:00:00Z', sourceRelationId: '6', quickSignal: { repeatDesire: true, contextFit: ['deep_talk', 'calm'], landingLevel: 4 }, wentAgainAt: '2026-03-12T11:00:00Z' },
   { id: 'seed-place-2', name: 'Le Comptoir Calme', category: 'cafe', personalFit: 'kept', impression: 'Good light, no noise.', createdAt: '2026-03-05T09:30:00Z', sourceRelationId: '6' },
   // Via route '6' — cafe tried → exercises triedCount; no signal alone
   { id: 'seed-place-3', name: 'Passage Verde', category: 'cafe', personalFit: 'tried', createdAt: '2026-03-18T14:00:00Z', sourceRelationId: '6' },
   // Via route '6' — restaurant × 1 kept → strength 'observed'
   // quickSignal added here: full shape — verdict, contextFit, and 1-5
   // restaurantDimensions together, for realistic device testing.
-  { id: 'seed-place-4', name: 'Maison Luma', category: 'restaurant', personalFit: 'kept', impression: 'Warm dinner spot with a calm rhythm.', createdAt: '2026-01-28T20:00:00Z', sourceRelationId: '6', quickSignal: { repeatDesire: true, shareSafe: true, contextFit: ['deep_talk', 'calm'], restaurantDimensions: { food: 5, service: 4, atmosphere: 3, value: 4, cleanliness: 2 } } },
+  { id: 'seed-place-4', name: 'Maison Luma', category: 'restaurant', personalFit: 'kept', impression: 'Warm dinner spot with a calm rhythm.', createdAt: '2026-01-28T20:00:00Z', sourceRelationId: '6', quickSignal: { repeatDesire: true, shareSafe: true, contextFit: ['deep_talk', 'calm'], driverDimensions: ['food', 'atmosphere'], restaurantDimensions: { food: 5, service: 4, atmosphere: 3, value: 4, cleanliness: 2 }, landingLevel: 4 } },
   // Via route '10' — spot × 1 kept → strength 'observed'
   { id: 'seed-place-5', name: 'Jardin Haut', category: 'spot', personalFit: 'kept', impression: 'Open-air place that felt easy to return to.', createdAt: '2026-02-20T16:00:00Z', sourceRelationId: '10' },
   // Via route '10' — restaurant × 1 kept → second observed signal for restaurant territory
-  { id: 'seed-place-6', name: 'Atelier Nord', category: 'restaurant', personalFit: 'kept', impression: 'Simple menu, strong sense of place.', createdAt: '2026-04-02T19:30:00Z', sourceRelationId: '10' },
+  { id: 'seed-place-6', name: 'Atelier Nord', category: 'restaurant', personalFit: 'kept', impression: 'Simple menu, strong sense of place.', createdAt: '2026-04-02T19:30:00Z', sourceRelationId: '10', quickSignal: { driverDimensions: ['food'], landingLevel: 4 } },
   // No sourceRelationId — bar kept → confirms exclusion from territory derivation.
   // worldFit added here: auto-discovered place, surfaced in Open Worlds by
   // direct user qualification alone, with no relation involved.
-  { id: 'seed-place-7', name: 'Le Fond du Couloir', category: 'bar', personalFit: 'kept', impression: 'Found on my own. Good enough to return.', createdAt: '2026-01-15T22:00:00Z', worldFit: ['creative'] },
+  { id: 'seed-place-7', name: 'Le Fond du Couloir', category: 'bar', personalFit: 'kept', impression: 'Found on my own. Good enough to return.', createdAt: '2026-01-15T22:00:00Z', worldFit: ['creative'], quickSignal: { landingLevel: 4 }, wentAgainAt: '2026-02-20T21:00:00Z' },
   // Via route '6' — saved → excluded from signal derivation (no territory proof)
   { id: 'seed-place-8', name: 'Rue Basse', category: 'bar', personalFit: 'saved', createdAt: '2026-04-10T11:00:00Z', sourceRelationId: '6' },
   // Via route '8' — spot × 1 kept → surfaces learning + creative worlds from this route.
@@ -899,9 +899,9 @@ const SEED_PLACES: Place[] = [
   // Via route '11' — spot × 1 kept → surfaces sport + local_life worlds from this route
   { id: 'seed-place-10', name: 'Parc du Matin', category: 'spot', personalFit: 'kept', impression: 'Early hours, open space, easy rhythm.', createdAt: '2026-04-05T08:30:00Z', sourceRelationId: '11' },
   // Via route '13' — cafe × 1 kept → reinforces learning + sport worlds from this route
-  { id: 'seed-place-11', name: 'Café Long', category: 'cafe', personalFit: 'kept', impression: 'Works for long sessions.', createdAt: '2026-04-12T10:00:00Z', sourceRelationId: '13' },
+  { id: 'seed-place-11', name: 'Café Long', category: 'cafe', personalFit: 'kept', impression: 'Works for long sessions.', createdAt: '2026-04-12T10:00:00Z', sourceRelationId: '13', quickSignal: { contextFit: ['work_focus', 'calm'], landingLevel: 3 } },
   // No sourceRelationId — kept with two worldFit worlds → proves max-2 direct qualification
-  { id: 'seed-place-12', name: 'Studio Lent', category: 'spot', personalFit: 'kept', impression: 'Off-hours, no pressure, good for tinkering.', createdAt: '2026-04-20T15:00:00Z', worldFit: ['sport', 'culture'] },
+  { id: 'seed-place-12', name: 'Studio Lent', category: 'spot', personalFit: 'kept', impression: 'Off-hours, no pressure, good for tinkering.', createdAt: '2026-04-20T15:00:00Z', worldFit: ['sport', 'culture'], quickSignal: { contextFit: ['work_focus', 'calm'] } },
 ];
 const PLACE_CATEGORIES: PlaceCategory[] = ['restaurant', 'cafe', 'bar', 'spot', 'other'];
 const REVEAL_UNLOCK_DELAY_MS = 90_000;
@@ -911,7 +911,7 @@ const REVEAL_UNLOCK_DELAY_MS = 90_000;
  * On mismatch with persisted state, the store resets to fresh seed.
  * This ensures dev/demo devices always get the latest data.
  */
-const SEED_VERSION = 13;
+const SEED_VERSION = 14;
 
 type PersistedState = StoreState & { seedVersion?: number };
 
