@@ -32,7 +32,7 @@ import type {
   PlaceQuickSignal,
   RestaurantExperienceDimension,
 } from './place-quick-signal';
-import type { PlacePersonalFit } from '@/store/useRelationsStore';
+import type { Place, PlacePersonalFit } from '@/store/useRelationsStore';
 
 export type PrivatePlaceValueConfidence = 'low' | 'medium' | 'high';
 export type PrivatePlaceValueSignature =
@@ -274,4 +274,49 @@ export function derivePrivatePlaceValue(input: PrivatePlaceValueInput): PrivateP
   reasons.push(`signature_${signature}`);
 
   return { value, confidence, signature, reasons };
+}
+
+/**
+ * Resolves which experience snapshot is authoritative for the scoring
+ * engine today (X.77 V0). If the place has at least one accumulated read,
+ * the latest one wins — its own landingLevel/contextFit/driverDimensions/
+ * restaurantDimensions/impression entirely replace the legacy fields for
+ * this derivation, never merged or averaged with them. If reads is empty
+ * or absent, falls back to the legacy quickSignal/impression fields so
+ * every place captured before X.77 keeps producing the exact same value
+ * it always has.
+ *
+ * Deliberately ignores every read except the latest — no aggregation, no
+ * repetition bonus, no recency weighting beyond "most recent wins". That
+ * richer use of accumulated reads is a separate, later derivation, not
+ * this one.
+ */
+export function deriveEffectivePlaceValueInput(place: Place): PrivatePlaceValueInput {
+  const reads = place.reads ?? [];
+  const latestRead = reads.length > 0 ? reads[reads.length - 1] : undefined;
+
+  if (!latestRead) {
+    return {
+      personalFit: place.personalFit,
+      quickSignal: place.quickSignal,
+      wentAgainAt: place.wentAgainAt,
+      impression: place.impression,
+    };
+  }
+
+  return {
+    personalFit: place.personalFit,
+    quickSignal: {
+      ...(latestRead.landingLevel !== undefined ? { landingLevel: latestRead.landingLevel } : {}),
+      ...(latestRead.contextFit !== undefined ? { contextFit: latestRead.contextFit } : {}),
+      ...(latestRead.driverDimensions !== undefined
+        ? { driverDimensions: latestRead.driverDimensions }
+        : {}),
+      ...(latestRead.restaurantDimensions !== undefined
+        ? { restaurantDimensions: latestRead.restaurantDimensions }
+        : {}),
+    },
+    wentAgainAt: place.wentAgainAt,
+    impression: latestRead.impression ?? place.impression,
+  };
 }

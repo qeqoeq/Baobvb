@@ -2,12 +2,35 @@ import { describe, expect, it } from 'vitest';
 
 import {
   derivePrivatePlaceValue,
+  deriveEffectivePlaceValueInput,
   type PrivatePlaceValueInput,
 } from './private-place-value';
+import type { Place, PlaceReadEntry } from '@/store/useRelationsStore';
 
 function input(overrides: Partial<PrivatePlaceValueInput> = {}): PrivatePlaceValueInput {
   return {
     personalFit: 'kept',
+    ...overrides,
+  };
+}
+
+function place(overrides: Partial<Place> = {}): Place {
+  return {
+    id: 'place-1',
+    name: 'Test Place',
+    category: 'cafe',
+    personalFit: 'kept',
+    createdAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
+function readEntry(overrides: Partial<PlaceReadEntry> = {}): PlaceReadEntry {
+  return {
+    id: 'read-1',
+    createdAt: '2026-02-01T00:00:00Z',
+    categorySnapshot: 'cafe',
+    criteriaVersion: 1,
     ...overrides,
   };
 }
@@ -386,5 +409,60 @@ describe('derivePrivatePlaceValue (V1, nonlinear)', () => {
     expect(codeOnly.toLowerCase()).not.toMatch(/\brating\b/);
     expect(codeOnly.toLowerCase()).not.toMatch(/\baverage\b/);
     expect(codeOnly.toLowerCase()).not.toMatch(/recommended|suggested|\bbest\b|for you/);
+  });
+});
+
+describe('deriveEffectivePlaceValueInput', () => {
+  it('14. falls back to legacy fields when reads is empty or absent', () => {
+    const legacyPlace = place({
+      quickSignal: { landingLevel: 4 },
+      impression: 'Legacy impression.',
+      wentAgainAt: '2026-01-15T00:00:00Z',
+    });
+    const result = deriveEffectivePlaceValueInput(legacyPlace);
+    expect(result).toEqual({
+      personalFit: 'kept',
+      quickSignal: { landingLevel: 4 },
+      wentAgainAt: '2026-01-15T00:00:00Z',
+      impression: 'Legacy impression.',
+    });
+  });
+
+  it('15. uses the latest read when reads is non-empty', () => {
+    const placeWithReads = place({
+      quickSignal: { landingLevel: 1 }, // legacy — must be ignored once reads exist
+      impression: 'Legacy impression.',
+      reads: [
+        readEntry({ id: 'read-1', landingLevel: 2 }),
+        readEntry({ id: 'read-2', landingLevel: 5, impression: 'Latest read note.' }),
+      ],
+    });
+    const result = deriveEffectivePlaceValueInput(placeWithReads);
+    expect(result.quickSignal?.landingLevel).toBe(5);
+    expect(result.impression).toBe('Latest read note.');
+  });
+
+  it('16. preserves personalFit and wentAgainAt regardless of reads', () => {
+    const placeWithReads = place({
+      personalFit: 'kept',
+      wentAgainAt: '2026-03-01T00:00:00Z',
+      reads: [readEntry({ landingLevel: 3 })],
+    });
+    const result = deriveEffectivePlaceValueInput(placeWithReads);
+    expect(result.personalFit).toBe('kept');
+    expect(result.wentAgainAt).toBe('2026-03-01T00:00:00Z');
+  });
+
+  it('17. never aggregates multiple reads — only the latest one is used', () => {
+    const placeWithManyReads = place({
+      reads: [
+        readEntry({ id: 'r1', landingLevel: 5, contextFit: ['calm'] }),
+        readEntry({ id: 'r2', landingLevel: 5, contextFit: ['calm'] }),
+        readEntry({ id: 'r3', landingLevel: 1 }), // contradicts the earlier two — must win alone
+      ],
+    });
+    const result = deriveEffectivePlaceValueInput(placeWithManyReads);
+    expect(result.quickSignal?.landingLevel).toBe(1);
+    expect(result.quickSignal?.contextFit).toBeUndefined();
   });
 });
