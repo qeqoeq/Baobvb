@@ -163,10 +163,11 @@ export function isPlaceExperienceLevel(value: unknown): value is PlaceExperience
 }
 
 /**
- * Max 2 driver dimensions, deduped, returned in canonical catalog order
- * (same convention as sanitizePlaceContextFit) rather than input order —
- * keeps rendering order stable regardless of selection order. Invalid
- * values dropped silently. Legacy-safe: undefined input → undefined.
+ * Max 5 driver dimensions (all catalog dimensions), deduped, returned in
+ * canonical catalog order (same convention as sanitizePlaceContextFit) rather
+ * than input order — keeps rendering order stable regardless of selection
+ * order. Invalid values dropped silently. Legacy-safe: undefined input →
+ * undefined.
  */
 export function sanitizePlaceDriverDimensions(
   value: unknown,
@@ -176,7 +177,7 @@ export function sanitizePlaceDriverDimensions(
   for (const item of value) {
     if (!isRestaurantExperienceDimension(item)) continue;
     seen.add(item);
-    if (seen.size === 2) break;
+    if (seen.size === 5) break;
   }
   const result = RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS.filter((option) => seen.has(option));
   return result.length > 0 ? result : undefined;

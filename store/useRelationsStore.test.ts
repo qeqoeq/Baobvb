@@ -85,12 +85,19 @@ describe('appendPlaceRead', () => {
     expect(entry.contextFit?.length).toBeLessThanOrEqual(2);
   });
 
-  it('7. driverDimensions is limited to 2', () => {
+  it('7. driverDimensions accepts up to 5 catalog dimensions', () => {
     appendPlaceRead(KEPT_RESTAURANT_ID, {
-      driverDimensions: ['food', 'service', 'atmosphere'] as never,
+      driverDimensions: ['food', 'service', 'atmosphere', 'value', 'cleanliness'],
     });
     const entry = findPlace(KEPT_RESTAURANT_ID).reads![0];
-    expect(entry.driverDimensions?.length).toBeLessThanOrEqual(2);
+    expect(entry.driverDimensions?.length).toBeLessThanOrEqual(5);
+    expect(entry.driverDimensions).toEqual([
+      'food',
+      'service',
+      'atmosphere',
+      'value',
+      'cleanliness',
+    ]);
   });
 
   it('8. restaurantDimensions is dropped if driverDimensions is empty', () => {

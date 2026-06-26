@@ -2,6 +2,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { PlaceNewReadSheet } from '@/components/place/PlaceNewReadSheet';
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
 import {
@@ -10,8 +11,24 @@ import {
   getPlaceReading,
   PLACE_CONTEXT_FIT_LABELS,
 } from '@/lib/places';
-import { derivePrivatePlaceValue } from '@/lib/private-place-value';
-import { useRelationsStore, type Place } from '@/store/useRelationsStore';
+import { PLACE_LANDING_LEVEL_LABELS } from '@/lib/place-quick-signal';
+import {
+  deriveEffectivePlaceValueInput,
+  derivePrivatePlaceValue,
+} from '@/lib/private-place-value';
+import {
+  useRelationsStore,
+  type Place,
+  type PlaceReadEntryInput,
+} from '@/store/useRelationsStore';
+
+const DRIVER_SHORT_LABELS: Readonly<Record<string, string>> = {
+  food: 'Food',
+  service: 'Service',
+  atmosphere: 'Atmosphere',
+  value: 'Value',
+  cleanliness: 'Cleanliness',
+} as const;
 
 function formatPlaceDate(value: string): string {
   const date = new Date(value);
@@ -55,11 +72,13 @@ function deriveLivedPlaceTraces(place: Place): string[] {
 
 export default function PlaceDetailScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
-  const { places, updatePlace } = useRelationsStore();
+  const { places, updatePlace, addPlaceRead } = useRelationsStore();
   const place = places.find((item) => item.id === params.id);
   // Local-only UI feedback — never read from place.wentAgainAt, never
   // persisted, resets whenever this screen unmounts/remounts.
   const [wentAgainConfirmed, setWentAgainConfirmed] = useState(false);
+  const [readSheetVisible, setReadSheetVisible] = useState(false);
+  const [readSaved, setReadSaved] = useState(false);
 
   // Explicit, never auto-triggered. Omitting worldFit/quickSignal/
   // identityHint here is safe — X.45b preserves them by default.
@@ -72,6 +91,18 @@ export default function PlaceDetailScreen() {
       wentAgainAt: new Date().toISOString(),
     });
     setWentAgainConfirmed(true);
+  };
+
+  const handleOpenReadSheet = () => {
+    setReadSaved(false);
+    setReadSheetVisible(true);
+  };
+
+  const handleSaveRead = (input: PlaceReadEntryInput) => {
+    if (!place) return;
+    addPlaceRead(place.id, input);
+    setReadSheetVisible(false);
+    setReadSaved(true);
   };
 
   if (!place) {
@@ -101,13 +132,29 @@ export default function PlaceDetailScreen() {
     );
   }
 
-  const privateValue = derivePrivatePlaceValue({
-    personalFit: place.personalFit,
-    quickSignal: place.quickSignal,
-    wentAgainAt: place.wentAgainAt,
-    impression: place.impression,
-  });
+  // Uses deriveEffectivePlaceValueInput so the latest read in reads[] is
+  // authoritative when present — legacy quickSignal/impression remain the
+  // fallback for places with no accumulated reads.
+  const privateValue = derivePrivatePlaceValue(deriveEffectivePlaceValueInput(place));
   const livedTraces = deriveLivedPlaceTraces(place);
+
+  const latestRead = place.reads?.length ? place.reads[place.reads.length - 1] : undefined;
+  const hasReads = latestRead !== undefined;
+
+  const latestReadText =
+    latestRead?.impression?.trim() ||
+    (latestRead?.landingLevel !== undefined
+      ? PLACE_LANDING_LEVEL_LABELS[latestRead.landingLevel]
+      : undefined) ||
+    getPlaceReading(place);
+
+  const latestReadDrivers = (latestRead?.driverDimensions ?? []).map(
+    (d) => DRIVER_SHORT_LABELS[d] ?? d,
+  );
+  const latestReadContextFit = (latestRead?.contextFit ?? []).map(
+    (c) => PLACE_CONTEXT_FIT_LABELS[c] ?? c,
+  );
+  const hasShapingSignals = latestReadDrivers.length > 0 || latestReadContextFit.length > 0;
 
   return (
     <>
@@ -139,19 +186,40 @@ export default function PlaceDetailScreen() {
           <Text style={styles.valueLabel}>{'private read'}</Text>
         </View>
 
-        {livedTraces.length > 0 && (
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionLabel}>What this place carries</Text>
-            {livedTraces.map((trace) => (
-              <Text key={trace} style={styles.traceRow}>{trace}</Text>
-            ))}
-          </View>
+        {hasReads ? (
+          <>
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionLabel}>Latest read</Text>
+              <Text style={styles.readingText}>{latestReadText}</Text>
+            </View>
+            {hasShapingSignals ? (
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionLabel}>What shaped this value</Text>
+                {latestReadDrivers.length > 0 ? (
+                  <Text style={styles.traceRow}>{latestReadDrivers.join(' · ')}</Text>
+                ) : null}
+                {latestReadContextFit.length > 0 ? (
+                  <Text style={styles.traceRow}>{latestReadContextFit.join(' · ')}</Text>
+                ) : null}
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <>
+            {livedTraces.length > 0 && (
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionLabel}>What this place carries</Text>
+                {livedTraces.map((trace) => (
+                  <Text key={trace} style={styles.traceRow}>{trace}</Text>
+                ))}
+              </View>
+            )}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionLabel}>Your trace</Text>
+              <Text style={styles.readingText}>{getPlaceReading(place)}</Text>
+            </View>
+          </>
         )}
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionLabel}>Your trace</Text>
-          <Text style={styles.readingText}>{getPlaceReading(place)}</Text>
-        </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionLabel}>Added</Text>
@@ -165,6 +233,13 @@ export default function PlaceDetailScreen() {
           </View>
         ) : null}
 
+        <Pressable onPress={handleOpenReadSheet} style={styles.addReadButton}>
+          <Text style={styles.addReadButtonText}>Add a read</Text>
+        </Pressable>
+        {readSaved ? (
+          <Text style={styles.readSavedText}>Read saved privately.</Text>
+        ) : null}
+
         <Pressable onPress={onWentAgain} style={styles.wentAgainButton}>
           <Text style={styles.wentAgainButtonText}>I went again</Text>
         </Pressable>
@@ -172,6 +247,13 @@ export default function PlaceDetailScreen() {
           <Text style={styles.wentAgainConfirmedText}>Saved privately</Text>
         ) : null}
       </ScrollView>
+
+      <PlaceNewReadSheet
+        visible={readSheetVisible}
+        category={place.category}
+        onClose={() => setReadSheetVisible(false)}
+        onSave={handleSaveRead}
+      />
     </>
   );
 }
@@ -275,6 +357,24 @@ const styles = StyleSheet.create({
   metaText: {
     color: colors.text.secondary,
     fontSize: 14,
+  },
+  addReadButton: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: colors.border.strong,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+  },
+  addReadButtonText: {
+    color: colors.accent.warmGold,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  readSavedText: {
+    color: colors.text.muted,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   wentAgainButton: {
     alignSelf: 'flex-start',

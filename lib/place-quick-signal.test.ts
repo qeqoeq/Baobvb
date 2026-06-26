@@ -225,9 +225,22 @@ describe('sanitizePlaceDriverDimensions', () => {
     ]);
   });
 
-  it('caps at max 2', () => {
+  it('accepts all 5 catalog dimensions', () => {
+    const result = sanitizePlaceDriverDimensions([
+      'food',
+      'service',
+      'atmosphere',
+      'value',
+      'cleanliness',
+    ]);
+    expect(result).toHaveLength(5);
+    expect(result).toEqual(['food', 'service', 'atmosphere', 'value', 'cleanliness']);
+  });
+
+  it('accepts a partial selection beyond 2', () => {
     const result = sanitizePlaceDriverDimensions(['food', 'service', 'atmosphere']);
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(3);
+    expect(result).toEqual(['food', 'service', 'atmosphere']);
   });
 
   it('returns canonical catalog order regardless of input order', () => {
