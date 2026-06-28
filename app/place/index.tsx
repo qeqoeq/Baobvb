@@ -14,7 +14,7 @@ import {
   PLACE_CONTEXT_FIT_OPTIONS,
 } from '@/lib/places';
 import type { PlaceContextFit } from '@/lib/place-quick-signal';
-import { derivePrivatePlaceValue } from '@/lib/private-place-value';
+import { derivePrivatePlaceValue, synthesizeMultiReadInput } from '@/lib/private-place-value';
 import { useRelationsStore, type PlaceCategory } from '@/store/useRelationsStore';
 
 // Local-only filter — no engine, no persistence. Selecting a chip filters
@@ -43,6 +43,13 @@ export default function PlacesScreen() {
     [places, relations, evaluations],
   );
 
+  // Synthesized inputs keyed by place.id — computed once per places-change,
+  // used for value, context filter, dominantContext chip, and impression.
+  const placeInputs = useMemo(
+    () => new Map(places.map((p) => [p.id, synthesizeMultiReadInput(p)])),
+    [places],
+  );
+
   const territoryCategories = territory.categories.filter(
     (c) => c.category !== 'other',
   );
@@ -69,8 +76,9 @@ export default function PlacesScreen() {
   // this is a no-op identity filter — the page behaves exactly as before.
   const filteredPlaces = places.filter((place) => {
     const passesCategory = selectedCategory == null || place.category === selectedCategory;
+    const syntheticContextFit = placeInputs.get(place.id)?.quickSignal?.contextFit;
     const passesContext =
-      selectedContext == null || place.quickSignal?.contextFit?.includes(selectedContext) === true;
+      selectedContext == null || syntheticContextFit?.includes(selectedContext) === true;
     const passesFit = !hasActivePlaceFilter || place.personalFit !== 'not_for_me';
     return passesCategory && passesContext && passesFit;
   });
@@ -184,13 +192,9 @@ export default function PlacesScreen() {
           </View>
         ) : (
           filteredPlaces.map((place) => {
-            const dominantContext = place.quickSignal?.contextFit?.[0];
-            const privateValue = derivePrivatePlaceValue({
-              personalFit: place.personalFit,
-              quickSignal: place.quickSignal,
-              wentAgainAt: place.wentAgainAt,
-              impression: place.impression,
-            });
+            const valueInput = placeInputs.get(place.id)!;
+            const privateValue = derivePrivatePlaceValue(valueInput);
+            const dominantContext = valueInput.quickSignal?.contextFit?.[0];
             return (
               <Pressable
                 key={place.id}
@@ -215,7 +219,9 @@ export default function PlacesScreen() {
                   </View>
                   <Text style={styles.readValueLabel}>{'private read'}</Text>
                 </View>
-                <Text style={styles.impression}>{getPlaceReading(place)}</Text>
+                <Text style={styles.impression}>
+                  {getPlaceReading({ impression: valueInput.impression, personalFit: place.personalFit })}
+                </Text>
               </Pressable>
             );
           })

@@ -13,8 +13,8 @@ import {
 } from '@/lib/places';
 import { PLACE_LANDING_LEVEL_LABELS } from '@/lib/place-quick-signal';
 import {
-  deriveEffectivePlaceValueInput,
   derivePrivatePlaceValue,
+  synthesizeMultiReadInput,
 } from '@/lib/private-place-value';
 import {
   useRelationsStore,
@@ -135,7 +135,7 @@ export default function PlaceDetailScreen() {
   // Uses deriveEffectivePlaceValueInput so the latest read in reads[] is
   // authoritative when present — legacy quickSignal/impression remain the
   // fallback for places with no accumulated reads.
-  const privateValue = derivePrivatePlaceValue(deriveEffectivePlaceValueInput(place));
+  const privateValue = derivePrivatePlaceValue(synthesizeMultiReadInput(place));
   const livedTraces = deriveLivedPlaceTraces(place);
 
   const latestRead = place.reads?.length ? place.reads[place.reads.length - 1] : undefined;

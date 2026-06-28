@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   derivePrivatePlaceValue,
   deriveEffectivePlaceValueInput,
+  synthesizeMultiReadInput,
   type PrivatePlaceValueInput,
 } from './private-place-value';
 import type { Place, PlaceReadEntry } from '@/store/useRelationsStore';
@@ -464,5 +465,210 @@ describe('deriveEffectivePlaceValueInput', () => {
     const result = deriveEffectivePlaceValueInput(placeWithManyReads);
     expect(result.quickSignal?.landingLevel).toBe(1);
     expect(result.quickSignal?.contextFit).toBeUndefined();
+  });
+});
+
+describe('synthesizeMultiReadInput', () => {
+  it('S1. 0 reads → identical to deriveEffectivePlaceValueInput (legacy fallback)', () => {
+    const p = place({
+      quickSignal: { landingLevel: 4 },
+      impression: 'Legacy.',
+      wentAgainAt: '2026-03-01T00:00:00Z',
+    });
+    expect(synthesizeMultiReadInput(p)).toEqual(deriveEffectivePlaceValueInput(p));
+  });
+
+  it('S2. 1 read → identical to deriveEffectivePlaceValueInput (single snapshot)', () => {
+    const p = place({ reads: [readEntry({ landingLevel: 3, impression: 'One visit.' })] });
+    expect(synthesizeMultiReadInput(p)).toEqual(deriveEffectivePlaceValueInput(p));
+  });
+
+  it('S3. 2 stable strong reads (5, 4) → recency-weighted landing 4, wentAgainAt from last read', () => {
+    const p = place({
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z', landingLevel: 5 }),
+        readEntry({ id: 'r2', createdAt: '2026-02-01T00:00:00Z', landingLevel: 4 }),
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    // (5*0.6 + 4*1.0) / 1.6 = 7.0/1.6 = 4.375 → round to 4
+    expect(result.quickSignal?.landingLevel).toBe(4);
+    expect(result.wentAgainAt).toBe('2026-02-01T00:00:00Z');
+  });
+
+  it('S4. strong then weak (5→1) → synthetic landing 3 (not latest-only 1)', () => {
+    const p = place({
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z', landingLevel: 5 }),
+        readEntry({ id: 'r2', createdAt: '2026-02-01T00:00:00Z', landingLevel: 1 }),
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    // (5*0.6 + 1*1.0) / 1.6 = 4.0/1.6 = 2.5 → round to 3 (Math.round)
+    expect(result.quickSignal?.landingLevel).toBe(3);
+    // value is muted but not destroyed (above the pure landing=1 result)
+    const synthesized = derivePrivatePlaceValue(result);
+    const latestOnly = derivePrivatePlaceValue(deriveEffectivePlaceValueInput(p));
+    expect(synthesized.value).toBeGreaterThan(latestOnly.value);
+  });
+
+  it('S5. weak then strong (1→5) → synthetic landing 4 (recent improvement rewarded)', () => {
+    const p = place({
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z', landingLevel: 1 }),
+        readEntry({ id: 'r2', createdAt: '2026-02-01T00:00:00Z', landingLevel: 5 }),
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    // (1*0.6 + 5*1.0) / 1.6 = 3.5 → round to 4
+    // Floating point produces ~3.4999... without epsilon correction — the fix
+    // ensures the .5 boundary rounds up as intended.
+    expect(result.quickSignal?.landingLevel).toBe(4);
+  });
+
+  it('S6. three reads (5, 5, 1) → synthetic landing 3', () => {
+    const p = place({
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z', landingLevel: 5 }),
+        readEntry({ id: 'r2', createdAt: '2026-02-01T00:00:00Z', landingLevel: 5 }),
+        readEntry({ id: 'r3', createdAt: '2026-03-01T00:00:00Z', landingLevel: 1 }),
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    // weights [0.36, 0.6, 1.0]: (5*0.36 + 5*0.6 + 1*1.0) / 1.96 = 5.8/1.96 ≈ 2.96 → 3
+    expect(result.quickSignal?.landingLevel).toBe(3);
+  });
+
+  it('S7. four alternating reads (5,1,5,1) → synthesized value higher than latest-only', () => {
+    const p = place({
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z', landingLevel: 5 }),
+        readEntry({ id: 'r2', createdAt: '2026-02-01T00:00:00Z', landingLevel: 1 }),
+        readEntry({ id: 'r3', createdAt: '2026-03-01T00:00:00Z', landingLevel: 5 }),
+        readEntry({ id: 'r4', createdAt: '2026-04-01T00:00:00Z', landingLevel: 1 }),
+      ],
+    });
+    const synthesized = derivePrivatePlaceValue(synthesizeMultiReadInput(p));
+    const latestOnly = derivePrivatePlaceValue(deriveEffectivePlaceValueInput(p));
+    expect(synthesized.value).toBeGreaterThan(latestOnly.value);
+  });
+
+  it('S8. contextFit union: frequency-ranked, max 2, canonical tie-break', () => {
+    const p = place({
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z', contextFit: ['calm', 'date'] }),
+        readEntry({ id: 'r2', createdAt: '2026-02-01T00:00:00Z', contextFit: ['calm'] }),
+        readEntry({ id: 'r3', createdAt: '2026-03-01T00:00:00Z', contextFit: ['friends'] }),
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    // calm=2, date=1, friends=1 → [calm, date] (date before friends by canonical order)
+    expect(result.quickSignal?.contextFit).toEqual(['calm', 'date']);
+  });
+
+  it('S9. contextFit tie-break by canonical order when all frequencies are equal', () => {
+    const p = place({
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z', contextFit: ['friends'] }),
+        readEntry({ id: 'r2', createdAt: '2026-02-01T00:00:00Z', contextFit: ['date'] }),
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    // date=1, friends=1 → canonical: date(index 0) before friends(index 1)
+    expect(result.quickSignal?.contextFit).toEqual(['date', 'friends']);
+  });
+
+  it('S10. driverDimensions union in canonical catalog order', () => {
+    const p = place({
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z', driverDimensions: ['service', 'food'] }),
+        readEntry({ id: 'r2', createdAt: '2026-02-01T00:00:00Z', driverDimensions: ['atmosphere', 'food'] }),
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    // union {food, service, atmosphere} → canonical [food, service, atmosphere]
+    expect(result.quickSignal?.driverDimensions).toEqual(['food', 'service', 'atmosphere']);
+  });
+
+  it('S11. restaurantDimensions recency-weighted per dimension', () => {
+    const p = place({
+      reads: [
+        readEntry({
+          id: 'r1',
+          createdAt: '2026-01-01T00:00:00Z',
+          driverDimensions: ['food'],
+          restaurantDimensions: { food: 2 },
+        }),
+        readEntry({
+          id: 'r2',
+          createdAt: '2026-02-01T00:00:00Z',
+          driverDimensions: ['food'],
+          restaurantDimensions: { food: 5 },
+        }),
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    // food: (2*0.6 + 5*1.0) / 1.6 = 6.2/1.6 = 3.875 → round to 4
+    expect(result.quickSignal?.restaurantDimensions?.food).toBe(4);
+  });
+
+  it('S12. impression = last non-empty read impression, fallback to place.impression', () => {
+    const p = place({
+      impression: 'Legacy note.',
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z', impression: 'First read.' }),
+        readEntry({ id: 'r2', createdAt: '2026-02-01T00:00:00Z' }), // no impression
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    expect(result.impression).toBe('First read.');
+  });
+
+  it('S13. wentAgainAt synthesized when reads.length >= 2, takes most recent', () => {
+    const p = place({
+      wentAgainAt: '2026-05-01T00:00:00Z',
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z' }),
+        readEntry({ id: 'r2', createdAt: '2026-03-01T00:00:00Z' }),
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    // place.wentAgainAt (May) is more recent than last read (March)
+    expect(result.wentAgainAt).toBe('2026-05-01T00:00:00Z');
+
+    // If reads are more recent than place.wentAgainAt, reads win
+    const p2 = place({
+      wentAgainAt: '2026-01-01T00:00:00Z',
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-02-01T00:00:00Z' }),
+        readEntry({ id: 'r2', createdAt: '2026-04-01T00:00:00Z' }),
+      ],
+    });
+    expect(synthesizeMultiReadInput(p2).wentAgainAt).toBe('2026-04-01T00:00:00Z');
+  });
+
+  it('S14. no landingLevel in any read → synthesized quickSignal has no landingLevel', () => {
+    const p = place({
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z', contextFit: ['calm'] }),
+        readEntry({ id: 'r2', createdAt: '2026-02-01T00:00:00Z', contextFit: ['calm'] }),
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    expect(result.quickSignal?.landingLevel).toBeUndefined();
+    expect(result.quickSignal?.contextFit).toEqual(['calm']);
+  });
+
+  it('S15. legacy quickSignal ignored when reads >= 2 — reads dominate synthesis entirely', () => {
+    const p = place({
+      quickSignal: { landingLevel: 1 }, // legacy: terrible — must not affect synthesis
+      reads: [
+        readEntry({ id: 'r1', createdAt: '2026-01-01T00:00:00Z', landingLevel: 5 }),
+        readEntry({ id: 'r2', createdAt: '2026-02-01T00:00:00Z', landingLevel: 5 }),
+      ],
+    });
+    const result = synthesizeMultiReadInput(p);
+    // (5*0.6 + 5*1.0) / 1.6 = 8.0/1.6 = 5
+    expect(result.quickSignal?.landingLevel).toBe(5);
   });
 });

@@ -26,11 +26,15 @@
 //   - no random, no current date, no IO, no UI dependency — a single,
 //     documented, deterministic, nonlinear V1 formula.
 
-import type {
-  PlaceContextFit,
-  PlaceLandingLevel,
-  PlaceQuickSignal,
-  RestaurantExperienceDimension,
+import {
+  PLACE_CONTEXT_FIT_OPTIONS,
+  RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS,
+  type PlaceContextFit,
+  type PlaceExperienceLevel,
+  type PlaceLandingLevel,
+  type PlaceQuickSignal,
+  type RestaurantExperienceDimension,
+  type RestaurantExperienceDimensions,
 } from './place-quick-signal';
 import type { Place, PlacePersonalFit } from '@/store/useRelationsStore';
 
@@ -277,19 +281,9 @@ export function derivePrivatePlaceValue(input: PrivatePlaceValueInput): PrivateP
 }
 
 /**
- * Resolves which experience snapshot is authoritative for the scoring
- * engine today (X.77 V0). If the place has at least one accumulated read,
- * the latest one wins — its own landingLevel/contextFit/driverDimensions/
- * restaurantDimensions/impression entirely replace the legacy fields for
- * this derivation, never merged or averaged with them. If reads is empty
- * or absent, falls back to the legacy quickSignal/impression fields so
- * every place captured before X.77 keeps producing the exact same value
- * it always has.
- *
- * Deliberately ignores every read except the latest — no aggregation, no
- * repetition bonus, no recency weighting beyond "most recent wins". That
- * richer use of accumulated reads is a separate, later derivation, not
- * this one.
+ * V0 resolver — "latest read wins". Kept intact so its three tests remain
+ * valid as regression anchors. All production UI now uses
+ * synthesizeMultiReadInput instead.
  */
 export function deriveEffectivePlaceValueInput(place: Place): PrivatePlaceValueInput {
   const reads = place.reads ?? [];
@@ -318,5 +312,121 @@ export function deriveEffectivePlaceValueInput(place: Place): PrivatePlaceValueI
     },
     wentAgainAt: place.wentAgainAt,
     impression: latestRead.impression ?? place.impression,
+  };
+}
+
+const RECENCY_DECAY = 0.6;
+
+// Floating-point weighted averages for discrete 1..5 scales can produce
+// values like 3.4999999999999996 instead of 3.5, causing Math.round to
+// go the wrong way. Adding Number.EPSILON before rounding corrects values
+// that are within machine precision of an exact .5 boundary.
+function roundWeightedScore(value: number): number {
+  return Math.round(value + Number.EPSILON);
+}
+
+/**
+ * V2 multi-read synthesizer. Combines all accumulated reads into a single
+ * PrivatePlaceValueInput using recency-weighted averaging for numeric
+ * signals and frequency-ranked union for categorical signals. The engine
+ * (derivePrivatePlaceValue) is never modified — only the input it receives.
+ *
+ * 0 reads / 1 read: delegates to deriveEffectivePlaceValueInput (no change).
+ * 2+ reads: full recency-weighted synthesis; quickSignal legacy is ignored
+ * in favour of the reads[] accumulation.
+ */
+export function synthesizeMultiReadInput(place: Place): PrivatePlaceValueInput {
+  const reads = place.reads ?? [];
+  if (reads.length <= 1) return deriveEffectivePlaceValueInput(place);
+
+  // Landing level: recency-weighted from reads that carry one
+  const readsWithLanding = reads.filter((r) => r.landingLevel !== undefined);
+  let syntheticLandingLevel: PlaceLandingLevel | undefined;
+  if (readsWithLanding.length > 0) {
+    const n = readsWithLanding.length;
+    let weightedSum = 0;
+    let totalWeight = 0;
+    for (let i = 0; i < n; i++) {
+      const weight = Math.pow(RECENCY_DECAY, n - 1 - i);
+      weightedSum += readsWithLanding[i].landingLevel! * weight;
+      totalWeight += weight;
+    }
+    syntheticLandingLevel = Math.min(5, Math.max(1, roundWeightedScore(weightedSum / totalWeight))) as PlaceLandingLevel;
+  }
+
+  // ContextFit: union, frequency-ranked, canonical tie-break, max 2
+  const contextFreq = new Map<PlaceContextFit, number>();
+  for (const read of reads) {
+    for (const ctx of (read.contextFit ?? [])) {
+      contextFreq.set(ctx, (contextFreq.get(ctx) ?? 0) + 1);
+    }
+  }
+  const syntheticContextFit = PLACE_CONTEXT_FIT_OPTIONS
+    .filter((ctx) => contextFreq.has(ctx))
+    .sort((a, b) => (contextFreq.get(b) ?? 0) - (contextFreq.get(a) ?? 0))
+    .slice(0, 2);
+
+  // DriverDimensions: union, canonical order (max 5 is implicit — catalog has exactly 5)
+  const driverSet = new Set<RestaurantExperienceDimension>();
+  for (const read of reads) {
+    for (const dim of (read.driverDimensions ?? [])) {
+      driverSet.add(dim);
+    }
+  }
+  const syntheticDriverDimensions = RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS.filter((dim) =>
+    driverSet.has(dim),
+  );
+
+  // RestaurantDimensions: recency-weighted per synthesized driver dimension
+  const syntheticRestaurantDimensions: RestaurantExperienceDimensions = {};
+  for (const dim of syntheticDriverDimensions) {
+    const relevant = reads.filter(
+      (r) => r.driverDimensions?.includes(dim) && r.restaurantDimensions?.[dim] !== undefined,
+    );
+    if (relevant.length === 0) continue;
+    const n = relevant.length;
+    let weightedSum = 0;
+    let totalWeight = 0;
+    for (let i = 0; i < n; i++) {
+      const weight = Math.pow(RECENCY_DECAY, n - 1 - i);
+      weightedSum += relevant[i].restaurantDimensions![dim]! * weight;
+      totalWeight += weight;
+    }
+    syntheticRestaurantDimensions[dim] = Math.min(
+      5,
+      Math.max(1, roundWeightedScore(weightedSum / totalWeight)),
+    ) as PlaceExperienceLevel;
+  }
+
+  // Impression: most recent non-empty from reads[], fallback to place.impression
+  let syntheticImpression: string | undefined = place.impression;
+  for (let i = reads.length - 1; i >= 0; i--) {
+    if (reads[i].impression?.trim()) {
+      syntheticImpression = reads[i].impression;
+      break;
+    }
+  }
+
+  // WentAgainAt: reads.length >= 2 is behavioral return evidence; take most recent
+  const returnFromReads = reads[reads.length - 1].createdAt;
+  const wentAgainAt = [place.wentAgainAt, returnFromReads]
+    .filter((v): v is string => v !== undefined)
+    .sort()
+    .reverse()[0];
+
+  const syntheticQuickSignal: PlaceQuickSignal = {
+    ...(syntheticLandingLevel !== undefined ? { landingLevel: syntheticLandingLevel } : {}),
+    ...(syntheticContextFit.length > 0 ? { contextFit: syntheticContextFit } : {}),
+    ...(syntheticDriverDimensions.length > 0 ? { driverDimensions: syntheticDriverDimensions } : {}),
+    ...(Object.keys(syntheticRestaurantDimensions).length > 0
+      ? { restaurantDimensions: syntheticRestaurantDimensions }
+      : {}),
+  };
+
+  return {
+    personalFit: place.personalFit,
+    quickSignal: Object.keys(syntheticQuickSignal).length > 0 ? syntheticQuickSignal : undefined,
+    wentAgainAt,
+    impression: syntheticImpression,
   };
 }
