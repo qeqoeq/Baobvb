@@ -1072,6 +1072,19 @@ function sanitizePlaceWorldFit(value: unknown): RelationOpenWorld[] | undefined 
   return result.length > 0 ? result : undefined;
 }
 
+// Exported for regression testing — not part of the public store API.
+export function sanitizePersistedPlaceReads(reads: unknown): PlaceReadEntry[] {
+  if (!Array.isArray(reads) || reads.length === 0) return [];
+  return reads.filter(
+    (r): r is PlaceReadEntry =>
+      r !== null &&
+      typeof r === 'object' &&
+      typeof (r as PlaceReadEntry).id === 'string' &&
+      typeof (r as PlaceReadEntry).createdAt === 'string' &&
+      (r as PlaceReadEntry).criteriaVersion === 1,
+  );
+}
+
 function normalizeSideIdentityStatus(
   value: unknown,
   fallback: RelationshipSideIdentityStatus,
@@ -1389,6 +1402,12 @@ loadPersistedState<PersistedState>().then((persisted) => {
             ...(hydratedQuickSignal !== undefined ? { quickSignal: hydratedQuickSignal } : {}),
             ...(hydratedIdentityHint !== undefined ? { identityHint: hydratedIdentityHint } : {}),
             ...(hydratedWentAgainAt !== undefined ? { wentAgainAt: hydratedWentAgainAt } : {}),
+            // Reads are append-only and self-describing — restore them as-is,
+            // filtering only for minimum required shape (see sanitizePersistedPlaceReads).
+            ...(() => {
+              const validReads = sanitizePersistedPlaceReads(place.reads);
+              return validReads.length > 0 ? { reads: validReads } : {};
+            })(),
           });
 
           return acc;

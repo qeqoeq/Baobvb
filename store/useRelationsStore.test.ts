@@ -4,6 +4,7 @@ import {
   appendPlaceRead,
   getPlacesSnapshot,
   resetDevStateToSeed,
+  sanitizePersistedPlaceReads,
   type Place,
 } from './useRelationsStore';
 
@@ -149,5 +150,114 @@ describe('appendPlaceRead', () => {
   it('returns false for an unknown place id', () => {
     const result = appendPlaceRead('not-a-real-place', { landingLevel: 3 });
     expect(result).toBe(false);
+  });
+});
+
+// ── sanitizePersistedPlaceReads — reads hydration regression ────────────────
+//
+// Regression coverage for the bug discovered in X.80c device check:
+// reads[] persisted via addPlaceRead + persist() were silently dropped on
+// app restart because the hydration code did not include them in the
+// reconstructed place. The Memory Stack disappeared after every relaunch.
+//
+describe('sanitizePersistedPlaceReads', () => {
+  const VALID_READ = {
+    id: 'r-1',
+    createdAt: '2026-04-15T14:00:00Z',
+    categorySnapshot: 'cafe',
+    criteriaVersion: 1 as const,
+    impression: 'Quiet corner.',
+    landingLevel: 4,
+    contextFit: ['calm'],
+  };
+
+  // ── 1. Valid reads are preserved ─────────────────────────────────────────
+
+  it('H1: preserves a fully valid read entry', () => {
+    const result = sanitizePersistedPlaceReads([VALID_READ]);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('r-1');
+    expect(result[0].createdAt).toBe('2026-04-15T14:00:00Z');
+    expect(result[0].criteriaVersion).toBe(1);
+    expect(result[0].impression).toBe('Quiet corner.');
+  });
+
+  it('H2: preserves multiple valid reads in order', () => {
+    const read2 = { ...VALID_READ, id: 'r-2', createdAt: '2026-06-10T11:00:00Z' };
+    const result = sanitizePersistedPlaceReads([VALID_READ, read2]);
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe('r-1');
+    expect(result[1].id).toBe('r-2');
+  });
+
+  it('H3: read with only required fields (no optional) is preserved', () => {
+    const minimal = { id: 'r-min', createdAt: '2026-01-01T00:00:00Z', criteriaVersion: 1 as const, categorySnapshot: 'cafe' };
+    const result = sanitizePersistedPlaceReads([minimal]);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('r-min');
+  });
+
+  // ── 2. Invalid reads are filtered out ────────────────────────────────────
+
+  it('H4: drops a read with missing id', () => {
+    const bad = { createdAt: '2026-04-15T14:00:00Z', criteriaVersion: 1, categorySnapshot: 'cafe' };
+    expect(sanitizePersistedPlaceReads([bad])).toHaveLength(0);
+  });
+
+  it('H5: drops a read with missing createdAt', () => {
+    const bad = { id: 'r-1', criteriaVersion: 1, categorySnapshot: 'cafe' };
+    expect(sanitizePersistedPlaceReads([bad])).toHaveLength(0);
+  });
+
+  it('H6: drops a read with wrong criteriaVersion', () => {
+    const bad = { id: 'r-1', createdAt: '2026-04-15T14:00:00Z', criteriaVersion: 2, categorySnapshot: 'cafe' };
+    expect(sanitizePersistedPlaceReads([bad])).toHaveLength(0);
+  });
+
+  it('H7: drops a read where criteriaVersion is missing entirely', () => {
+    const bad = { id: 'r-1', createdAt: '2026-04-15T14:00:00Z', categorySnapshot: 'cafe' };
+    expect(sanitizePersistedPlaceReads([bad])).toHaveLength(0);
+  });
+
+  it('H8: drops a null entry in the array', () => {
+    expect(sanitizePersistedPlaceReads([null])).toHaveLength(0);
+  });
+
+  it('H9: drops a string entry in the array', () => {
+    expect(sanitizePersistedPlaceReads(['not-an-object'])).toHaveLength(0);
+  });
+
+  it('H10: mixed array — keeps valid, drops invalid', () => {
+    const invalid = { id: 'bad', createdAt: '2026-01-01T00:00:00Z' }; // missing criteriaVersion
+    const result = sanitizePersistedPlaceReads([VALID_READ, invalid]);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('r-1');
+  });
+
+  // ── 3. Legacy — no reads field ────────────────────────────────────────────
+
+  it('H11: returns empty array when reads is undefined', () => {
+    expect(sanitizePersistedPlaceReads(undefined)).toHaveLength(0);
+  });
+
+  it('H12: returns empty array when reads is null', () => {
+    expect(sanitizePersistedPlaceReads(null)).toHaveLength(0);
+  });
+
+  it('H13: returns empty array when reads is an empty array', () => {
+    expect(sanitizePersistedPlaceReads([])).toHaveLength(0);
+  });
+
+  it('H14: returns empty array when reads is not an array (object)', () => {
+    expect(sanitizePersistedPlaceReads({ id: 'r-1' })).toHaveLength(0);
+  });
+
+  // ── 4. Preservation — optional fields pass through untouched ─────────────
+
+  it('H15: impression, landingLevel, contextFit survive sanitization', () => {
+    const result = sanitizePersistedPlaceReads([VALID_READ]);
+    expect(result[0].impression).toBe('Quiet corner.');
+    expect(result[0].landingLevel).toBe(4);
+    expect(result[0].contextFit).toEqual(['calm']);
   });
 });

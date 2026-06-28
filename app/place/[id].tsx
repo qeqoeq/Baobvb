@@ -12,6 +12,7 @@ import {
   PLACE_CONTEXT_FIT_LABELS,
 } from '@/lib/places';
 import { PLACE_LANDING_LEVEL_LABELS } from '@/lib/place-quick-signal';
+import { deriveLivedPlaceTraces } from '@/lib/place-lived-traces';
 import {
   derivePrivatePlaceValue,
   synthesizeMultiReadInput,
@@ -19,6 +20,7 @@ import {
 import {
   useRelationsStore,
   type Place,
+  type PlaceReadEntry,
   type PlaceReadEntryInput,
 } from '@/store/useRelationsStore';
 
@@ -40,6 +42,23 @@ function formatPlaceDate(value: string): string {
   });
 }
 
+function formatReadMonth(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+}
+
+function getReadDisplayText(read: PlaceReadEntry | undefined): string {
+  if (!read) return 'Saved without a note.';
+  return (
+    read.impression?.trim() ||
+    (read.landingLevel !== undefined
+      ? PLACE_LANDING_LEVEL_LABELS[read.landingLevel]
+      : undefined) ||
+    'Saved without a note.'
+  );
+}
+
 // Same three-bucket semantic logic already used on Place Index, applied to
 // the same composite private value — never a numeric score, never a star.
 // Never semantic.trust (relational confidence, never a place's value).
@@ -47,27 +66,6 @@ function getPrivatePlaceValueColor(value: number): string {
   if (value >= 70) return colors.semantic.growth;
   if (value >= 45) return colors.semantic.caution;
   return colors.text.muted;
-}
-
-// Lived traces, read only from the place's own raw fields — never from
-// derivePrivatePlaceValue's signature/confidence/reasons. This narration
-// stays independent of the internal scoring engine on purpose: if the
-// formula's thresholds change tomorrow, this text never has to change
-// with it, and the engine never has to anticipate becoming user-facing copy.
-function deriveLivedPlaceTraces(place: Place): string[] {
-  const traces: string[] = [];
-  if (place.personalFit === 'kept') traces.push('Kept');
-  if (place.wentAgainAt !== undefined) traces.push('Came back');
-  const contextFit = place.quickSignal?.contextFit ?? [];
-  if (contextFit.length > 0) {
-    traces.push(
-      contextFit
-        .map((context) => PLACE_CONTEXT_FIT_LABELS[context])
-        .filter(Boolean)
-        .join(' · '),
-    );
-  }
-  return traces.filter(Boolean);
 }
 
 export default function PlaceDetailScreen() {
@@ -132,21 +130,19 @@ export default function PlaceDetailScreen() {
     );
   }
 
-  // Uses deriveEffectivePlaceValueInput so the latest read in reads[] is
-  // authoritative when present — legacy quickSignal/impression remain the
-  // fallback for places with no accumulated reads.
   const privateValue = derivePrivatePlaceValue(synthesizeMultiReadInput(place));
   const livedTraces = deriveLivedPlaceTraces(place);
 
-  const latestRead = place.reads?.length ? place.reads[place.reads.length - 1] : undefined;
-  const hasReads = latestRead !== undefined;
+  const reads = place.reads ?? [];
+  const readCount = reads.length;
+  const firstRead = reads.at(0);
+  const latestRead = reads.at(-1);
+  const hasReads = readCount >= 1;
+  const hasMemoryStack = readCount >= 2;
+  const hasConflict = privateValue.signature === 'conflicted_read';
 
-  const latestReadText =
-    latestRead?.impression?.trim() ||
-    (latestRead?.landingLevel !== undefined
-      ? PLACE_LANDING_LEVEL_LABELS[latestRead.landingLevel]
-      : undefined) ||
-    getPlaceReading(place);
+  const latestReadText = getReadDisplayText(latestRead);
+  const firstReadText = getReadDisplayText(firstRead);
 
   const latestReadDrivers = (latestRead?.driverDimensions ?? []).map(
     (d) => DRIVER_SHORT_LABELS[d] ?? d,
@@ -186,24 +182,36 @@ export default function PlaceDetailScreen() {
           <Text style={styles.valueLabel}>{'private read'}</Text>
         </View>
 
-        {hasReads ? (
-          <>
-            <View style={styles.sectionCard}>
-              <Text style={styles.sectionLabel}>Latest read</Text>
+        {hasMemoryStack ? (
+          <View style={styles.sectionCard}>
+            <View style={styles.memoryHeader}>
+              <Text style={styles.sectionLabel}>Memory</Text>
+              <Text style={styles.memoryCount}>{readCount} reads</Text>
+            </View>
+            <View style={styles.memoryBlock}>
+              <View style={styles.memoryMeta}>
+                <Text style={styles.memoryLabel}>First read</Text>
+                <Text style={styles.memoryDate}>{formatReadMonth(firstRead!.createdAt)}</Text>
+              </View>
+              <Text style={styles.readingText}>{firstReadText}</Text>
+            </View>
+            <View style={styles.memorySeparator} />
+            <View style={styles.memoryBlock}>
+              <View style={styles.memoryMeta}>
+                <Text style={styles.memoryLabel}>Latest read</Text>
+                <Text style={styles.memoryDate}>{formatReadMonth(latestRead!.createdAt)}</Text>
+              </View>
               <Text style={styles.readingText}>{latestReadText}</Text>
             </View>
-            {hasShapingSignals ? (
-              <View style={styles.sectionCard}>
-                <Text style={styles.sectionLabel}>What shaped this value</Text>
-                {latestReadDrivers.length > 0 ? (
-                  <Text style={styles.traceRow}>{latestReadDrivers.join(' · ')}</Text>
-                ) : null}
-                {latestReadContextFit.length > 0 ? (
-                  <Text style={styles.traceRow}>{latestReadContextFit.join(' · ')}</Text>
-                ) : null}
-              </View>
+            {hasConflict ? (
+              <Text style={styles.tensionText}>This place changed in your memory.</Text>
             ) : null}
-          </>
+          </View>
+        ) : hasReads ? (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionLabel}>Latest read</Text>
+            <Text style={styles.readingText}>{latestReadText}</Text>
+          </View>
         ) : (
           <>
             {livedTraces.length > 0 && (
@@ -220,6 +228,18 @@ export default function PlaceDetailScreen() {
             </View>
           </>
         )}
+
+        {hasReads && hasShapingSignals ? (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionLabel}>What shaped this</Text>
+            {latestReadDrivers.length > 0 ? (
+              <Text style={styles.traceRow}>{latestReadDrivers.join(' · ')}</Text>
+            ) : null}
+            {latestReadContextFit.length > 0 ? (
+              <Text style={styles.traceRow}>{latestReadContextFit.join(' · ')}</Text>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionLabel}>Added</Text>
@@ -421,5 +441,50 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: colors.accent.softAmber,
     fontWeight: '700',
+  },
+
+  // ── Memory Stack ───────────────────────────────────────────────────────────
+
+  memoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  memoryCount: {
+    fontSize: 11,
+    color: colors.text.muted,
+    fontWeight: '500',
+  },
+  memoryBlock: {
+    gap: spacing.xs,
+  },
+  memoryMeta: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.xs,
+  },
+  memoryLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  memoryDate: {
+    fontSize: 11,
+    color: colors.text.muted,
+    fontStyle: 'italic',
+  },
+  memorySeparator: {
+    height: 1,
+    backgroundColor: colors.border.soft,
+    marginVertical: spacing.sm,
+  },
+  tensionText: {
+    marginTop: spacing.xs,
+    fontSize: 12,
+    color: colors.text.muted,
+    fontStyle: 'italic',
   },
 });
