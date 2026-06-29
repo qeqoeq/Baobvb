@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { PlaceNewReadSheet } from '@/components/place/PlaceNewReadSheet';
+import { PlacePassSheet } from '@/components/place/PlacePassSheet';
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
 import {
@@ -22,6 +23,7 @@ import {
   type Place,
   type PlaceReadEntry,
   type PlaceReadEntryInput,
+  type Relation,
 } from '@/store/useRelationsStore';
 
 const DRIVER_SHORT_LABELS: Readonly<Record<string, string>> = {
@@ -70,13 +72,15 @@ function getPrivatePlaceValueColor(value: number): string {
 
 export default function PlaceDetailScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
-  const { places, updatePlace, addPlaceRead } = useRelationsStore();
+  const { places, relations, updatePlace, addPlaceRead, addPassObject } = useRelationsStore();
   const place = places.find((item) => item.id === params.id);
   // Local-only UI feedback — never read from place.wentAgainAt, never
   // persisted, resets whenever this screen unmounts/remounts.
   const [wentAgainConfirmed, setWentAgainConfirmed] = useState(false);
   const [readSheetVisible, setReadSheetVisible] = useState(false);
   const [readSaved, setReadSaved] = useState(false);
+  const [passSheetVisible, setPassSheetVisible] = useState(false);
+  const [passedToName, setPassedToName] = useState<string | null>(null);
 
   // Explicit, never auto-triggered. Omitting worldFit/quickSignal/
   // identityHint here is safe — X.45b preserves them by default.
@@ -101,6 +105,24 @@ export default function PlaceDetailScreen() {
     addPlaceRead(place.id, input);
     setReadSheetVisible(false);
     setReadSaved(true);
+  };
+
+  const handleOpenPassSheet = () => {
+    setPassedToName(null);
+    setPassSheetVisible(true);
+  };
+
+  const handlePass = (toRelationId: string, toName: string, note?: string) => {
+    if (!place) return;
+    addPassObject({
+      objectId: place.id,
+      toRelationId,
+      categorySnapshot: place.category,
+      ...(place.sourceRelationId !== undefined ? { sourceRelationId: place.sourceRelationId } : {}),
+      ...(note !== undefined ? { note } : {}),
+    });
+    setPassSheetVisible(false);
+    setPassedToName(toName);
   };
 
   if (!place) {
@@ -151,6 +173,24 @@ export default function PlaceDetailScreen() {
     (c) => PLACE_CONTEXT_FIT_LABELS[c] ?? c,
   );
   const hasShapingSignals = latestReadDrivers.length > 0 || latestReadContextFit.length > 0;
+
+  // Eligible pass targets: revealed + not archived. No trust gate, no score.
+  // sourceRelationId placed last so the original suggester doesn't crowd the top.
+  const eligibleRelations = relations
+    .filter((r: Relation) => r.localState.revealSnapshot.revealed && !r.archived)
+    .sort((a: Relation, b: Relation) => {
+      const aIsSource = place.sourceRelationId !== undefined && a.id === place.sourceRelationId;
+      const bIsSource = place.sourceRelationId !== undefined && b.id === place.sourceRelationId;
+      if (aIsSource && !bIsSource) return 1;
+      if (!aIsSource && bIsSource) return -1;
+      const aAt = a.localState.revealSnapshot.revealedAt ?? '';
+      const bAt = b.localState.revealSnapshot.revealedAt ?? '';
+      return bAt.localeCompare(aAt);
+    });
+
+  const showPassCta =
+    (place.personalFit === 'kept' || place.personalFit === 'tried') &&
+    eligibleRelations.length > 0;
 
   return (
     <>
@@ -260,6 +300,15 @@ export default function PlaceDetailScreen() {
           <Text style={styles.readSavedText}>Read saved privately.</Text>
         ) : null}
 
+        {showPassCta ? (
+          <Pressable onPress={handleOpenPassSheet} style={styles.passCtaButton}>
+            <Text style={styles.passCtaText}>Who came to mind?</Text>
+          </Pressable>
+        ) : null}
+        {passedToName !== null ? (
+          <Text style={styles.passedConfirmText}>Passed to {passedToName}.</Text>
+        ) : null}
+
         <Pressable onPress={onWentAgain} style={styles.wentAgainButton}>
           <Text style={styles.wentAgainButtonText}>I went again</Text>
         </Pressable>
@@ -273,6 +322,12 @@ export default function PlaceDetailScreen() {
         category={place.category}
         onClose={() => setReadSheetVisible(false)}
         onSave={handleSaveRead}
+      />
+      <PlacePassSheet
+        visible={passSheetVisible}
+        eligibleRelations={eligibleRelations}
+        onClose={() => setPassSheetVisible(false)}
+        onPass={handlePass}
       />
     </>
   );
@@ -485,6 +540,24 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     fontSize: 12,
     color: colors.text.muted,
+    fontStyle: 'italic',
+  },
+
+  // ── Pass gesture ───────────────────────────────────────────────────────────
+
+  passCtaButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.sm,
+    paddingRight: spacing.md,
+  },
+  passCtaText: {
+    color: colors.text.muted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  passedConfirmText: {
+    color: colors.text.muted,
+    fontSize: 12,
     fontStyle: 'italic',
   },
 });
