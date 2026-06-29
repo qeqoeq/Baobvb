@@ -225,3 +225,11 @@ begin
     order by pd.created_at asc;
 end;
 $$;
+
+-- ── Grants ───────────────────────────────────────────────────────────────────
+
+revoke execute on function public.create_pass_delivery(uuid, text, jsonb) from public;
+grant execute on function public.create_pass_delivery(uuid, text, jsonb) to authenticated;
+
+revoke execute on function public.fetch_pass_deliveries() from public;
+grant execute on function public.fetch_pass_deliveries() to authenticated;

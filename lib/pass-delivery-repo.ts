@@ -53,11 +53,19 @@ export async function createPassDelivery(input: {
       p_object_payload: payload,
     });
 
-    if (error || !Array.isArray(data) || !data[0]) return null;
+    if (error || !Array.isArray(data) || !data[0]) {
+      if (__DEV__) {
+        console.warn('[pass-delivery] create failed', error);
+      }
+      return null;
+    }
     const row = data[0] as Record<string, unknown>;
     if (typeof row['id'] !== 'string') return null;
     return { id: row['id'] };
-  } catch {
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[pass-delivery] create failed', error);
+    }
     return null;
   }
 }
@@ -118,7 +126,10 @@ export async function fetchPassDeliveries(): Promise<RemotePassDelivery[]> {
       if (normalized !== null) results.push(normalized);
     }
     return results;
-  } catch {
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[pass-delivery] fetch failed', error);
+    }
     return [];
   }
 }

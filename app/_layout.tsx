@@ -5,6 +5,8 @@ import { Stack, router, useGlobalSearchParams, usePathname } from 'expo-router';
 import { colors } from '../constants/colors';
 import { devLogLinking, maskIdForLog } from '../lib/dev-linking-log';
 import { fetchMySharedRelationships } from '../lib/bootstrap-shared-relations';
+import { fetchPassDeliveries } from '../lib/pass-delivery-repo';
+import { materializePassDeliveries } from '../store/useRelationsStore';
 import { parseInviteDeepLink } from '../lib/parse-invite-deep-link';
 import {
   addRevealReadyNotificationResponseListener,
@@ -200,10 +202,24 @@ export default function RootLayout() {
     bootstrappedForUserIdRef.current = userId;
     void fetchMySharedRelationships()
       .then((rows) => bootstrapSharedRelations(rows))
+      .then(() => fetchPassDeliveries())
+      .then((deliveries) => {
+        if (deliveries.length === 0) return;
+        materializePassDeliveries(
+          deliveries.map((d) => ({
+            fromDeliveryId: d.id,
+            canonicalRelationId: d.canonicalRelationId,
+            objectType: d.objectType,
+            objectPayload: d.objectPayload,
+          })),
+        );
+      })
       .catch(() => {
-        // Best-effort: bootstrap failure is silent.
+        // Best-effort: bootstrap or delivery failure is silent.
         // The store retains whatever was previously persisted.
         // Will retry on next app launch when the user is still authenticated.
+        // fetchPassDeliveries never throws (returns [] on error), so this catch
+        // only fires on bootstrap failure — same behavior as before.
         bootstrappedForUserIdRef.current = null;
       });
   }, [me.internalAuthUserId]);
