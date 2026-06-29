@@ -8,12 +8,16 @@ import {
   getPassedObjectsSnapshot,
   getPlacesSnapshot,
   getReceivedObjectsSnapshot,
+  materializePassDeliveries,
   resetDevStateToSeed,
   sanitizePersistedPassedObjects,
   sanitizePersistedPlaceReads,
   sanitizePersistedReceivedObjects,
   setReceivedObjectStatus,
+  upsertBootstrappedSharedRelations,
+  type PassDeliveryMaterializationInput,
   type Place,
+  type SharedRelationBootstrapInput,
 } from './useRelationsStore';
 
 // Stable seed ids already used elsewhere in this codebase (X.71 distribution
@@ -726,5 +730,168 @@ describe('sanitizePersistedReceivedObjects', () => {
     const result = sanitizePersistedReceivedObjects([VALID_RECEIVED, invalid]);
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('recv-1');
+  });
+
+  it('T5: migrates legacy fromPassId to fromDeliveryId', () => {
+    const legacy = { ...VALID_RECEIVED, fromPassId: 'old-delivery-id' };
+    const result = sanitizePersistedReceivedObjects([legacy]);
+    expect(result).toHaveLength(1);
+    expect(result[0].fromDeliveryId).toBe('old-delivery-id');
+  });
+
+  it('T5b: fromDeliveryId takes precedence over legacy fromPassId', () => {
+    const both = { ...VALID_RECEIVED, fromPassId: 'old-id', fromDeliveryId: 'new-id' };
+    const result = sanitizePersistedReceivedObjects([both as never]);
+    expect(result).toHaveLength(1);
+    expect(result[0].fromDeliveryId).toBe('new-id');
+  });
+});
+
+// ── addReceivedObject — fromDeliveryId ───────────────────────────────────────
+
+const RECEIVED_INPUT_BASE = {
+  objectId: 'seed-place-4',
+  fromRelationId: '6',
+  nameSnapshot: 'Maison Luma',
+  categorySnapshot: 'restaurant' as const,
+};
+
+describe('addReceivedObject — fromDeliveryId', () => {
+  beforeEach(() => {
+    resetDevStateToSeed();
+  });
+
+  it('T6: addReceivedObject stores fromDeliveryId', () => {
+    const entry = addReceivedObject({ ...RECEIVED_INPUT_BASE, fromDeliveryId: 'delivery-abc' });
+    expect(entry.fromDeliveryId).toBe('delivery-abc');
+    const found = getReceivedObjectsSnapshot().find((r) => r.id === entry.id);
+    expect(found?.fromDeliveryId).toBe('delivery-abc');
+  });
+
+  it('T6b: addReceivedObject without fromDeliveryId produces no fromDeliveryId field', () => {
+    const entry = addReceivedObject(RECEIVED_INPUT_BASE);
+    expect(entry.fromDeliveryId).toBeUndefined();
+    expect((entry as never as { fromPassId?: string }).fromPassId).toBeUndefined();
+  });
+});
+
+// ── materializePassDeliveries ─────────────────────────────────────────────────
+
+function makeBootstrapRow(canonicalId: string): SharedRelationBootstrapInput {
+  return {
+    relationship_id: canonicalId,
+    status: 'revealed',
+    my_side: 'sideA',
+    side_a_present: true,
+    side_b_present: true,
+    side_a_reading_id: null,
+    side_b_reading_id: null,
+    cooking_started_at: null,
+    unlock_at: null,
+    ready_at: null,
+    revealed_at: '2026-01-01T00:00:00Z',
+    relationship_name_revealed: true,
+    counterpart_public_profile_id: null,
+  };
+}
+
+describe('materializePassDeliveries', () => {
+  beforeEach(() => {
+    resetDevStateToSeed();
+  });
+
+  it('T7: creates ReceivedObject for known canonicalRelationId', () => {
+    upsertBootstrappedSharedRelations([makeBootstrapRow('canonical-t7')]);
+    const before = getReceivedObjectsSnapshot().length;
+
+    const created = materializePassDeliveries([{
+      fromDeliveryId: 'delivery-t7',
+      canonicalRelationId: 'canonical-t7',
+      objectType: 'place',
+      objectPayload: { objectId: 'remote-place-1', nameSnapshot: 'Remote Café', categorySnapshot: 'cafe' },
+    }]);
+
+    expect(created).toHaveLength(1);
+    expect(getReceivedObjectsSnapshot()).toHaveLength(before + 1);
+    expect(created[0].fromDeliveryId).toBe('delivery-t7');
+    expect(created[0].nameSnapshot).toBe('Remote Café');
+    expect(created[0].status).toBe('new');
+    expect(created[0].categorySnapshot).toBe('cafe');
+  });
+
+  it('T8: idempotent — repeated call with same fromDeliveryId creates no duplicate', () => {
+    upsertBootstrappedSharedRelations([makeBootstrapRow('canonical-t8')]);
+
+    const delivery: PassDeliveryMaterializationInput[] = [{
+      fromDeliveryId: 'delivery-t8',
+      canonicalRelationId: 'canonical-t8',
+      objectType: 'place',
+      objectPayload: { objectId: 'place-t8', nameSnapshot: 'Idem Café', categorySnapshot: 'cafe' },
+    }];
+
+    materializePassDeliveries(delivery);
+    const afterFirst = getReceivedObjectsSnapshot().length;
+
+    materializePassDeliveries(delivery);
+    expect(getReceivedObjectsSnapshot()).toHaveLength(afterFirst);
+  });
+
+  it('T9: skips unknown canonicalRelationId', () => {
+    const before = getReceivedObjectsSnapshot().length;
+    const created = materializePassDeliveries([{
+      fromDeliveryId: 'delivery-t9',
+      canonicalRelationId: 'non-existent-canonical',
+      objectType: 'place',
+      objectPayload: { objectId: 'place-x', nameSnapshot: 'Unknown', categorySnapshot: 'bar' },
+    }]);
+    expect(created).toHaveLength(0);
+    expect(getReceivedObjectsSnapshot()).toHaveLength(before);
+  });
+
+  it('T10: does not modify passedObjects', () => {
+    const passedBefore = getPassedObjectsSnapshot().length;
+    materializePassDeliveries([{
+      fromDeliveryId: 'delivery-t10',
+      canonicalRelationId: 'non-existent',
+      objectType: 'place',
+      objectPayload: { objectId: 'x', nameSnapshot: 'Y', categorySnapshot: 'bar' },
+    }]);
+    expect(getPassedObjectsSnapshot()).toHaveLength(passedBefore);
+  });
+
+  it('T11: does not modify evaluations', () => {
+    const evalsBefore = getEvaluationsSnapshot().map((e) => ({ ...e }));
+    materializePassDeliveries([]);
+    expect(getEvaluationsSnapshot()).toEqual(evalsBefore);
+  });
+
+  it('T12: setReceivedObjectStatus is local — evaluations and passedObjects unchanged', () => {
+    upsertBootstrappedSharedRelations([makeBootstrapRow('canonical-t12')]);
+    const evalsBefore = getEvaluationsSnapshot().map((e) => ({ ...e }));
+    const passedBefore = getPassedObjectsSnapshot().length;
+
+    const [created] = materializePassDeliveries([{
+      fromDeliveryId: 'delivery-t12',
+      canonicalRelationId: 'canonical-t12',
+      objectType: 'place',
+      objectPayload: { objectId: 'place-t12', nameSnapshot: 'La Place', categorySnapshot: 'spot' },
+    }]);
+    setReceivedObjectStatus(created.id, 'kept');
+
+    expect(getEvaluationsSnapshot()).toEqual(evalsBefore);
+    expect(getPassedObjectsSnapshot()).toHaveLength(passedBefore);
+  });
+
+  it('T14: sourceRelationId never materialized from delivery payload', () => {
+    upsertBootstrappedSharedRelations([makeBootstrapRow('canonical-t14')]);
+
+    const created = materializePassDeliveries([{
+      fromDeliveryId: 'delivery-t14',
+      canonicalRelationId: 'canonical-t14',
+      objectType: 'place',
+      objectPayload: { objectId: 'place-t14', nameSnapshot: 'Test', categorySnapshot: 'spot' },
+    }]);
+
+    expect(created[0].sourceRelationId).toBeUndefined();
   });
 });

@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { PlaceNewReadSheet } from '@/components/place/PlaceNewReadSheet';
 import { PlacePassSheet } from '@/components/place/PlacePassSheet';
+import { createPassDelivery } from '@/lib/pass-delivery-repo';
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
 import {
@@ -123,6 +124,27 @@ export default function PlaceDetailScreen() {
     });
     setPassSheetVisible(false);
     setPassedToName(toName);
+    // Fire-and-forget cross-user delivery for revealed shared relations only.
+    // Never awaited, never surfaced in UI. Failure is silent.
+    const toRelation = relations.find((r) => r.id === toRelationId);
+    if (
+      toRelation &&
+      !toRelation.archived &&
+      toRelation.localState.revealSnapshot.status === 'revealed' &&
+      toRelation.canonicalRelationId
+    ) {
+      void createPassDelivery({
+        canonicalRelationId: toRelation.canonicalRelationId,
+        objectType: 'place',
+        objectPayload: {
+          objectId: place.id,
+          nameSnapshot: place.name,
+          categorySnapshot: place.category,
+          ...(note !== undefined ? { note } : {}),
+          // sourceRelationId intentionally excluded
+        },
+      });
+    }
   };
 
   if (!place) {

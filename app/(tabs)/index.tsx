@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Fragment, useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,7 +24,8 @@ import {
   deriveKeptPlaceWorldSignals,
   getRelationOpenWorldLabel,
 } from '../../lib/relation-open-worlds';
-import { useRelationsStore } from '../../store/useRelationsStore';
+import { fetchPassDeliveries } from '../../lib/pass-delivery-repo';
+import { materializePassDeliveries, useRelationsStore } from '../../store/useRelationsStore';
 import { PlaceReceivedSheet } from '../../components/place/PlaceReceivedSheet';
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -161,6 +162,26 @@ export default function CircleScreen() {
     setReceivedSheetVisible(false);
     setReceivedConfirm({ status: 'not_for_me', nameSnapshot });
   }, [pendingReceived, setReceivedObjectStatus]);
+
+  // On mount: pull server deliveries and materialize any new ones.
+  // Fire-and-forget — no spinner, no error state, no retry.
+  useEffect(() => {
+    let cancelled = false;
+    fetchPassDeliveries().then((deliveries) => {
+      if (cancelled || deliveries.length === 0) return;
+      materializePassDeliveries(
+        deliveries.map((d) => ({
+          fromDeliveryId: d.id,
+          canonicalRelationId: d.canonicalRelationId,
+          objectType: d.objectType,
+          objectPayload: d.objectPayload,
+        })),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Gateway tap → Through X. Locked gateway → alert. Regular node → relation screen.
   const handleNodeTap = useCallback((member: MapMember) => {
