@@ -25,15 +25,21 @@ import {
   getRelationOpenWorldLabel,
 } from '../../lib/relation-open-worlds';
 import { useRelationsStore } from '../../store/useRelationsStore';
+import { PlaceReceivedSheet } from '../../components/place/PlaceReceivedSheet';
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CircleScreen() {
-  const { me, relations, evaluations, places } = useRelationsStore();
+  const { me, relations, evaluations, places, receivedObjects, setReceivedObjectStatus } = useRelationsStore();
   const { width: screenWidth } = useWindowDimensions();
   const { bottom: bottomInset } = useSafeAreaInsets();
   const atlasSize = screenWidth;
   const [actionMenuVisible, setActionMenuVisible] = useState(false);
+  const [receivedSheetVisible, setReceivedSheetVisible] = useState(false);
+  const [receivedConfirm, setReceivedConfirm] = useState<{
+    status: 'kept' | 'not_for_me';
+    nameSnapshot: string;
+  } | null>(null);
 
   const readings = useMemo(
     () => getFoundationalReadings(relations, evaluations),
@@ -119,6 +125,42 @@ export default function CircleScreen() {
     ).length,
     [readings],
   );
+
+  // Oldest unresolved received object — one at a time, no counter.
+  const pendingReceived = useMemo(
+    () =>
+      [...receivedObjects]
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .find((r) => r.status === 'new') ?? null,
+    [receivedObjects],
+  );
+
+  const pendingFromName = useMemo(() => {
+    if (!pendingReceived) return null;
+    const rel = relations.find((r) => r.id === pendingReceived.fromRelationId);
+    return rel ? rel.name : null;
+  }, [pendingReceived, relations]);
+
+  const handleOpenReceived = useCallback(() => {
+    setReceivedConfirm(null);
+    setReceivedSheetVisible(true);
+  }, []);
+
+  const handleKeep = useCallback(() => {
+    if (!pendingReceived) return;
+    const nameSnapshot = pendingReceived.nameSnapshot;
+    setReceivedObjectStatus(pendingReceived.id, 'kept');
+    setReceivedSheetVisible(false);
+    setReceivedConfirm({ status: 'kept', nameSnapshot });
+  }, [pendingReceived, setReceivedObjectStatus]);
+
+  const handleNotForMe = useCallback(() => {
+    if (!pendingReceived) return;
+    const nameSnapshot = pendingReceived.nameSnapshot;
+    setReceivedObjectStatus(pendingReceived.id, 'not_for_me');
+    setReceivedSheetVisible(false);
+    setReceivedConfirm({ status: 'not_for_me', nameSnapshot });
+  }, [pendingReceived, setReceivedObjectStatus]);
 
   // Gateway tap → Through X. Locked gateway → alert. Regular node → relation screen.
   const handleNodeTap = useCallback((member: MapMember) => {
@@ -272,10 +314,30 @@ export default function CircleScreen() {
               >
                 <Text style={styles.worldsStripPlacesLink}>{'View your places →'}</Text>
               </Pressable>
+              {receivedConfirm !== null ? (
+                <Text style={styles.receivedConfirmText}>
+                  {receivedConfirm.status === 'kept' ? 'Kept.' : 'Not for me.'}
+                </Text>
+              ) : pendingReceived !== null ? (
+                <Pressable onPress={handleOpenReceived}>
+                  <Text style={styles.receivedPrompt} numberOfLines={1}>
+                    {`${pendingFromName ?? 'Someone'} thought of you · ${pendingReceived.nameSnapshot} →`}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           )}
         </View>
       </View>
+
+      <PlaceReceivedSheet
+        visible={receivedSheetVisible}
+        receivedObject={pendingReceived}
+        fromRelationName={pendingFromName}
+        onClose={() => setReceivedSheetVisible(false)}
+        onKeep={handleKeep}
+        onNotForMe={handleNotForMe}
+      />
 
       <Modal
         visible={actionMenuVisible}
@@ -537,6 +599,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.accent.warmGold,
+    marginTop: 2,
+  },
+  receivedPrompt: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.accent.warmGold,
+    opacity: 0.75,
+    marginTop: 2,
+  },
+  receivedConfirmText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.text.muted,
     marginTop: 2,
   },
 
