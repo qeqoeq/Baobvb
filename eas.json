@@ -20,12 +20,17 @@
     "production": {
       "autoIncrement": true,
       "distribution": "store",
+      "environment": "production",
       "ios": {
         "credentialsSource": "remote"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6761615004"
+      }
+    }
   }
 }
