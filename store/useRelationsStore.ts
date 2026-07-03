@@ -1071,7 +1071,7 @@ const REVEAL_UNLOCK_DELAY_MS = 90_000;
  * On mismatch with persisted state, the store resets to fresh seed.
  * This ensures dev/demo devices always get the latest data.
  */
-const SEED_VERSION = 14;
+export const SEED_VERSION = 14;
 
 type PersistedState = StoreState & { seedVersion?: number };
 
@@ -1461,13 +1461,24 @@ function persist() {
 
 // ── hydration (runs once at import time) ───────────────────────────────
 
-loadPersistedState<PersistedState>().then((persisted) => {
+/**
+ * Applies a persisted state blob to the live store, then marks the store as
+ * hydrated. Does NOT purge seed data — the caller is responsible for that step
+ * (see X.88 purgeSeedData). Does NOT emit change — caller must call emitChange()
+ * after any final mutations so consumers see only the fully-settled state.
+ *
+ * Exported for unit-test coverage of the production hydration + purge path.
+ * Application code uses only the top-level loadPersistedState().then() call below.
+ */
+export function applyHydratedState(persisted: unknown): void {
+  const p = persisted as PersistedState | null;
   if (
-    persisted &&
-    Array.isArray(persisted.relations) &&
-    Array.isArray(persisted.evaluations) &&
-    persisted.seedVersion === SEED_VERSION
+    p &&
+    Array.isArray(p.relations) &&
+    Array.isArray(p.evaluations) &&
+    p.seedVersion === SEED_VERSION
   ) {
+    const persisted = p;
     const persistedEvaluations = persisted.evaluations;
     if (persisted.me) {
       state.me = {
@@ -1626,8 +1637,11 @@ loadPersistedState<PersistedState>().then((persisted) => {
     });
   }
   hydrated = true;
-  // In production, strip any seed data that survived from a prior dev session.
-  // purgeSeedData() is a no-op when the state is already clean.
+}
+
+loadPersistedState<PersistedState>().then((persisted) => {
+  applyHydratedState(persisted);
+  // Strip seed data that survived from a prior dev session (no-op if already clean).
   if (!__DEV__ && purgeSeedData()) persist();
   emitChange();
 });

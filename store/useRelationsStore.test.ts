@@ -4,6 +4,7 @@ import {
   addPassedObject,
   addReceivedObject,
   appendPlaceRead,
+  applyHydratedState,
   getEvaluationsSnapshot,
   getPassedObjectsSnapshot,
   getPlacesSnapshot,
@@ -15,6 +16,7 @@ import {
   sanitizePersistedPassedObjects,
   sanitizePersistedPlaceReads,
   sanitizePersistedReceivedObjects,
+  SEED_VERSION,
   setReceivedObjectStatus,
   upsertBootstrappedSharedRelations,
   type PassDeliveryMaterializationInput,
@@ -936,16 +938,64 @@ describe('purgeSeedData', () => {
     expect(afterPurge).toHaveLength(beforePurge - 23);
   });
 
-  it('X3: leaves user-created places (p- IDs) untouched', () => {
-    // Simulate a place added by the user (ID format: p-{timestamp})
-    // We inject directly via the snapshot after seed reset.
-    // purgeSeedData only filters by prefix, so a p- place must survive.
-    // Use setReceivedObjectStatus keep path to create a p- place indirectly — but
-    // the simpler path is to verify that non-seed-place-* IDs are preserved.
+  it('X3: leaves user-created places (p- IDs) and evaluations (eval- IDs) untouched', () => {
+    // Build a mixed persisted state (seeds + real user entities) and load it
+    // via applyHydratedState so that purgeSeedData() can be called explicitly.
+    // applyHydratedState does NOT call purgeSeedData internally — only the
+    // production boot path does, after applyHydratedState returns.
+    const userPlaceId = `p-${Date.now()}`;
+    const userRelId = `r-${Date.now()}-x3`;
+    const userEvalId = `eval-${userRelId}-${Date.now()}`;
+
+    const minimalLocalState = {
+      sideA: { exists: true, identityStatus: 'draft' as const, hasPrivateReading: false },
+      sideB: { exists: false, identityStatus: 'missing' as const, hasPrivateReading: false },
+      revealSnapshot: { status: 'waiting_other_side' as const, revealed: false, relationshipNameRevealed: false },
+    };
+
+    applyHydratedState({
+      seedVersion: SEED_VERSION,
+      me: { id: 'me-local-001', displayName: 'Yasmine', handle: '@yasmine.baobab', avatarSeed: 'Y', isProfileSetup: true },
+      relations: [
+        // 1 seed relation
+        { id: '3', name: 'Jean', source: 'manual', archived: true, createdAt: '2025-12-20T09:00:00Z', identityStatus: 'draft', relationshipNameRevealed: false, avatarSeed: 'J', anchorMode: 'manual', anchorValue: null, relationDepth: 'encounter', privateLabel: 'Jean', localState: minimalLocalState },
+        // 1 non-seed relation (bootstrap r- ID)
+        { id: userRelId, name: 'Alice', source: 'bootstrap', archived: false, createdAt: '2026-01-01T00:00:00Z', identityStatus: 'verified', relationshipNameRevealed: false, avatarSeed: 'A', anchorMode: 'bootstrap', anchorValue: null, relationDepth: 'known', privateLabel: 'Alice', canonicalRelationId: 'canonical-x3', localState: { sideA: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: false }, sideB: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: false }, revealSnapshot: { status: 'revealed' as const, revealed: true, relationshipNameRevealed: false } } },
+      ],
+      evaluations: [
+        // 1 seed evaluation
+        { id: 'e2', relationId: '3', ratings: { trust: 2, interactions: 1, affinity: 2, support: 1, sharedNetwork: 1 }, score: 15, tier: 'Distant', createdAt: '2025-12-20T09:00:00Z' },
+        // 1 non-seed evaluation (eval-* ID)
+        { id: userEvalId, relationId: userRelId, ratings: { trust: 3, interactions: 3, affinity: 3, support: 3, sharedNetwork: 3 }, score: 50, tier: 'Active', createdAt: '2026-01-01T00:00:00Z' },
+      ],
+      places: [
+        // 1 seed place
+        { id: 'seed-place-2', name: 'Le Comptoir Calme', category: 'cafe', personalFit: 'kept', createdAt: '2026-03-05T09:30:00Z' },
+        // 1 non-seed place (p-{timestamp} ID)
+        { id: userPlaceId, name: 'My Café', category: 'cafe', personalFit: 'kept', createdAt: '2026-06-01T10:00:00Z' },
+      ],
+      receivedObjects: [],
+      passedObjects: [],
+      progressivePrivateSignals: {},
+    });
+
+    // State is now: 1 seed rel + 1 non-seed rel, 1 seed eval + 1 non-seed eval,
+    // 1 seed place + 1 non-seed place. purgeSeedData has NOT yet run.
+    expect(getRelationsSnapshot()).toHaveLength(2);
+    expect(getEvaluationsSnapshot()).toHaveLength(2);
+    expect(getPlacesSnapshot()).toHaveLength(2);
+
     purgeSeedData();
 
-    // After purge, no seed places remain; 0 user places either (seed state only had seed places).
-    expect(getPlacesSnapshot()).toHaveLength(0);
+    // Seeds removed
+    expect(getRelationsSnapshot().find((r) => r.id === '3')).toBeUndefined();
+    expect(getEvaluationsSnapshot().find((e) => e.id === 'e2')).toBeUndefined();
+    expect(getPlacesSnapshot().find((p) => p.id === 'seed-place-2')).toBeUndefined();
+
+    // Non-seed entities survived
+    expect(getRelationsSnapshot().find((r) => r.id === userRelId)).toBeDefined();
+    expect(getEvaluationsSnapshot().find((e) => e.id === userEvalId)).toBeDefined();
+    expect(getPlacesSnapshot().find((p) => p.id === userPlaceId)).toBeDefined();
   });
 
   it('X4: is idempotent — second call returns false and changes nothing', () => {
