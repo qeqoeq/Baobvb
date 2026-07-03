@@ -1105,7 +1105,7 @@ function subscribe(listener: () => void) {
 
 // ── snapshots ──────────────────────────────────────────────────────────
 
-function getRelationsSnapshot() {
+export function getRelationsSnapshot() {
   return state.relations;
 }
 
@@ -1626,6 +1626,9 @@ loadPersistedState<PersistedState>().then((persisted) => {
     });
   }
   hydrated = true;
+  // In production, strip any seed data that survived from a prior dev session.
+  // purgeSeedData() is a no-op when the state is already clean.
+  if (!__DEV__ && purgeSeedData()) persist();
   emitChange();
 });
 
@@ -2717,6 +2720,41 @@ export function resetDevStateToSeed() {
       seedVersion: SEED_VERSION,
     });
   });
+}
+
+// ── seed purge (X.88) ──────────────────────────────────────────────────
+
+// Seed IDs are structurally distinct from user-created IDs:
+//   relations:        '1'–'23' (bare integers)   vs  'r-{timestamp}[-{suffix}]'
+//   evaluations:      'e1'–'e22' (e + integer)   vs  'eval-{relationId}-{timestamp}'
+//   places:           'seed-place-*'              vs  'p-{timestamp}'
+//   receivedObjects:  'recv-seed-*'               vs  'recv-{timestamp}-{suffix}'
+// No type changes needed — ID pattern is the sole discriminant.
+const isSeedRelationId = (id: string): boolean => /^\d+$/.test(id);
+const isSeedEvaluationId = (id: string): boolean => /^e\d+$/.test(id);
+const isSeedPlaceId = (id: string): boolean => id.startsWith('seed-place-');
+const isSeedReceivedObjectId = (id: string): boolean => id.startsWith('recv-seed-');
+
+/**
+ * Removes any seed entity from the live state without touching real user data.
+ * Safe to call in production after hydration — returns true if anything changed.
+ * Exported for unit-test coverage only; application code uses the boot-time call.
+ */
+export function purgeSeedData(): boolean {
+  const rBefore = state.relations.length;
+  const eBefore = state.evaluations.length;
+  const pBefore = state.places.length;
+  const roBefore = state.receivedObjects.length;
+  state.relations = state.relations.filter((r) => !isSeedRelationId(r.id));
+  state.evaluations = state.evaluations.filter((e) => !isSeedEvaluationId(e.id));
+  state.places = state.places.filter((p) => !isSeedPlaceId(p.id));
+  state.receivedObjects = state.receivedObjects.filter((ro) => !isSeedReceivedObjectId(ro.id));
+  return (
+    state.relations.length !== rBefore ||
+    state.evaluations.length !== eBefore ||
+    state.places.length !== pBefore ||
+    state.receivedObjects.length !== roBefore
+  );
 }
 
 function loadLargeNetworkSeedData() {
