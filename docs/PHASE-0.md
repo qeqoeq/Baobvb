@@ -13,12 +13,12 @@ Porte de sortie : build installé chez ≥15 testeurs, smoke test 100% vert, zé
 - [x] docs/PHASE-0.md créé (ce fichier)
 
 ## P0.2 — X.88 : seeds dev hors production (BLOQUANT)
-- [ ] Marquage des données seed analysé et documenté
-- [ ] Gating production implémenté : aucun seeding en non-dev
-- [ ] Purge chirurgicale au boot non-dev : seed purgé, données réelles intactes
-- [ ] Tests vitest : purge sélective, idempotence, aucun seeding hors dev
-- [ ] tsc 0 erreur, vitest 100% vert
-- [ ] Commit : "fix(store): gate dev seeds out of production builds with surgical purge (X.88)"
+- [x] Marquage des données seed analysé et documenté
+- [x] Gating production implémenté : aucun seeding en non-dev
+- [x] Purge chirurgicale au boot non-dev : seed purgé, données réelles intactes
+- [x] Tests vitest : purge sélective, idempotence, aucun seeding hors dev (X1–X5)
+- [x] tsc 0 erreur, vitest 100% vert (967/967)
+- [x] Commit : dac745a "fix(store): gate dev seeds out of production builds with surgical purge (X.88)"
 
 ## P0.3 — Day11 : déploiement Supabase + vérification end-to-end
 - [ ] docs/sql/day11_apply.sql préparé (idempotent, REVOKE/GRANT inclus)
