@@ -68,7 +68,7 @@ Fonctions concernées (historique) : `my_shared_relationships()`, `claim_relatio
 
 | Fichier | Objet | Statut |
 |---|---|---|
-_Aucun script en attente._
+| `docs/sql/cron_runner_schedule.sql` | Activer pg_cron + pg_net (Extensions), remplacer `<DISPATCH_RUNNER_SECRET>`, appliquer | **En attente** — bloquer E2E P0.5bis |
 
 ---
 
@@ -92,3 +92,6 @@ _Aucun script en attente._
 | 2026-07-03 | `docs/sql/day11_apply.sql` | **Appliqué** — 13 colonnes confirmées, anon absent | curl RPC direct (token frais) : 22/23 non-null ; dump AsyncStorage post-bootstrap : 22/23 non-null, 1 null = `waiting_other_side` sans side_b |
 | 2026-07-03 | `docs/sql/reveal_state_rpc.sql` | **Appliqué** — `get_my_reveal_state`, anon absent | Grants vérifiés : authenticated EXECUTE seul (postgres + service_role exclus de anon) ; flux reveal re-testé sur simulateur post-migration |
 | 2026-07-03 | `docs/sql/pass_notification.sql` | **Appliqué** — kind check étendu, `dequeue` multi-kind, `enqueue_pass_delivery_notification`, `create_pass_delivery` avec enqueue | kind check ✓ ; anti-spam/dedup true\|true\|true ✓ ; create_pass_delivery authenticated ✓ anon absent ✓ ; enqueue anon corrigé manuellement (revoke manquant — voir leçon registre) |
+| 2026-07-03 | **Incident 1** : runner jamais schedulé depuis day14 | pg_cron non activé (42P01 `cron.job` does not exist) — `notification-dispatch-runner` n'a jamais tourné automatiquement. Les push reveal-ready n'étaient opérationnels qu'en invocation manuelle. **Fix : activer pg_cron + pg_net (Extensions) + `cron.schedule` cf. docs/sql/cron_runner_schedule.sql.** | Pendante — voir E2E P0.5bis |
+| 2026-07-03 | **Incident 2** : parsing Expo — zéro push délivré depuis day14 | `sendExpoPush` envoyait un objet JSON (`{to,title,...}`) mais parsait la réponse comme tableau (`data[0]`). Expo retourne `data` comme **objet** pour un envoi unitaire, **tableau** seulement pour un envoi en tableau. Résultat : chaque tentative finissait en `"Expo response missing data[0]"` — dispatched:0 de tout temps. **Fix : envoyer `[{...}]`, parser avec fallback objet/tableau (commit à venir après redeploy Deno).** Backlog purgé via `docs/sql/cron_runner_schedule.sql` avant activation cron. | Fix appliqué — attente redeploy Deno + E2E |
+| 2026-07-03 | **Incident 3** : `DeviceNotRegistered` lors du premier E2E — hypothèse APNs infirmée | La clé APNs existait déjà dans EAS (saine — test direct Expo ticket:ok, receipt:ok, push reçu sur iPhone). Le `DeviceNotRegistered` venait du parsing Expo (incident 2) : runner renvoyait l'erreur du ticket avant le fix `[{...}]`. Une fois le Deno redéployé, E2E complet validé : dispatched:1, failed:0, push "Someone thought of you 🌱" reçu app fermée, tap → lieu visible. **Aucun fix credentials nécessaire.** | Résolu — E2E 2026-07-03 |

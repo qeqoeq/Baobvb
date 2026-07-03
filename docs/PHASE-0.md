@@ -52,6 +52,18 @@ Porte de sortie : build installé chez ≥15 testeurs, smoke test 100% vert, zé
 - [x] tsc 0 erreur, vitest 991/991 vert
 - [x] Commit : fc862ad "chore(release): prod log guards, dead code removal, iOS usage strings"
 
+## P0.5bis — Push notification pass delivery
+- [x] Architecture : extension typée du pipeline `notification_outbox` (kind `pass_delivery`)
+- [x] docs/sql/pass_notification.sql : kind check étendu, `dequeue` multi-kind, `enqueue_pass_delivery_notification`, `create_pass_delivery` avec enqueue best-effort
+- [x] SQL appliqué par Samo (2026-07-03) — anti-spam/dedup ✓, grants ✓, anon révoqué ✓
+- [x] Deno `notification-dispatch-runner` : fix parsing Expo (envoi `[{...}]`, fallback array/object) + pushTitle/pushBody depuis payload
+- [x] Client : `addPassDeliveryNotificationResponseListener` + `getLaunchPassDeliveryFromLastNotification` + cold-start handler dans `_layout.tsx`
+- [x] Tests N1–N7 (listener, extraction, cold-start) — 1004/1004
+- [x] Incidents résolus : runner jamais schedulé (pg_cron absent) + parsing Expo (zéro push depuis day14) — backlog stale purgé
+- [x] docs/sql/cron_runner_schedule.sql préparé (pg_cron + pg_net, schedule toutes les minutes)
+- [x] E2E validé : pass "Test Luciole 2" simulateur → curl → dispatched:1 → push reçu iPhone app fermée → tap → lieu visible
+- [x] Commit : 1859b8b "feat(pass): receiver push notification on pass delivery (P0.5bis)"
+
 ## P0.6 — Build EAS + TestFlight
 - [ ] eas.json configuré : profil production, autoIncrement buildNumber, env via EAS Secrets
 - [ ] EXPO_PUBLIC_SUPABASE_URL et EXPO_PUBLIC_SUPABASE_ANON_KEY définis comme secrets EAS
