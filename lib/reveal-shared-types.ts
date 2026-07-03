@@ -6,10 +6,13 @@ export type SharedRevealStatus =
   | 'reveal_ready'
   | 'revealed';
 
+/**
+ * Returned by lifecycle RPCs (start_shared_cooking_reveal_if_ready,
+ * mark_shared_reveal_ready_if_unlocked, open_shared_reveal).
+ * No auth UIDs — side_a_user_id / side_b_user_id are never returned to the client.
+ */
 export type SharedRelationshipRevealRecord = {
   relationship_id: string;
-  side_a_user_id: string | null;
-  side_b_user_id: string | null;
   status: SharedRevealStatus;
   side_a_reading_id: string | null;
   side_b_reading_id: string | null;
@@ -30,9 +33,45 @@ export type SharedRelationshipRevealRecord = {
   updated_at: string;
 };
 
-export type SharedRevealRecordUpsertInput = {
-  relationshipId: string;
-  participantSide: 'sideA' | 'sideB';
+/**
+ * Returned by get_my_reveal_state RPC. Replaces direct .select() on
+ * shared_relationship_reveals — no auth UIDs ever reach the client.
+ * my_side is computed server-side via auth.uid().
+ */
+export type SharedRevealStateResult = {
+  my_side: 'sideA' | 'sideB';
+  status: SharedRevealStatus;
+  side_a_present: boolean;
+  side_b_present: boolean;
+  side_a_reading_id: string | null;
+  side_b_reading_id: string | null;
+  cooking_started_at: string | null;
+  unlock_at: string | null;
+  ready_at: string | null;
+  first_viewed_at: string | null;
+  revealed_at: string | null;
+  mutual_score: number | null;
+  tier: Tier | null;
+  relationship_name_revealed: boolean;
+  finalized_version: number;
+};
+
+/**
+ * Minimal structural type accepted by getEffectiveRevealSnapshot /
+ * applyEffectiveRevealToRelation. Satisfied by both SharedRelationshipRevealRecord
+ * (lifecycle RPCs) and SharedRevealStateResult (get_my_reveal_state).
+ */
+export type RevealSnapshotSource = {
+  status: SharedRevealStatus;
+  cooking_started_at: string | null;
+  unlock_at: string | null;
+  ready_at: string | null;
+  first_viewed_at: string | null;
+  revealed_at: string | null;
+  mutual_score: number | null;
+  tier: Tier | null;
+  relationship_name_revealed: boolean;
+  finalized_version: number;
 };
 
 export type SharedReadingPayload = Record<PillarKey, PillarRating>;

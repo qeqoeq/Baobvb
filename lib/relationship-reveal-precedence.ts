@@ -1,10 +1,10 @@
 import type { Relation, RelationshipRevealSnapshot } from '../store/useRelationsStore';
 import { normalizePersistedRevealSnapshotTier } from './persisted-tier-normalization';
-import type { SharedRelationshipRevealRecord } from './reveal-shared-types';
+import type { RevealSnapshotSource } from './reveal-shared-types';
 
 export function getEffectiveRevealSnapshot(
   localSnapshot: RelationshipRevealSnapshot,
-  sharedReveal: SharedRelationshipRevealRecord | null,
+  sharedReveal: RevealSnapshotSource | null,
 ): RelationshipRevealSnapshot {
   if (!sharedReveal) return localSnapshot;
 
@@ -34,7 +34,7 @@ export function getEffectiveRevealSnapshot(
 
 export function applyEffectiveRevealToRelation(
   relation: Relation,
-  sharedReveal: SharedRelationshipRevealRecord | null,
+  sharedReveal: RevealSnapshotSource | null,
 ): Relation {
   const effectiveSnapshot = getEffectiveRevealSnapshot(
     relation.localState.revealSnapshot,

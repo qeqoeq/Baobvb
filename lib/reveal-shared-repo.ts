@@ -4,46 +4,29 @@ import type {
   SharedRelationshipInvite,
   SharedReadingPayload,
   SharedRelationshipRevealRecord,
-  SharedRevealRecordUpsertInput,
+  SharedRevealStateResult,
 } from './reveal-shared-types';
 import { getAuthenticatedUserId } from './supabase-auth';
 import { normalizePhoneForAnchor } from './phone-normalize';
 import type { RelationshipSideKey } from '../store/useRelationsStore';
 
-const TABLE = 'shared_relationship_reveals';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function getSharedRevealRecordForCurrentUser(
   relationshipId: string,
-): Promise<SharedRelationshipRevealRecord | null> {
-  const userId = await getAuthenticatedUserId();
-
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select(
-      'relationship_id,status,side_a_user_id,side_b_user_id,' +
-      'side_a_reading_id,side_b_reading_id,' +
-      'cooking_started_at,unlock_at,ready_at,first_viewed_at,revealed_at,' +
-      'mutual_score,tier,relationship_name_revealed,finalized_version,' +
-      'created_at,updated_at',
-    )
-    .eq('relationship_id', relationshipId)
-    .or(`side_a_user_id.eq.${userId},side_b_user_id.eq.${userId}`)
-    .maybeSingle();
+): Promise<SharedRevealStateResult | null> {
+  if (!UUID_RE.test(relationshipId)) return null;
+  await getAuthenticatedUserId();
+  const { data, error } = await supabase.rpc('get_my_reveal_state', {
+    p_relationship_id: relationshipId,
+  });
 
   if (error) {
     throw error;
   }
 
-  return data as SharedRelationshipRevealRecord | null;
-}
-
-export async function upsertSharedRevealRecordForCurrentUser(
-  input: SharedRevealRecordUpsertInput,
-): Promise<SharedRelationshipRevealRecord> {
-  await getAuthenticatedUserId();
-  throw new Error(
-    `Client-side participant claiming is deprecated for ${input.relationshipId}/${input.participantSide}. Use invite create/claim RPCs.`,
-  );
+  if (!Array.isArray(data) || !data[0]) return null;
+  return data[0] as SharedRevealStateResult;
 }
 
 export async function attachSharedPrivateReadingReferenceForCurrentUser(
@@ -187,7 +170,4 @@ export async function tryRegisterPhoneAnchorSilently(
   }
 }
 
-// Backward-compatible aliases while Day 2 remains helper-only.
-export const getSharedRevealRecord = getSharedRevealRecordForCurrentUser;
-export const upsertSharedRevealRecord = upsertSharedRevealRecordForCurrentUser;
 export const attachSharedPrivateReadingReference = attachSharedPrivateReadingReferenceForCurrentUser;

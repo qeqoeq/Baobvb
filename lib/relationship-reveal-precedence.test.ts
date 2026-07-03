@@ -5,7 +5,7 @@ import {
   getEffectiveRevealSnapshot,
 } from './relationship-reveal-precedence';
 import type { Relation, RelationshipRevealSnapshot } from '../store/useRelationsStore';
-import type { SharedRelationshipRevealRecord, SharedRevealStatus } from './reveal-shared-types';
+import type { RevealSnapshotSource, SharedRevealStatus } from './reveal-shared-types';
 
 // ── Test fixtures ───────────────────────────────────────────────────────────
 
@@ -15,17 +15,12 @@ const BASELINE_LOCAL_SNAPSHOT: RelationshipRevealSnapshot = {
 };
 
 function buildSharedReveal(
-  overrides: Partial<SharedRelationshipRevealRecord> & {
+  overrides: Partial<RevealSnapshotSource> & {
     status?: SharedRevealStatus;
   } = {},
-): SharedRelationshipRevealRecord {
+): RevealSnapshotSource {
   return {
-    relationship_id: 'rel-test',
-    side_a_user_id: 'user-a',
-    side_b_user_id: 'user-b',
     status: overrides.status ?? 'revealed',
-    side_a_reading_id: 'reading-a',
-    side_b_reading_id: 'reading-b',
     cooking_started_at: '2026-01-01T00:00:00.000Z',
     unlock_at: '2026-01-01T00:00:15.000Z',
     ready_at: '2026-01-01T00:00:15.000Z',
@@ -35,8 +30,6 @@ function buildSharedReveal(
     tier: null,
     relationship_name_revealed: true,
     finalized_version: 1,
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:30.000Z',
     ...overrides,
   };
 }
@@ -60,7 +53,7 @@ describe('getEffectiveRevealSnapshot — tier normalization (Sprint V.5)', () =>
       // Cast required: TS believes Tier no longer accepts 'Ghost', but the
       // backend row was written pre Sprint V.1 and still carries the legacy
       // label at runtime.
-      tier: 'Ghost' as unknown as SharedRelationshipRevealRecord['tier'],
+      tier: 'Ghost' as unknown as RevealSnapshotSource['tier'],
       mutual_score: 20,
     });
     const result = getEffectiveRevealSnapshot(BASELINE_LOCAL_SNAPSHOT, sharedReveal);
@@ -70,7 +63,7 @@ describe('getEffectiveRevealSnapshot — tier normalization (Sprint V.5)', () =>
 
   it('legacy "Legend" + Rooted-band mutual_score → "Rooted" (no leak)', () => {
     const sharedReveal = buildSharedReveal({
-      tier: 'Legend' as unknown as SharedRelationshipRevealRecord['tier'],
+      tier: 'Legend' as unknown as RevealSnapshotSource['tier'],
       mutual_score: 92,
     });
     const result = getEffectiveRevealSnapshot(BASELINE_LOCAL_SNAPSHOT, sharedReveal);
@@ -81,7 +74,7 @@ describe('getEffectiveRevealSnapshot — tier normalization (Sprint V.5)', () =>
     // Without a numerical truth to re-derive from, the legacy label is
     // stripped. The UI then falls back to its safe display contract.
     const sharedReveal = buildSharedReveal({
-      tier: 'Ghost' as unknown as SharedRelationshipRevealRecord['tier'],
+      tier: 'Ghost' as unknown as RevealSnapshotSource['tier'],
       mutual_score: null,
     });
     const result = getEffectiveRevealSnapshot(BASELINE_LOCAL_SNAPSHOT, sharedReveal);
@@ -118,7 +111,7 @@ describe('getEffectiveRevealSnapshot — tier normalization (Sprint V.5)', () =>
 
   it('unknown future tier + valid mutual_score → derived from score', () => {
     const sharedReveal = buildSharedReveal({
-      tier: 'FutureTier' as unknown as SharedRelationshipRevealRecord['tier'],
+      tier: 'FutureTier' as unknown as RevealSnapshotSource['tier'],
       mutual_score: 82,
     });
     const result = getEffectiveRevealSnapshot(BASELINE_LOCAL_SNAPSHOT, sharedReveal);
@@ -128,7 +121,7 @@ describe('getEffectiveRevealSnapshot — tier normalization (Sprint V.5)', () =>
 
   it('unknown future tier + null mutual_score → undefined', () => {
     const sharedReveal = buildSharedReveal({
-      tier: 'FutureTier' as unknown as SharedRelationshipRevealRecord['tier'],
+      tier: 'FutureTier' as unknown as RevealSnapshotSource['tier'],
       mutual_score: null,
     });
     const result = getEffectiveRevealSnapshot(BASELINE_LOCAL_SNAPSHOT, sharedReveal);
@@ -233,7 +226,7 @@ describe('applyEffectiveRevealToRelation — tier normalization end-to-end (Spri
 
   it('relation merged with legacy "Ghost" sharedReveal → revealSnapshot.tier === "Distant" when mutual_score present', () => {
     const sharedReveal = buildSharedReveal({
-      tier: 'Ghost' as unknown as SharedRelationshipRevealRecord['tier'],
+      tier: 'Ghost' as unknown as RevealSnapshotSource['tier'],
       mutual_score: 20,
     });
     const result = applyEffectiveRevealToRelation(buildBaselineRelation(), sharedReveal);
@@ -244,7 +237,7 @@ describe('applyEffectiveRevealToRelation — tier normalization end-to-end (Spri
 
   it('relation merged with legacy "Ghost" sharedReveal without mutual_score → tier stripped', () => {
     const sharedReveal = buildSharedReveal({
-      tier: 'Ghost' as unknown as SharedRelationshipRevealRecord['tier'],
+      tier: 'Ghost' as unknown as RevealSnapshotSource['tier'],
       mutual_score: null,
     });
     const result = applyEffectiveRevealToRelation(buildBaselineRelation(), sharedReveal);

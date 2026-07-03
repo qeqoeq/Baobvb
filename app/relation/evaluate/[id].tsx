@@ -27,7 +27,6 @@ import {
   startSharedCookingRevealIfReady,
   tryRegisterPhoneAnchorSilently,
 } from '../../../lib/reveal-shared-repo';
-import { getAuthenticatedUserId } from '../../../lib/supabase-auth';
 import type { RelationshipSideKey } from '../../../store/useRelationsStore';
 import { useRelationsStore } from '../../../store/useRelationsStore';
 
@@ -277,12 +276,11 @@ export default function EvaluateScreen() {
       // Shared attach only runs after the server has already bound this user to the
       // claimed side. The client must not bootstrap shared_relationship_reveals here.
       const canonicalId = relation.canonicalRelationId ?? relation.id;
-      const currentUserId = await getAuthenticatedUserId();
       const sharedRecord = await getSharedRevealRecordForCurrentUser(canonicalId);
       const ownsTargetSide =
         targetSide === 'sideA'
-          ? sharedRecord?.side_a_user_id === currentUserId
-          : sharedRecord?.side_b_user_id === currentUserId;
+          ? sharedRecord?.my_side === 'sideA'
+          : sharedRecord?.my_side === 'sideB';
 
       if (sharedRecord === null) {
         throw new Error('shared reveal record missing on server');

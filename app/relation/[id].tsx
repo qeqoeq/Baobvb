@@ -74,9 +74,7 @@ const PILLAR_ORDER: PillarKey[] = [
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
   const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation, progressivePrivateSignals, setRelationPrivateOpenWorlds } = useRelationsStore();
-  const [sharedReveal, setSharedReveal] = useState<Awaited<
-    ReturnType<typeof getSharedRevealRecordForCurrentUser>
-  > | null>(null);
+  const [sharedReveal, setSharedReveal] = useState<import('../../lib/reveal-shared-types').RevealSnapshotSource | null>(null);
   // Prevents refreshSharedReveal from fetching an incomplete backend record
   // during the invite creation window, which would override local state.
   const isInviteFlowActiveRef = useRef(false);
