@@ -30,14 +30,15 @@ Porte de sortie : build installé chez ≥15 testeurs, smoke test 100% vert, zé
 - [x] Fix backfill stale relations : fd42bda "fix(store): backfill counterpartPublicProfileId on stale bootstrap relations (day11)" + tests B1–B4
 
 ## P0.4 — Fuite des auth UIDs : migration vers RPC
-- [ ] docs/sql/reveal_state_rpc.sql préparé (get_my_reveal_state, REVOKE/GRANT inclus)
-- [ ] SQL appliqué par Samo dans le SQL Editor
-- [ ] lib/reveal-shared-repo.ts migré vers la RPC (plus de .select() client sur shared_relationship_reveals)
-- [ ] upsertSharedRevealRecordForCurrentUser supprimé
-- [ ] grep "side_a_user_id|side_b_user_id" sur lib/ et app/ : 0 usage client
-- [ ] Tests : mapping RPC + garde-fou grep
-- [ ] Flux reveal complet re-testé sur simulateur
-- [ ] Commit : "fix(privacy): remove auth UID exposure via get_my_reveal_state RPC"
+- [x] docs/sql/reveal_state_rpc.sql préparé (get_my_reveal_state, REVOKE/GRANT inclus)
+- [x] SQL appliqué par Samo dans le SQL Editor (2026-07-03) — grants vérifiés, anon absent
+- [x] lib/reveal-shared-repo.ts migré vers la RPC (plus de .select() client sur shared_relationship_reveals)
+- [x] upsertSharedRevealRecordForCurrentUser supprimé
+- [x] grep "side_a_user_id|side_b_user_id" sur lib/ et app/ : 0 usage client (hors type defs + .test.ts)
+- [x] UUID guard ajouté : IDs legacy ('1'–'23', 'r-*') → null sans appel RPC (évite Postgres 22P02)
+- [x] Tests : R1–R6 mapping RPC + G1–G3 UUID guard + garde-fou grep (auth-uid-guard.test.ts) — 991/991
+- [x] Flux reveal re-testé simulateur : relation "(shared)" revealed → "Active" via RPC ; Lena → snapshot local, aucun crash
+- [x] Commit : c4a91e6 "fix(privacy): remove auth UID exposure via get_my_reveal_state RPC"
 
 ## P0.5 — Hygiène release
 - [ ] console.warn evaluate/[id].tsx:303 derrière __DEV__

@@ -68,8 +68,22 @@ _Aucun script en attente._
 
 ---
 
+## Fonctions security definer actives (post-P0.4)
+
+| Fonction | Colonnes sensibles exposées | Auth UIDs client | Vérifiée |
+|---|---|---|---|
+| `my_shared_relationships()` | aucune (counterpart_public_profile_id non-auth) | Non | Oui (2026-07-03) |
+| `get_my_reveal_state(uuid)` | aucune (my_side calculé server-side) | Non | Oui (2026-07-03) |
+| `claim_relationship_invite(text)` | counterpart_public_profile_id uniquement | Non | Oui |
+| `open_shared_reveal(text)` | aucune | Non | Oui |
+| `mark_shared_reveal_ready_if_unlocked(text)` | aucune | Non | Oui |
+| `start_shared_cooking_reveal_if_ready(text)` | aucune | Non | Oui |
+
+---
+
 ## Journal d'application
 
 | Date | Fichier | Résultat | Méthode de vérification |
 |---|---|---|---|
 | 2026-07-03 | `docs/sql/day11_apply.sql` | **Appliqué** — 13 colonnes confirmées, anon absent | curl RPC direct (token frais) : 22/23 non-null ; dump AsyncStorage post-bootstrap : 22/23 non-null, 1 null = `waiting_other_side` sans side_b |
+| 2026-07-03 | `docs/sql/reveal_state_rpc.sql` | **Appliqué** — `get_my_reveal_state`, anon absent | Grants vérifiés : authenticated EXECUTE seul (postgres + service_role exclus de anon) ; flux reveal re-testé sur simulateur post-migration |
