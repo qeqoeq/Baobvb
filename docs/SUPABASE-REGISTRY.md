@@ -68,7 +68,7 @@ Fonctions concernées (historique) : `my_shared_relationships()`, `claim_relatio
 
 | Fichier | Objet | Statut |
 |---|---|---|
-| `docs/sql/cron_runner_schedule.sql` | pg_cron + pg_net activés, secret substitué, appliqué | **Vérifié 2026-07-03** — `cron.job active=true`, `job_run_details succeeded` |
+| `docs/sql/cron_runner_schedule.sql` | pg_cron + pg_net activés, secret substitué, appliqué | **Vérifié 2026-07-03** — `cron.job active=true`, 3 exécutions consécutives succeeded (17:24, 17:25, 17:26 UTC) |
 
 ---
 
