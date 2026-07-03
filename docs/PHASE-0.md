@@ -41,16 +41,16 @@ Porte de sortie : build installé chez ≥15 testeurs, smoke test 100% vert, zé
 - [x] Commit : c4a91e6 "fix(privacy): remove auth UID exposure via get_my_reveal_state RPC"
 
 ## P0.5 — Hygiène release
-- [ ] console.warn evaluate/[id].tsx:303 derrière __DEV__
-- [ ] lib/supabase.ts : throw en dev si env manquantes, fail-safe silencieux en prod
-- [ ] app/modal.tsx supprimé (boilerplate jamais référencé)
-- [ ] app.json : NSContactsUsageDescription + NSCameraUsageDescription rédigées et validées par Samo
-- [ ] app.json : bundleIdentifier, version, buildNumber, icon, splash, scheme vérifiés
-- [ ] Grep secrets : 0 clé hardcodée, env Supabase via EXPO_PUBLIC_* uniquement
-- [ ] AASA/Universal Links noté dans PARKING.md (hors scope Phase 0)
-- [ ] npx expo-doctor sans erreur bloquante
-- [ ] tsc 0 erreur, vitest 100% vert
-- [ ] Commit : "chore(release): prod log guards, dead code removal, iOS usage strings"
+- [x] console.warn evaluate/[id].tsx derrière __DEV__
+- [x] lib/supabase.ts : throw en dev si env manquantes, fail-safe silencieux en prod
+- [x] app/modal.tsx supprimé (boilerplate jamais référencé)
+- [x] app.json : NSContactsUsageDescription (via expo-contacts plugin) + NSCameraUsageDescription (via expo-camera plugin) ajoutées et validées
+- [x] app.json : bundleIdentifier com.samo.baobab ✓, version 1.0.0 ✓, buildNumber 24 ✓, icon 1024×1024 ✓, splash ✓, scheme baobab ✓
+- [x] Grep secrets : 0 service_role key ; EXPO_PUBLIC_* seules dans le code ; .env ignoré par git
+- [x] AASA/Universal Links noté dans PARKING.md (hors scope Phase 0) ✓
+- [x] npx expo-doctor : 17/18 checks passés. 1 warning non bloquant : décalages patch/minor (expo, expo-router, react-native-svg +2 mineurs). EAS build non impacté.
+- [x] tsc 0 erreur, vitest 991/991 vert
+- [x] Commit : fc862ad "chore(release): prod log guards, dead code removal, iOS usage strings"
 
 ## P0.6 — Build EAS + TestFlight
 - [ ] eas.json configuré : profil production, autoIncrement buildNumber, env via EAS Secrets
