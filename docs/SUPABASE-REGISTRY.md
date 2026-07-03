@@ -58,12 +58,16 @@ revoke all on function public.<nom_fonction>(<args>) from anon;
 grant execute on function public.<nom_fonction>(<args>) to authenticated;
 ```
 
-Fonctions concernées (historique) : `my_shared_relationships()`, `claim_relationship_invite(text)`, `submit_shared_reading(text, text, jsonb)`.
+Fonctions concernées (historique) : `my_shared_relationships()`, `claim_relationship_invite(text)`, `submit_shared_reading(text, text, jsonb)`, `enqueue_pass_delivery_notification(uuid, uuid)`.
+
+**Leçon P0.5bis :** `REVOKE ALL FROM public, authenticated` ne couvre pas `anon` — Supabase maintient `anon` comme rôle distinct. Règle à suivre partout : `REVOKE ALL FROM public, authenticated, anon` sur toute fonction security definer non destinée aux clients.
 
 ---
 
 ## À appliquer (queue)
 
+| Fichier | Objet | Statut |
+|---|---|---|
 _Aucun script en attente._
 
 ---
@@ -87,3 +91,4 @@ _Aucun script en attente._
 |---|---|---|---|
 | 2026-07-03 | `docs/sql/day11_apply.sql` | **Appliqué** — 13 colonnes confirmées, anon absent | curl RPC direct (token frais) : 22/23 non-null ; dump AsyncStorage post-bootstrap : 22/23 non-null, 1 null = `waiting_other_side` sans side_b |
 | 2026-07-03 | `docs/sql/reveal_state_rpc.sql` | **Appliqué** — `get_my_reveal_state`, anon absent | Grants vérifiés : authenticated EXECUTE seul (postgres + service_role exclus de anon) ; flux reveal re-testé sur simulateur post-migration |
+| 2026-07-03 | `docs/sql/pass_notification.sql` | **Appliqué** — kind check étendu, `dequeue` multi-kind, `enqueue_pass_delivery_notification`, `create_pass_delivery` avec enqueue | kind check ✓ ; anti-spam/dedup true\|true\|true ✓ ; create_pass_delivery authenticated ✓ anon absent ✓ ; enqueue anon corrigé manuellement (revoke manquant — voir leçon registre) |

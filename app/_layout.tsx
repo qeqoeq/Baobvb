@@ -9,8 +9,10 @@ import { fetchPassDeliveries } from '../lib/pass-delivery-repo';
 import { materializePassDeliveries } from '../store/useRelationsStore';
 import { parseInviteDeepLink } from '../lib/parse-invite-deep-link';
 import {
+  addPassDeliveryNotificationResponseListener,
   addRevealReadyNotificationResponseListener,
   configureNotificationPresentation,
+  getLaunchPassDeliveryFromLastNotification,
   getLaunchRelationIdFromLastNotification,
   registerDevicePushTokenForCurrentUser,
 } from '../lib/push-notifications';
@@ -236,18 +238,53 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    const removeListener = addRevealReadyNotificationResponseListener((relationId) => {
+
+    const removeRevealListener = addRevealReadyNotificationResponseListener((relationId) => {
       router.push({ pathname: '/relation/[id]', params: { id: relationId } });
     });
 
+    const removePassListener = addPassDeliveryNotificationResponseListener(() => {
+      void fetchPassDeliveries().then((deliveries) => {
+        if (deliveries.length > 0) {
+          materializePassDeliveries(
+            deliveries.map((d) => ({
+              fromDeliveryId: d.id,
+              canonicalRelationId: d.canonicalRelationId,
+              objectType: d.objectType,
+              objectPayload: d.objectPayload,
+            })),
+          );
+        }
+      });
+    });
+
     void (async () => {
+      // Reveal-ready cold-start: open the relation screen.
       const relationId = await getLaunchRelationIdFromLastNotification();
-      if (!relationId) return;
-      router.push({ pathname: '/relation/[id]', params: { id: relationId } });
+      if (relationId) {
+        router.push({ pathname: '/relation/[id]', params: { id: relationId } });
+        return;
+      }
+      // Pass delivery cold-start: materialize so the object is visible on Home.
+      const wasPassDelivery = await getLaunchPassDeliveryFromLastNotification();
+      if (wasPassDelivery) {
+        const deliveries = await fetchPassDeliveries();
+        if (deliveries.length > 0) {
+          materializePassDeliveries(
+            deliveries.map((d) => ({
+              fromDeliveryId: d.id,
+              canonicalRelationId: d.canonicalRelationId,
+              objectType: d.objectType,
+              objectPayload: d.objectPayload,
+            })),
+          );
+        }
+      }
     })();
 
     return () => {
-      removeListener();
+      removeRevealListener();
+      removePassListener();
     };
   }, [isAuthenticated]);
 

@@ -32,6 +32,11 @@ async function sendExpoPush(
   token: string,
   payload: Record<string, unknown>,
 ): Promise<{ success: boolean; errorMessage: string | null }> {
+  // Per-kind push content: read from payload (set at enqueue time).
+  // Fallback strings cover reveal_ready rows that predate this field.
+  const pushTitle = typeof payload['pushTitle'] === 'string' ? payload['pushTitle'] : 'Your link is ready';
+  const pushBody = typeof payload['pushBody'] === 'string' ? payload['pushBody'] : 'Open Baobab to reveal it';
+
   let response: Response;
   try {
     response = await fetch(EXPO_PUSH_URL, {
@@ -42,8 +47,8 @@ async function sendExpoPush(
       },
       body: JSON.stringify({
         to: token,
-        title: 'Your link is ready',
-        body: 'Open Baobab to reveal it',
+        title: pushTitle,
+        body: pushBody,
         sound: 'default',
         data: payload,
       }),

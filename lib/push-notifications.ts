@@ -31,6 +31,27 @@ export function configureNotificationPresentation(): void {
   });
 }
 
+export function extractPassDeliveryFromNotificationData(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  return (data as { type?: unknown }).type === 'pass_delivery';
+}
+
+export function addPassDeliveryNotificationResponseListener(
+  onPassDelivery: () => void,
+): () => void {
+  const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+    if (!extractPassDeliveryFromNotificationData(response.notification.request.content.data)) return;
+    onPassDelivery();
+  });
+  return () => sub.remove();
+}
+
+export async function getLaunchPassDeliveryFromLastNotification(): Promise<boolean> {
+  const response = await Notifications.getLastNotificationResponseAsync();
+  if (!response) return false;
+  return extractPassDeliveryFromNotificationData(response.notification.request.content.data);
+}
+
 export function extractRelationIdFromNotificationData(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null;
   const relationId = (data as { relationId?: unknown }).relationId;
