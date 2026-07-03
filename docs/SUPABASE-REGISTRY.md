@@ -68,7 +68,7 @@ Fonctions concernées (historique) : `my_shared_relationships()`, `claim_relatio
 
 | Fichier | Objet | Statut |
 |---|---|---|
-| `docs/sql/cron_runner_schedule.sql` | Activer pg_cron + pg_net (Extensions), remplacer `<DISPATCH_RUNNER_SECRET>`, appliquer | **En attente** — bloquer E2E P0.5bis |
+| `docs/sql/cron_runner_schedule.sql` | pg_cron + pg_net activés, secret substitué, appliqué | **Vérifié 2026-07-03** — `cron.job active=true`, `job_run_details succeeded` |
 
 ---
 

@@ -18,7 +18,11 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "distribution": "store",
+      "ios": {
+        "credentialsSource": "remote"
+      }
     }
   },
   "submit": {
