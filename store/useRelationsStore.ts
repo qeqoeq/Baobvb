@@ -2614,8 +2614,20 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     const canonicalId = typeof row.relationship_id === 'string' ? row.relationship_id.trim() : '';
     if (!canonicalId) continue;
 
-    // Idempotent: skip if already materialized by any source.
-    if (state.relations.some((r) => r.canonicalRelationId === canonicalId)) continue;
+    // Idempotent: skip if already materialized. Patch counterpartPublicProfileId if
+    // the local copy is null and the RPC now provides a value (e.g. after day11 apply).
+    const existing = state.relations.find((r) => r.canonicalRelationId === canonicalId);
+    if (existing) {
+      if (!existing.counterpartPublicProfileId && row.counterpart_public_profile_id) {
+        state.relations = state.relations.map((r) =>
+          r.id === existing.id
+            ? { ...r, counterpartPublicProfileId: row.counterpart_public_profile_id }
+            : r,
+        );
+        didChange = true;
+      }
+      continue;
+    }
 
     const localState = buildSharedRevealLocalState(row);
     const revealed = localState.revealSnapshot.revealed;

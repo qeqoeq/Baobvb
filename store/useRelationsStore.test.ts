@@ -1037,3 +1037,83 @@ describe('purgeSeedData', () => {
     expect(getReceivedObjectsSnapshot().filter((ro) => ro.id.startsWith('recv-seed-'))).toHaveLength(0);
   });
 });
+
+// ── upsertBootstrappedSharedRelations — counterpartPublicProfileId backfill ──
+//
+// Covers the day11 patch: when the RPC returns counterpart_public_profile_id
+// for a relation that was previously materialized with null (e.g. before day11),
+// the existing relation must be updated in-place without touching other fields.
+
+describe('upsertBootstrappedSharedRelations — counterpartPublicProfileId backfill', () => {
+  const CANON = 'b1-canonical-ppid-test';
+  const PPID  = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+
+  function makeRow(overrides: Partial<SharedRelationBootstrapInput> = {}): SharedRelationBootstrapInput {
+    return {
+      relationship_id:               CANON,
+      status:                        'revealed',
+      my_side:                       'sideA',
+      side_a_present:                true,
+      side_b_present:                true,
+      side_a_reading_id:             null,
+      side_b_reading_id:             null,
+      cooking_started_at:            null,
+      unlock_at:                     null,
+      ready_at:                      null,
+      revealed_at:                   '2026-01-01T00:00:00Z',
+      relationship_name_revealed:    true,
+      counterpart_public_profile_id: null,
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    resetDevStateToSeed();
+    // Pre-materialize the relation with null counterpartPublicProfileId
+    upsertBootstrappedSharedRelations([makeRow()]);
+    const pre = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON);
+    expect(pre).toBeDefined();
+    expect(pre!.counterpartPublicProfileId).toBeNull();
+  });
+
+  it('B1: patches null → non-null when RPC now provides a value', () => {
+    upsertBootstrappedSharedRelations([makeRow({ counterpart_public_profile_id: PPID })]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON);
+    expect(rel!.counterpartPublicProfileId).toBe(PPID);
+  });
+
+  it('B2: does not overwrite an already-set counterpartPublicProfileId', () => {
+    // Patch once to set PPID
+    upsertBootstrappedSharedRelations([makeRow({ counterpart_public_profile_id: PPID })]);
+    // Call again with a different value
+    const OTHER = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
+    upsertBootstrappedSharedRelations([makeRow({ counterpart_public_profile_id: OTHER })]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON);
+    // Original PPID is preserved — non-null is never overwritten
+    expect(rel!.counterpartPublicProfileId).toBe(PPID);
+  });
+
+  it('B3: leaves relation unchanged when RPC row has null counterpart_public_profile_id', () => {
+    const snapshot = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON);
+    const before = { ...snapshot };
+    upsertBootstrappedSharedRelations([makeRow({ counterpart_public_profile_id: null })]);
+    const after = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON);
+    expect(after!.counterpartPublicProfileId).toBeNull();
+    expect(after!.id).toBe(before.id);
+    expect(after!.name).toBe(before.name);
+  });
+
+  it('B4: patch does not alter any other field on the relation', () => {
+    const before = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
+    upsertBootstrappedSharedRelations([makeRow({ counterpart_public_profile_id: PPID })]);
+    const after = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
+    // Only counterpartPublicProfileId changed
+    expect(after.id).toBe(before.id);
+    expect(after.name).toBe(before.name);
+    expect(after.source).toBe(before.source);
+    expect(after.canonicalRelationId).toBe(before.canonicalRelationId);
+    expect(after.archived).toBe(before.archived);
+    expect(after.identityStatus).toBe(before.identityStatus);
+    expect(after.counterpartPublicProfileId).toBe(PPID);
+  });
+});
