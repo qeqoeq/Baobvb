@@ -24,7 +24,7 @@ Risque connu : Supabase peut réintroduire `GRANT EXECUTE TO anon` après recré
 | `shared_reveal_day8_notification_delivery_hardening.sql` | 2026-03-23 | Durcissement dispatch : idempotence, retry logic, `processing`/`dispatched` states | Oui |
 | `shared_reveal_day9_relationship_id_uuid_guard.sql` | 2026-03-25 | Guard UUID dans toutes les RPCs lifecycle — rejette les IDs legacy `r-{timestamp}` | Oui |
 | `shared_reveal_day10_my_shared_relationships.sql` | 2026-03-25 | RPC `my_shared_relationships()` — bootstrap des shared relations au démarrage (12 colonnes) | Oui |
-| `shared_reveal_day11_counterpart_public_profile.sql` | — | **NON APPLIQUÉ** — contient `my_shared_relationships` enrichi (13 colonnes) + version obsolète de `claim_relationship_invite`. Utiliser `docs/sql/day11_apply.sql` à la place. | Non |
+| `shared_reveal_day11_counterpart_public_profile.sql` | — | **NON APPLIQUÉ DIRECTEMENT** — contient `my_shared_relationships` enrichi (13 colonnes) + version obsolète de `claim_relationship_invite`. Appliqué via `docs/sql/day11_apply.sql` à la place. | — |
 | `shared_reveal_day12_lifecycle_uuid_guard.sql` | 2026-03-28 | Guard UUID renforcé dans le lifecycle complet (double-check sur toutes les transitions) | Oui |
 | `shared_reveal_day13_processing_recovery.sql` | 2026-03-28 | RPC `recover_stale_processing_notifications` — batch recovery des rows bloquées en `processing` | Oui |
 | `shared_reveal_day14_deno_dispatch.sql` | 2026-03-28 | RPC `dispatch_reveal_ready_notification` + trigger Deno Edge Function pour push Expo | Oui |
@@ -64,6 +64,12 @@ Fonctions concernées (historique) : `my_shared_relationships()`, `claim_relatio
 
 ## À appliquer (queue)
 
-| Fichier | Date prévue | Statut |
-|---|---|---|
-| `docs/sql/day11_apply.sql` | 2026-07-03 | **EN ATTENTE** — DROP + CREATE `my_shared_relationships()` (13 colonnes) |
+_Aucun script en attente._
+
+---
+
+## Journal d'application
+
+| Date | Fichier | Résultat | Méthode de vérification |
+|---|---|---|---|
+| 2026-07-03 | `docs/sql/day11_apply.sql` | **Appliqué** — 13 colonnes confirmées, anon absent | curl RPC direct (token frais) : 22/23 non-null ; dump AsyncStorage post-bootstrap : 22/23 non-null, 1 null = `waiting_other_side` sans side_b |

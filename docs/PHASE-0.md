@@ -21,12 +21,13 @@ Porte de sortie : build installé chez ≥15 testeurs, smoke test 100% vert, zé
 - [x] Commit : dac745a "fix(store): gate dev seeds out of production builds with surgical purge (X.88)"
 
 ## P0.3 — Day11 : déploiement Supabase + vérification end-to-end
-- [ ] docs/sql/day11_apply.sql préparé (idempotent, REVOKE/GRANT inclus)
-- [ ] docs/SUPABASE-REGISTRY.md créé et rempli rétroactivement
-- [ ] SQL appliqué par Samo dans le SQL Editor
-- [ ] Vérification : counterpartPublicProfileId non-null dans le dump AsyncStorage
-- [ ] Assisted reconciliation UI déclenchable (relation/[id].tsx)
-- [ ] Commit : "chore(supabase): day11 apply script and migration registry"
+- [x] docs/sql/day11_apply.sql préparé (idempotent, REVOKE/GRANT inclus)
+- [x] docs/SUPABASE-REGISTRY.md créé et rempli rétroactivement
+- [x] SQL appliqué par Samo dans le SQL Editor (2026-07-03)
+- [x] Vérification : 22/23 counterpartPublicProfileId non-null dans le dump AsyncStorage (1 null = waiting_other_side sans side_b — attendu)
+- [x] Assisted reconciliation UI câblée (relation/[id].tsx) — déclenchable dès qu'un draft scan avec sourcePublicProfileId correspondant coexiste
+- [x] Commit : 3cb4c94 "chore(supabase): day11 apply script and migration registry"
+- [x] Fix backfill stale relations : fd42bda "fix(store): backfill counterpartPublicProfileId on stale bootstrap relations (day11)" + tests B1–B4
 
 ## P0.4 — Fuite des auth UIDs : migration vers RPC
 - [ ] docs/sql/reveal_state_rpc.sql préparé (get_my_reveal_state, REVOKE/GRANT inclus)
