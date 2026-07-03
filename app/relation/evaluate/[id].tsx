@@ -298,7 +298,7 @@ export default function EvaluateScreen() {
       await startSharedCookingRevealIfReady(canonicalId);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown shared sync error';
-      console.warn('[shared-reveal-sync] foundational reading saved locally but shared sync failed', {
+      if (__DEV__) console.warn('[shared-reveal-sync] foundational reading saved locally but shared sync failed', {
         source: relation.source,
         side: targetSide,
         message,

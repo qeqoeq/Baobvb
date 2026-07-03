@@ -46,6 +46,12 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Baobab uses the camera to scan QR invitation codes. No photos or videos are captured or stored."
+        }
+      ],
+      [
         "expo-dev-client",
         {
           "addGeneratedScheme": false,
