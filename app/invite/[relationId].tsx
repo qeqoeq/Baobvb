@@ -257,22 +257,22 @@ export default function InviteArrivalScreen() {
         }
 
         if (claimedSide === 'sideB' && !sideBHasPrivateReading) {
-          router.push({
+          router.replace({
             pathname: '/relation/evaluate/[id]',
-            params: { id: relation.id, side: claimedSide },
+            params: { id: relation.id, side: claimedSide, fromClaim: '1' },
           });
           return;
         }
 
         if (claimedSide === 'sideA') {
-          router.push({
+          router.replace({
             pathname: '/relation/evaluate/[id]',
-            params: { id: relation.id, side: claimedSide },
+            params: { id: relation.id, side: claimedSide, fromClaim: '1' },
           });
           return;
         }
 
-        router.push({ pathname: '/relation/[id]', params: { id: relation.id } });
+        router.replace({ pathname: '/relation/[id]', params: { id: relation.id } });
         return;
       }
 
@@ -285,7 +285,7 @@ export default function InviteArrivalScreen() {
         if (existingByClaim) {
           router.replace({
             pathname: '/relation/evaluate/[id]',
-            params: { id: existingByClaim.id, side: claimedSide },
+            params: { id: existingByClaim.id, side: claimedSide, fromClaim: '1' },
           });
           return;
         }
@@ -332,7 +332,7 @@ export default function InviteArrivalScreen() {
         resolveInvitedSideB(created.id);
         router.replace({
           pathname: '/relation/evaluate/[id]',
-          params: { id: created.id, side: claimedSide },
+          params: { id: created.id, side: claimedSide, fromClaim: '1' },
         });
         return;
       }

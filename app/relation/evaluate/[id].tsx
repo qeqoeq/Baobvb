@@ -54,7 +54,7 @@ const CHILD_RATING_TONES: Record<PillarRating, { bg: string; border: string; tex
 const getChildRatingTone = (n: PillarRating) => CHILD_RATING_TONES[n];
 
 export default function EvaluateScreen() {
-  const { id, side } = useLocalSearchParams<{ id: string; side?: string }>();
+  const { id, side, fromClaim } = useLocalSearchParams<{ id: string; side?: string; fromClaim?: string }>();
   const {
     me,
     relations,
@@ -65,6 +65,7 @@ export default function EvaluateScreen() {
     setProgressivePrivateSignal,
   } = useRelationsStore();
   const targetSide: RelationshipSideKey = side === 'sideB' ? 'sideB' : 'sideA';
+  const isFromClaim = fromClaim === '1';
 
   const relation = useMemo(
     () => relations.find((r) => r.id === id) ?? null,
@@ -257,17 +258,18 @@ export default function EvaluateScreen() {
             privateLabel: relation.name,
             fullMessage: url ? `${message}\n${url}` : message,
             onDeliveryChannelOpened: () => markInviteDeliveryOpened(relation.id),
-            onDismiss: () =>
-              router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }),
+            onDismiss: () => {
+              if (isFromClaim) { router.replace('/(tabs)'); } else { router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }); }
+            },
           });
         } catch {
           // Invite creation failed — land on relation detail where retry is available.
-          router.replace({ pathname: '/relation/[id]', params: { id: relation.id } });
+          if (isFromClaim) { router.replace('/(tabs)'); } else { router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }); }
         }
         return;
       }
       if (__DEV__) console.log('[evaluate:save] local-only → navigate to', relation.id);
-      router.replace({ pathname: '/relation/[id]', params: { id: relation.id } });
+      if (isFromClaim) { router.replace('/(tabs)'); } else { router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }); }
       return;
     }
     if (__DEV__) console.log('[evaluate:save] shared-backed → canonical', relation.canonicalRelationId);
@@ -309,8 +311,8 @@ export default function EvaluateScreen() {
       );
     }
 
-    router.replace({ pathname: '/relation/[id]', params: { id: relation.id } });
-  }, [allRated, relation, isSubmitting, ratings, attachPrivateReadingToRelationshipSide, targetSide, me, setCanonicalRelationId, markInviteDeliveryOpened]);
+    if (isFromClaim) { router.replace('/(tabs)'); } else { router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }); }
+  }, [allRated, relation, isSubmitting, ratings, attachPrivateReadingToRelationshipSide, targetSide, me, setCanonicalRelationId, markInviteDeliveryOpened, isFromClaim]);
 
   if (!relation || !canEvaluateSideB || sideAlreadyHasReading) {
     return (
