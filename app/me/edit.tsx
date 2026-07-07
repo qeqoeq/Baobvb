@@ -72,13 +72,13 @@ export default function EditMyCardScreen() {
       const result = await upsertUserHandle(cleanHandle);
       if (result.taken) {
         setError('This handle is already taken. Choose another.');
+        setIsSaving(false);
         return;
       }
     } catch {
       setError('Could not secure this handle. Try again.');
-      return;
-    } finally {
       setIsSaving(false);
+      return;
     }
 
     const ok = updateMe({
@@ -88,6 +88,7 @@ export default function EditMyCardScreen() {
     });
     if (!ok) {
       setError('Could not save your card. Please check your fields.');
+      setIsSaving(false);
       return;
     }
 
@@ -96,6 +97,11 @@ export default function EditMyCardScreen() {
         pathname: '/invite/[relationId]',
         params: { relationId: params.invitedRelationId },
       });
+      return;
+    }
+
+    if (isSetupMode) {
+      router.replace('/(tabs)');
       return;
     }
 
