@@ -2,6 +2,7 @@ import * as Contacts from 'expo-contacts';
 import { router, Stack } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -106,6 +107,7 @@ export default function InviteByNumberScreen() {
   // ── Manual entry ────────────────────────────────────────────────────────────
   if (screenState === 'manual') {
     return (
+      <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
         style={styles.screen}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -149,6 +151,7 @@ export default function InviteByNumberScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+      </Pressable>
     );
   }
 
