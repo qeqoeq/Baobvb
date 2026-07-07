@@ -6,6 +6,7 @@ import {
   appendPlaceRead,
   applyHydratedState,
   getEvaluationsSnapshot,
+  getMeSnapshot,
   getPassedObjectsSnapshot,
   getPlacesSnapshot,
   getReceivedObjectsSnapshot,
@@ -1035,6 +1036,48 @@ describe('purgeSeedData', () => {
     // All seeds gone
     expect(getRelationsSnapshot().filter((r) => /^\d+$/.test(r.id))).toHaveLength(0);
     expect(getReceivedObjectsSnapshot().filter((ro) => ro.id.startsWith('recv-seed-'))).toHaveLength(0);
+  });
+});
+
+// ── B1: seed me purge in production ──────────────────────────────────────────
+//
+// __DEV__ = false in vitest (vitest.config.ts define). These tests confirm that
+// the seed Yasmine identity never surfaces in a production context.
+//
+describe('purgeSeedData — me slice (B1)', () => {
+  it('M1: fresh prod install — me starts blank (no displayName, no handle)', () => {
+    // resetDevStateToSeed forcibly sets state.me = SEED_ME (test-only helper).
+    // In prod, state initializes to BLANK_ME. Simulate by applying a state with
+    // no persisted me — the else branch in applyHydratedState persists blank me.
+    applyHydratedState(null);
+    const me = getMeSnapshot();
+    expect(me.displayName).toBe('');
+    expect(me.handle).toBe('');
+    expect(me.isProfileSetup).toBe(false);
+  });
+
+  it('M2: existing install with persisted seed me — purge resets to blank', () => {
+    // Simulate a polluted prod installation: seed me was persisted before B1 fix.
+    applyHydratedState({
+      seedVersion: SEED_VERSION,
+      me: { id: 'me-local-001', displayName: 'Yasmine', handle: '@yasmine.baobab', avatarSeed: 'Y', isProfileSetup: false },
+      relations: [],
+      evaluations: [],
+      places: [],
+      receivedObjects: [],
+      passedObjects: [],
+      progressivePrivateSignals: {},
+    });
+    // At this point me has been hydrated with seed values.
+    expect(getMeSnapshot().handle).toBe('@yasmine.baobab');
+
+    // Production boot calls purgeSeedData() after hydration.
+    purgeSeedData();
+
+    const me = getMeSnapshot();
+    expect(me.displayName).toBe('');
+    expect(me.handle).toBe('');
+    expect(me.isProfileSetup).toBe(false);
   });
 });
 

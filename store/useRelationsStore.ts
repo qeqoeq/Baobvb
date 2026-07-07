@@ -1001,6 +1001,20 @@ const SEED_ME: MeProfile = {
   photoUri: null,
 };
 
+// Production first-run: empty profile so the setup form starts blank.
+// isProfileSetup:false triggers the /me/edit?setup=1 redirect.
+const BLANK_ME: MeProfile = {
+  id: 'me-local-001',
+  displayName: '',
+  handle: '',
+  avatarSeed: '',
+  showBaobabCode: false,
+  isProfileSetup: false,
+  internalAuthUserId: null,
+  publicProfileId: null,
+  photoUri: null,
+};
+
 const SEED_PLACES: Place[] = [
   // Via route '6' — cafe × 2 kept → keptCount 2 → strength 'strong' in territory derivation
   // quickSignal added here: repeatDesire true + contextFit max 2 — proves
@@ -1078,7 +1092,7 @@ type PersistedState = StoreState & { seedVersion?: number };
 // ── state ──────────────────────────────────────────────────────────────
 
 const state: StoreState = {
-  me: SEED_ME,
+  me: __DEV__ ? SEED_ME : BLANK_ME,
   // Seed data is dev-only — production first-run must start with an empty world.
   relations: __DEV__ ? SEED_RELATIONS.map(applyNormalizedRelationModel) : [],
   evaluations: __DEV__ ? SEED_EVALUATIONS : [],
@@ -1109,7 +1123,7 @@ export function getRelationsSnapshot() {
   return state.relations;
 }
 
-function getMeSnapshot() {
+export function getMeSnapshot() {
   return state.me;
 }
 
@@ -1482,7 +1496,7 @@ export function applyHydratedState(persisted: unknown): void {
     const persistedEvaluations = persisted.evaluations;
     if (persisted.me) {
       state.me = {
-        ...SEED_ME,
+        ...(__DEV__ ? SEED_ME : BLANK_ME),
         ...persisted.me,
         id: persisted.me.id ?? SEED_ME.id,
         // Back-compat: isProfileSetup was added in SEED_VERSION 6.
@@ -2775,7 +2789,17 @@ export function purgeSeedData(): boolean {
   state.evaluations = state.evaluations.filter((e) => !isSeedEvaluationId(e.id));
   state.places = state.places.filter((p) => !isSeedPlaceId(p.id));
   state.receivedObjects = state.receivedObjects.filter((ro) => !isSeedReceivedObjectId(ro.id));
+
+  // Purge seed me: the dev seed handle @yasmine.baobab must never appear in prod.
+  // isProfileSetup stays false so the user is redirected to setup on next render.
+  let meChanged = false;
+  if (state.me.handle === '@yasmine.baobab') {
+    state.me = { ...BLANK_ME, internalAuthUserId: state.me.internalAuthUserId ?? null };
+    meChanged = true;
+  }
+
   return (
+    meChanged ||
     state.relations.length !== rBefore ||
     state.evaluations.length !== eBefore ||
     state.places.length !== pBefore ||
