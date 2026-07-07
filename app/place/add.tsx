@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -92,6 +93,7 @@ export default function AddPlaceScreen() {
       style={styles.screen}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      onScrollBeginDrag={Keyboard.dismiss}
     >
       <View style={styles.header}>
         <Text style={styles.kicker}>Places</Text>

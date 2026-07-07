@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../../constants/colors';
 import { radius, spacing } from '../../../constants/spacing';
@@ -49,7 +49,11 @@ export default function EditRelationScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <Pressable style={styles.screen} onPress={Keyboard.dismiss}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.kav}
+      >
       <View style={styles.card}>
         <Text style={styles.title}>Edit relation</Text>
         <Text style={styles.subtitle}>
@@ -81,7 +85,8 @@ export default function EditRelationScreen() {
           <Text style={styles.secondaryButtonText}>Cancel</Text>
         </Pressable>
       </View>
-    </View>
+      </KeyboardAvoidingView>
+    </Pressable>
   );
 }
 
@@ -90,6 +95,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
     padding: spacing.lg,
+    justifyContent: 'center',
+  },
+  kav: {
+    flex: 1,
     justifyContent: 'center',
   },
   card: {

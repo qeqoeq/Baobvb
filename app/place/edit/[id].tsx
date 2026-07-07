@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { PlaceQuickSignalSheet } from '@/components/place/PlaceQuickSignalSheet';
 import { colors } from '@/constants/colors';
@@ -87,7 +87,15 @@ export default function EditPlaceScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.screen}
+    >
+    <ScrollView
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      onScrollBeginDrag={Keyboard.dismiss}
+    >
       <View style={styles.previewCard}>
         <Text style={styles.previewLabel}>Place preview</Text>
         <Text style={styles.previewName}>{name.trim() || place.name}</Text>
@@ -216,6 +224,7 @@ export default function EditPlaceScreen() {
         category={category}
       />
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
