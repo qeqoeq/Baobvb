@@ -69,6 +69,7 @@ Fonctions concernées (historique) : `my_shared_relationships()`, `claim_relatio
 | Fichier | Objet | Statut |
 |---|---|---|
 | `docs/sql/cron_runner_schedule.sql` | pg_cron + pg_net activés, secret substitué, appliqué | **Vérifié 2026-07-03** — `cron.job active=true`, 3 exécutions consécutives succeeded (17:24, 17:25, 17:26 UTC) |
+| `docs/sql/b8_b4_counterpart_name.sql` | B8 UNIQUE(relationship_id) + B4 display_name/handle sur user_public_profiles + upsert_user_handle étendu + my_shared_relationships 15 colonnes | **Vérifié 2026-07-08** — V1→V5 conformes (voir Journal) |
 
 ---
 
@@ -76,7 +77,7 @@ Fonctions concernées (historique) : `my_shared_relationships()`, `claim_relatio
 
 | Fonction | Colonnes sensibles exposées | Auth UIDs client | Vérifiée |
 |---|---|---|---|
-| `my_shared_relationships()` | aucune (counterpart_public_profile_id non-auth) | Non | Oui (2026-07-03) |
+| `my_shared_relationships()` | counterpart_display_name, counterpart_handle (non-auth — noms publics du counterpart) | Non | Oui (2026-07-08) |
 | `get_my_reveal_state(uuid)` | aucune (my_side calculé server-side) | Non | Oui (2026-07-03) |
 | `claim_relationship_invite(text)` | counterpart_public_profile_id uniquement | Non | Oui |
 | `open_shared_reveal(text)` | aucune | Non | Oui |
@@ -95,3 +96,4 @@ Fonctions concernées (historique) : `my_shared_relationships()`, `claim_relatio
 | 2026-07-03 | **Incident 1** : runner jamais schedulé depuis day14 | pg_cron non activé (42P01 `cron.job` does not exist) — `notification-dispatch-runner` n'a jamais tourné automatiquement. Les push reveal-ready n'étaient opérationnels qu'en invocation manuelle. **Fix : activer pg_cron + pg_net (Extensions) + `cron.schedule` cf. docs/sql/cron_runner_schedule.sql.** | Pendante — voir E2E P0.5bis |
 | 2026-07-03 | **Incident 2** : parsing Expo — zéro push délivré depuis day14 | `sendExpoPush` envoyait un objet JSON (`{to,title,...}`) mais parsait la réponse comme tableau (`data[0]`). Expo retourne `data` comme **objet** pour un envoi unitaire, **tableau** seulement pour un envoi en tableau. Résultat : chaque tentative finissait en `"Expo response missing data[0]"` — dispatched:0 de tout temps. **Fix : envoyer `[{...}]`, parser avec fallback objet/tableau (commit à venir après redeploy Deno).** Backlog purgé via `docs/sql/cron_runner_schedule.sql` avant activation cron. | Fix appliqué — attente redeploy Deno + E2E |
 | 2026-07-03 | **Incident 3** : `DeviceNotRegistered` lors du premier E2E — hypothèse APNs infirmée | La clé APNs existait déjà dans EAS (saine — test direct Expo ticket:ok, receipt:ok, push reçu sur iPhone). Le `DeviceNotRegistered` venait du parsing Expo (incident 2) : runner renvoyait l'erreur du ticket avant le fix `[{...}]`. Une fois le Deno redéployé, E2E complet validé : dispatched:1, failed:0, push "Someone thought of you 🌱" reçu app fermée, tap → lieu visible. **Aucun fix credentials nécessaire.** | Résolu — E2E 2026-07-03 |
+| 2026-07-08 | `docs/sql/b8_b4_counterpart_name.sql` — 4 blocs | **Appliqué** — B8 (UNIQUE constraint, 0 doublon préalable), B4a (ALTER TABLE), B4b (DROP+CREATE upsert_user_handle), B4c (DROP+CREATE my_shared_relationships 15 col.) | V1 UNIQUE ✓ ; V2 display_name+handle nullable ✓ ; V3 args = `p_handle text, p_display_name text DEFAULT NULL::text` ✓ ; V4 `pg_get_function_result` = TABLE 15 col. verbatim ✓ ; V5 grants = authenticated+postgres+service_role, aucun anon ni public ✓ |
