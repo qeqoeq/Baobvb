@@ -38,11 +38,16 @@ import type { Relation } from '../store/useRelationsStore';
 
 function makeRevealSnapshot(
   status: 'waiting_other_side' | 'cooking_reveal' | 'reveal_ready' | 'revealed',
-  extra: { revealed?: boolean; relationshipNameRevealed?: boolean } = {},
+  extra: { revealed?: boolean; relationshipNameRevealed?: boolean; firstViewedAt?: string | null } = {},
 ): Relation['localState']['revealSnapshot'] {
+  const defaultFirstViewedAt = status === 'revealed' ? '2024-01-01T00:00:00Z' : undefined;
+  const firstViewedAt = extra.firstViewedAt === null
+    ? undefined
+    : (extra.firstViewedAt ?? defaultFirstViewedAt);
   return {
     status,
     revealed: extra.revealed ?? status === 'revealed',
+    ...(firstViewedAt !== undefined ? { firstViewedAt } : {}),
     ...(extra.relationshipNameRevealed !== undefined
       ? { relationshipNameRevealed: extra.relationshipNameRevealed }
       : {}),
@@ -513,6 +518,15 @@ describe('K: deriveLinkQualityBand', () => {
   it('K10 — pre-reveal (reveal_ready) + foundationalScore=95 → faint (no leak)', () => {
     const reading = makeReading({ revealStatus: 'reveal_ready' });
     (reading as any).foundationalScore = 95;
+    expect(deriveLinkQualityBand(reading)).toBe('faint');
+  });
+
+  it('K11 — B5 gate: revealStatus=revealed but firstViewedAt absent → faint', () => {
+    // Bootstrapped relation: server says revealed, but this side hasn't opened locally.
+    // Must stay faint on the EgoGraph so no tier-derived visual leaks.
+    const reading = makeReading({ revealStatus: 'revealed', mutualScore: 90 });
+    // Override to remove firstViewedAt (simulate missing local-open stamp)
+    (reading.relation.localState.revealSnapshot as any).firstViewedAt = undefined;
     expect(deriveLinkQualityBand(reading)).toBe('faint');
   });
 });

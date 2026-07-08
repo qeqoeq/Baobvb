@@ -1841,7 +1841,25 @@ function openMutualRevealInState(relationId: string): boolean {
   if (!relation) return false;
 
   const snapshot = relation.localState.revealSnapshot;
-  if (snapshot.status === 'revealed') return movedToReady;
+  if (snapshot.status === 'revealed') {
+    // Bootstrapped relations arrive with status='revealed' but no firstViewedAt because
+    // buildSharedRevealLocalState doesn't set it. Stamp it now so the local gate opens.
+    // Idempotent: if already set, nothing changes.
+    if (!snapshot.firstViewedAt) {
+      const now = new Date().toISOString();
+      state.relations = state.relations.map((item) => {
+        if (item.id !== relationId) return item;
+        return applyNormalizedRelationModel({
+          ...item,
+          localState: {
+            ...item.localState,
+            revealSnapshot: { ...item.localState.revealSnapshot, firstViewedAt: now },
+          },
+        });
+      });
+    }
+    return movedToReady;
+  }
   if (snapshot.status !== 'reveal_ready') return movedToReady;
 
   const now = new Date().toISOString();
@@ -2756,6 +2774,7 @@ export function materializePassDeliveries(
 
 // Exported for regression testing — not part of the public store API.
 export { upsertBootstrappedSharedRelations };
+export { openMutualReveal as openMutualRevealForTest };
 
 export function resetDevStateToSeed() {
   state.me = { ...SEED_ME };

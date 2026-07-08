@@ -13,7 +13,13 @@ export default function RelationshipLexiconScreen() {
   const { evaluations, relations } = useRelationsStore();
 
   const revealedRelationIds = new Set(
-    relations.filter((relation) => isRelationshipNameRevealed(relation)).map((relation) => relation.id),
+    relations
+      .filter(
+        (relation) =>
+          isRelationshipNameRevealed(relation) &&
+          relation.localState.revealSnapshot.firstViewedAt !== undefined,
+      )
+      .map((relation) => relation.id),
   );
 
   const discoveredTiers = Array.from(

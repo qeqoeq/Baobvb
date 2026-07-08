@@ -223,7 +223,8 @@ export function deriveLinkQualityBand(reading: FoundationalReadingDerived): Link
   // Quality bands are only meaningful after mutual reveal — pre-reveal stays neutral
   // even when a strong private foundational score exists. This closes the private
   // score leak through the Map / proximity layer.
-  if (reading.relation.localState.revealSnapshot.status !== 'revealed') return 'faint';
+  if (reading.relation.localState.revealSnapshot.status !== 'revealed' ||
+      !reading.relation.localState.revealSnapshot.firstViewedAt) return 'faint';
   // Post-reveal: prefer mutualScore (bilateral truth), fall back to foundationalScore
   // for bootstrap/claim relations where the server may not have set mutualScore yet.
   const score =

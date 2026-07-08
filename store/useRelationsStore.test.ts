@@ -12,6 +12,7 @@ import {
   getReceivedObjectsSnapshot,
   getRelationsSnapshot,
   materializePassDeliveries,
+  openMutualRevealForTest,
   purgeSeedData,
   resetDevStateToSeed,
   sanitizePersistedPassedObjects,
@@ -1249,5 +1250,64 @@ describe('upsertBootstrappedSharedRelations — counterpart identity (B4)', () =
     const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_EXIST)!;
     // First bootstrap set name to 'Alice'; second call skips (existing.name !== '(shared)')
     expect(rel.name).toBe('Alice');
+  });
+});
+
+// ── openMutualRevealForTest — B5 firstViewedAt gate ──────────────────────────
+//
+// Verifies the B5 fix: bootstrapped relations arrive with status='revealed' but
+// no firstViewedAt (server truth, not local action). openMutualReveal stamps
+// firstViewedAt so the local gate opens — idempotent on second call.
+
+describe('openMutualRevealForTest — B5 firstViewedAt gate', () => {
+  // Seed id '7' is status='revealed', revealed=true, no firstViewedAt.
+  const SEED_REVEALED_ID = '7';
+
+  beforeEach(() => {
+    resetDevStateToSeed();
+    const rel = getRelationsSnapshot().find((r) => r.id === SEED_REVEALED_ID);
+    expect(rel).toBeDefined();
+    expect(rel!.localState.revealSnapshot.status).toBe('revealed');
+  });
+
+  it('B5-G1: gate closed — seed revealed relation has no firstViewedAt by default', () => {
+    const rel = getRelationsSnapshot().find((r) => r.id === SEED_REVEALED_ID)!;
+    expect(rel.localState.revealSnapshot.firstViewedAt).toBeUndefined();
+  });
+
+  it('B5-G2: openMutualReveal stamps firstViewedAt on bootstrap-revealed relation', () => {
+    openMutualRevealForTest(SEED_REVEALED_ID);
+    const rel = getRelationsSnapshot().find((r) => r.id === SEED_REVEALED_ID)!;
+    expect(rel.localState.revealSnapshot.firstViewedAt).toBeDefined();
+    expect(typeof rel.localState.revealSnapshot.firstViewedAt).toBe('string');
+  });
+
+  it('B5-G3: openMutualReveal is idempotent — firstViewedAt not overwritten on second call', () => {
+    openMutualRevealForTest(SEED_REVEALED_ID);
+    const after1 = getRelationsSnapshot().find((r) => r.id === SEED_REVEALED_ID)!;
+    const ts1 = after1.localState.revealSnapshot.firstViewedAt;
+    expect(ts1).toBeDefined();
+
+    openMutualRevealForTest(SEED_REVEALED_ID);
+    const after2 = getRelationsSnapshot().find((r) => r.id === SEED_REVEALED_ID)!;
+    expect(after2.localState.revealSnapshot.firstViewedAt).toBe(ts1);
+  });
+
+  it('B5-G4: openMutualReveal does not alter other snapshot fields on already-revealed relation', () => {
+    const before = getRelationsSnapshot().find((r) => r.id === SEED_REVEALED_ID)!;
+    const snapBefore = { ...before.localState.revealSnapshot };
+
+    openMutualRevealForTest(SEED_REVEALED_ID);
+
+    const after = getRelationsSnapshot().find((r) => r.id === SEED_REVEALED_ID)!;
+    const snapAfter = after.localState.revealSnapshot;
+
+    expect(snapAfter.status).toBe(snapBefore.status);
+    expect(snapAfter.revealed).toBe(snapBefore.revealed);
+    expect(snapAfter.mutualScore).toBe(snapBefore.mutualScore);
+    expect(snapAfter.revealedAt).toBe(snapBefore.revealedAt);
+    // Only firstViewedAt should differ (was undefined, now set)
+    expect(snapBefore.firstViewedAt).toBeUndefined();
+    expect(snapAfter.firstViewedAt).toBeDefined();
   });
 });

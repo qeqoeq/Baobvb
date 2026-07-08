@@ -308,9 +308,12 @@ export default function RelationDetailScreen() {
   }
 
   const relationForDisplay = effectiveRelation ?? relation;
+  // B5: gate on firstViewedAt so bootstrapped-revealed relations don't expose tier
+  // until this side explicitly opens the reveal (cinematic, one-time, per side).
   const nameRevealed =
     relationForDisplay.localState.revealSnapshot.status === 'revealed' &&
-    isRelationshipNameRevealed(relationForDisplay);
+    isRelationshipNameRevealed(relationForDisplay) &&
+    relationForDisplay.localState.revealSnapshot.firstViewedAt !== undefined;
   const evaluation = reading?.foundationalEvaluation ?? null;
   // Frozen mutual values — set during cooking, preserved through reveal.
   const frozenMutualScore = relationForDisplay.localState.revealSnapshot.mutualScore;
@@ -487,6 +490,9 @@ export default function RelationDetailScreen() {
       Alert.alert('Reveal not ready', 'Baobab is still preparing this reveal.');
       return;
     }
+    // Stamp firstViewedAt on every success path (server or local) so the B5 gate opens.
+    // Modified openMutualRevealInState handles already-revealed relations without side effects.
+    revealMutualRelationship(relation.id);
     if (sharedReveal) {
       setSharedReveal(updatedRecord);
       // Always re-fetch to ensure mutual_score is present (RPC may return it async).

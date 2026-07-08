@@ -162,10 +162,18 @@ describe('getReadingCardVariant', () => {
     ).toBe('cooking');
   });
 
-  it('returns private_fallback for revealed status without nameRevealed', () => {
+  it('B5 gate: revealStatus=revealed but nameRevealed=false → reveal_ready (not private_fallback)', () => {
+    // Server says revealed but this side has not opened locally yet (firstViewedAt absent).
+    // Must show the "Open reveal" CTA, not fall through to private_fallback.
     expect(
       getReadingCardVariant({ hasEvaluation: true, nameRevealed: false, revealStatus: 'revealed' }),
-    ).toBe('private_fallback');
+    ).toBe('reveal_ready');
+  });
+
+  it('B5 gate: revealStatus=revealed + no eval + nameRevealed=false → reveal_ready', () => {
+    expect(
+      getReadingCardVariant({ hasEvaluation: false, nameRevealed: false, revealStatus: 'revealed' }),
+    ).toBe('reveal_ready');
   });
 
   it('nameRevealed takes priority over missing evaluation', () => {
@@ -260,6 +268,30 @@ describe('getRelationNextAction', () => {
     expect(result.ctaKind).toBe('resend');
     expect(result.title).toBe('Invite sent');
     expect(result.ctaLabel).toBe('Send again');
+  });
+
+  it('B5 gate: revealStatus=revealed + nameRevealed=false → Open reveal CTA', () => {
+    // Server-revealed relation not yet opened locally (bootstrapped, firstViewedAt absent).
+    const result = getRelationNextAction({
+      relation: baseRelation,
+      hasEvaluation: true,
+      revealStatus: 'revealed',
+      nameRevealed: false,
+      deliveryChannelOpened: false,
+    });
+    expect(result.ctaKind).toBe('reveal');
+    expect(result.ctaLabel).toBe('Open reveal');
+  });
+
+  it('B5 gate: revealStatus=revealed + nameRevealed=false + no eval → Open reveal CTA', () => {
+    const result = getRelationNextAction({
+      relation: { ...baseRelation, source: 'bootstrap' as const },
+      hasEvaluation: false,
+      revealStatus: 'revealed',
+      nameRevealed: false,
+      deliveryChannelOpened: false,
+    });
+    expect(result.ctaKind).toBe('reveal');
   });
 });
 

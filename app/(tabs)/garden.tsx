@@ -69,6 +69,7 @@ function getRevealedLinkStrength(
   line: string;
 } | null {
   if (relation.localState.revealSnapshot.status !== 'revealed') return null;
+  if (!relation.localState.revealSnapshot.firstViewedAt) return null;
   const score = normalizeMutualScore(relation.localState.revealSnapshot.mutualScore);
   if (score === null) return null;
 
@@ -398,7 +399,9 @@ export default function GardenScreen() {
     entry: (typeof entries)[number],
     options?: { homonymSubline?: string },
   ) => {
-    const isRevealed = entry.relation.localState.revealSnapshot.status === 'revealed';
+    const isRevealed =
+      entry.relation.localState.revealSnapshot.status === 'revealed' &&
+      entry.relation.localState.revealSnapshot.firstViewedAt !== undefined;
     const revealStatus = entry.relation.localState.revealSnapshot.status;
     const relationIdentity = getRelationSheetIdentity({ relation: entry.relation });
     const unread = entry.readingStatus === 'Unread';
@@ -430,15 +433,17 @@ export default function GardenScreen() {
       ? (sharedLink?.label ?? 'Revealed')
       : entry.toNurture
         ? 'To nurture'
-        : revealStatus === 'reveal_ready'
+        : revealStatus === 'revealed'
           ? 'Ready'
-          : revealStatus === 'cooking_reveal'
-            ? 'Preparing'
-            : revealStatus === 'waiting_other_side'
-              ? 'Waiting'
-              : unread
-                ? 'Unread'
-                : 'Reading saved';
+          : revealStatus === 'reveal_ready'
+            ? 'Ready'
+            : revealStatus === 'cooking_reveal'
+              ? 'Preparing'
+              : revealStatus === 'waiting_other_side'
+                ? 'Waiting'
+                : unread
+                  ? 'Unread'
+                  : 'Reading saved';
     const signalStyle = isRevealed
       ? (sharedLink?.label === 'Strong'
         ? styles.mappingSignalStrengthStrong
@@ -451,13 +456,15 @@ export default function GardenScreen() {
               : styles.mappingSignalStable)
       : entry.toNurture
         ? styles.mappingSignalNurture
-        : revealStatus === 'reveal_ready'
+        : revealStatus === 'revealed'
           ? styles.mappingSignalReady
-          : revealStatus === 'cooking_reveal'
-            ? styles.mappingSignalCooking
-            : unread
-              ? styles.mappingSignalUnreadPriority
-              : styles.mappingSignalWaiting;
+          : revealStatus === 'reveal_ready'
+            ? styles.mappingSignalReady
+            : revealStatus === 'cooking_reveal'
+              ? styles.mappingSignalCooking
+              : unread
+                ? styles.mappingSignalUnreadPriority
+                : styles.mappingSignalWaiting;
 
     return (
       <Pressable

@@ -278,6 +278,18 @@ export function getRelationNextAction(input: {
     };
   }
 
+  // Server says revealed but this side hasn't opened locally yet (bootstrapped relation,
+  // or cold-boot after the other side completed the reveal). Show the open button so the
+  // cinematic plays on first view — same UX as reveal_ready, no score info exposed.
+  if (input.revealStatus === 'revealed') {
+    return {
+      title: "You're both in",
+      body: 'Open what Baobab found.',
+      ctaLabel: 'Open reveal',
+      ctaKind: 'reveal',
+    };
+  }
+
   // reveal_ready is checked before hasEvaluation: the server confirms both sides submitted
   // readings, even when no local evaluation exists (bootstrap / claim relations).
   if (input.revealStatus === 'reveal_ready') {
@@ -370,6 +382,9 @@ export function getReadingCardVariant(input: {
   revealStatus: RevealStatus;
 }): ReadingCardVariant {
   if (input.nameRevealed) return 'revealed';
+  // Server-revealed but not locally opened yet — treat as reveal_ready so the
+  // "Open reveal" CTA renders and the reading section stays non-revealing.
+  if (input.revealStatus === 'revealed') return 'reveal_ready';
   if (!input.hasEvaluation) return 'unread';
   if (input.revealStatus === 'reveal_ready') return 'reveal_ready';
   if (input.revealStatus === 'waiting_other_side') return 'waiting_other_side';
