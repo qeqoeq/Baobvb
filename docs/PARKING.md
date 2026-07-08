@@ -7,3 +7,4 @@ Révision à chaque porte de sortie de phase.
 |---|---|---|---|
 | 2026-07-03 | AASA / Universal Links (scheme baobab:// suffit pour TestFlight) | P0.5 audit | En attente Phase 1 |
 | 2026-07-08 | Réintroduire expo-font (plugin app.json) quand les fonts custom du chantier design bible Jardin de Nuit seront implémentées | B4 triage | En attente chantier design |
+| 2026-07-08 | `addPassObject` écrit le local et confirme l'UI avant le guard `createPassDelivery` — tout futur chemin d'envoi hors picker doit re-vérifier `canonicalRelationId` (cf. B6 : sans cette vérification, l'UI confirme un envoi que le counterpart ne reçoit jamais) | B6 triage | À vérifier sur tout nouveau point d'envoi de pass |

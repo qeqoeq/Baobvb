@@ -25,10 +25,10 @@ encore dans le repo (le doc de passation stratégique vit hors-repo, à committe
 | B3 — Clavier non dismissible | **DONE prouvé** | Écrans à `TextInput` sans pattern dismiss complet | Pattern global : `KeyboardAvoidingView` + `keyboardShouldPersistTaps="handled"` + `onScrollBeginDrag={Keyboard.dismiss}` (ScrollView) ou wrapper `Pressable onPress={Keyboard.dismiss}` (View). Écrans couverts : me/edit, place/add, place/edit/[id], relation/add, relation/edit/[id], invite/identity/[relationId], (tabs)/garden, me/invite-by-number | tsc + 1006/1006 verts, 2 commits | `aa6c580` + `eb4ee6d` |
 | B4 — Counterpart name absent | **DONE prouvé** | (1) `user_public_profiles` sans colonnes `display_name`/`handle` ; (2) `my_shared_relationships()` ne retournait pas `counterpart_display_name`/`counterpart_handle` | SQL : `docs/sql/b8_b4_counterpart_name.sql` (4 blocs, 5/5 vérifications) + client : `SharedRelationBootstrapInput` + `upsertBootstrappedSharedRelations` + `upsertUserHandle(handle, displayName?)` + `me/edit.tsx` | tsc + 1010/1010 verts | `d0d2b54` (SQL) + `d6c689e` (client) |
 | B5 — Tier visible avant reveal | **DONE prouvé** | Bootstrap copie `status='revealed'` depuis le serveur sans `firstViewedAt` → `nameRevealed=true` immédiatement → tier affiché avant ouverture locale | Gate `firstViewedAt !== undefined` ajouté à `nameRevealed` + à toutes les dérives indirectes (garden, EgoGraph, lexique). `openMutualRevealInState` patch `firstViewedAt` au lieu de bail-early. `handleOpenReveal` appelle `revealMutualRelationship` sur tous les paths de succès. CTA "Open reveal" conservé pour `status='revealed'` sans `firstViewedAt` (gate B5 fermé mais path UI ouvert). | tsc + 1018/1018 verts, 8 nouveaux tests | `e7b212f` |
-| B6 — Picker de pass filtré | **DONE prouvé** | Nom `'(shared)'` dans le picker rendait le counterpart non identifiable (cascade B4) + filtre manquait `canonicalRelationId` → envoi silencieux possible pour relations sans canonical | Fix B4 résout le nom. Fix B6 : ajout `&&!!r.canonicalRelationId` au filtre `eligibleRelations` (line 202) — une relation sans canonical ne peut pas livrer de pass cross-device (`createPassDelivery` gated dessus). À confirmer sur device au smoke test build 28. | tsc + vitest verts | voir commit courant |
+| B6 — Picker de pass filtré | **DONE prouvé** | Nom `'(shared)'` dans le picker rendait le counterpart non identifiable (cascade B4) + filtre manquait `canonicalRelationId` → envoi silencieux possible pour relations sans canonical | Fix B4 résout le nom. Fix B6 : ajout `&&!!r.canonicalRelationId` au filtre `eligibleRelations` (line 202) — une relation sans canonical ne peut pas livrer de pass cross-device (`createPassDelivery` gated dessus). À confirmer sur device au smoke test build 28. | tsc + vitest verts | `301078a` |
 | B7 — Back incorrect post-claim | **DONE prouvé** | `invite/identity/[relationId]` présenté en modal → Expo Router empilait une 2e instance de `invite` ; back retombait dessus | Param `fromClaim: '1'` passé de `invite/[relationId]` vers evaluate (3 points de nav, `push` → `replace`) ; dans `evaluate/[id]`, les 4 navigations succès vont vers `/(tabs)` si `isFromClaim` | tsc + 1006/1006 verts | `3a87c94` |
 | B8 — Doublons de claim | **STOP SQL écrit — à re-tester device smoke test build 28** | Diagnostic 2026-07-08 : 0 doublon (110/110 distinct) — base saine. Smoke test B8 était faux positif ou issue client transiente. Fix préventif : contrainte `UNIQUE(relationship_id)` sur `shared_relationship_reveals`. | `docs/sql/b8_b4_counterpart_name.sql` BLOC 1. Bouton disabled pendant claim déjà géré par `isSubmitting` guard dans `handleAddMySide`. | Diagnostic SQL : "Success. No rows returned" + count=110 distinct_ids=110 | — |
-| B9 — Identité | **À FAIRE** (décision figée prise, voir ci-dessous) | — | — | — | — |
+| B9 — Identité | **DONE prouvé** | Pas de clé d'identité on-device → aucun suffixe distinctif sur le handle | Ed25519 keypair via `@noble/ed25519` v1.7.3 + entropie `expo-crypto.getRandomBytesAsync(32)` (zéro dépendance `globalThis.crypto`) + stockage `expo-secure-store` (`WHEN_UNLOCKED`). Suffixe : SHA-256(pubkey)[0..3] → 30 bits → 6 chars base32 lowercase. Display-only : `@{handle}·{suffix}` dans `me/profile.tsx` et `me/qr.tsx` uniquement — jamais envoyé au serveur, `me.handle` reste propre. `identitySuffix` runtime-only (exclu de `persist()`). iOS Keychain survit à la réinstallation. Spec complète : `docs/IDENTITY.md`. | tsc 0 erreur + 1029/1029 verts, vecteur `deriveIdentitySuffix(Uint8Array(32))` = `'mzuhvl'` | `a19506f` |
 
 ### git status / push — VÉRIFIÉ 2026-07-08
 
@@ -117,11 +117,13 @@ Rappels permanents :
 
 ## PROCHAINE ACTION
 
-Reprendre B8 : Samo exécute le diagnostic SQL ci-dessus dans le SQL Editor et colle le
-résultat ; selon le résultat, écrire en une seule passe le fix SQL B8 (contrainte UNIQUE
-+ client) puis le fix SQL B4 (déjà diagnostiqué). B5, B6, B9 restent à faire ensuite.
+**Build 28 :** `eas build --platform ios --profile production`, puis `eas submit`, puis
+smoke test S01–S45 sur les deux devices avec attention particulière aux 9 scénarios B1–B9 :
+- B4 : vérification visuelle — nom du counterpart affiché (non `'(shared)'`) dans le picker et sur la fiche relation
+- B8 : vérification double claim — bouton disabled pendant soumission, pas de doublon `shared_relationship_reveals`
+- B5 : tier invisible jusqu'à ouverture du reveal côté local
+- B6 : picker de pass liste les relations revealed avec `canonicalRelationId`
+- B9 : suffixe `·{6chars}` visible sur `me/profile` et `me/qr`, absent du payload QR scanné
 
 ---
-Clôture : après vérification des sections ⚠️, commit
-`docs: session state handover (B1-B9)` + `git push origin main` (autorisé — sauvegarde),
-confirmer le hash final et une working tree propre.
+Session B1–B9 close. Tous les bugs sont fixés et commités.
