@@ -39,19 +39,21 @@ async function sendExpoPush(
 
   let response: Response;
   try {
+    // Expo Push API: always send as array → response.data is always an array.
+    // Sending a bare object returns data as an object (not array), breaking ticket[0].
     response = await fetch(EXPO_PUSH_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify({
+      body: JSON.stringify([{
         to: token,
         title: pushTitle,
         body: pushBody,
         sound: 'default',
         data: payload,
-      }),
+      }]),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -62,14 +64,16 @@ async function sendExpoPush(
     return { success: false, errorMessage: `Expo HTTP ${response.status}` };
   }
 
-  let expoBody: { data?: ExpoTicket[] };
+  let expoBody: { data?: ExpoTicket[] | ExpoTicket };
   try {
     expoBody = await response.json();
   } catch {
     return { success: false, errorMessage: 'Expo response JSON parse error' };
   }
 
-  const ticket = expoBody?.data?.[0];
+  // Tolerate both array (batch send) and object (single send) shapes.
+  const rawData = expoBody?.data;
+  const ticket: ExpoTicket | undefined = Array.isArray(rawData) ? rawData[0] : rawData as ExpoTicket | undefined;
   if (!ticket) {
     return { success: false, errorMessage: 'Expo response missing data[0]' };
   }
