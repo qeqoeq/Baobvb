@@ -49,6 +49,8 @@ export function putClaimRecord(
     revealed_at: claimResult.revealed_at,
     relationship_name_revealed: claimResult.relationship_name_revealed,
     counterpart_public_profile_id: claimResult.counterpart_public_profile_id,
+    counterpart_display_name: null,
+    counterpart_handle: null,
   });
 }
 

@@ -797,6 +797,8 @@ function makeBootstrapRow(canonicalId: string): SharedRelationBootstrapInput {
     revealed_at: '2026-01-01T00:00:00Z',
     relationship_name_revealed: true,
     counterpart_public_profile_id: null,
+    counterpart_display_name: null,
+    counterpart_handle: null,
   };
 }
 
@@ -1106,6 +1108,8 @@ describe('upsertBootstrappedSharedRelations — counterpartPublicProfileId backf
       revealed_at:                   '2026-01-01T00:00:00Z',
       relationship_name_revealed:    true,
       counterpart_public_profile_id: null,
+      counterpart_display_name:      null,
+      counterpart_handle:            null,
       ...overrides,
     };
   }
@@ -1158,5 +1162,92 @@ describe('upsertBootstrappedSharedRelations — counterpartPublicProfileId backf
     expect(after.archived).toBe(before.archived);
     expect(after.identityStatus).toBe(before.identityStatus);
     expect(after.counterpartPublicProfileId).toBe(PPID);
+  });
+});
+
+// ── upsertBootstrappedSharedRelations — counterpart identity (B4) ─────────────
+//
+// New rows: counterpart_display_name/handle become name, privateLabel, handle,
+// avatarSeed. Existing placeholder '(shared)' rows are patched lazily.
+
+describe('upsertBootstrappedSharedRelations — counterpart identity (B4)', () => {
+  const CANON_NEW  = 'b4-new-canon-001';
+  const CANON_EXIST = 'b4-exist-canon-002';
+
+  function makeB4Row(canonicalId: string, overrides: Partial<SharedRelationBootstrapInput> = {}): SharedRelationBootstrapInput {
+    return {
+      relationship_id:               canonicalId,
+      status:                        'revealed',
+      my_side:                       'sideA',
+      side_a_present:                true,
+      side_b_present:                true,
+      side_a_reading_id:             null,
+      side_b_reading_id:             null,
+      cooking_started_at:            null,
+      unlock_at:                     null,
+      ready_at:                      null,
+      revealed_at:                   '2026-01-01T00:00:00Z',
+      relationship_name_revealed:    true,
+      counterpart_public_profile_id: null,
+      counterpart_display_name:      null,
+      counterpart_handle:            null,
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    resetDevStateToSeed();
+  });
+
+  it('N1: new row with counterpart_display_name uses it as name and privateLabel', () => {
+    upsertBootstrappedSharedRelations([
+      makeB4Row(CANON_NEW, { counterpart_display_name: 'Alice', counterpart_handle: '@alice' }),
+    ]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_NEW);
+    expect(rel).toBeDefined();
+    expect(rel!.name).toBe('Alice');
+    expect(rel!.privateLabel).toBe('Alice');
+    expect(rel!.handle).toBe('@alice');
+    expect(rel!.avatarSeed).toBe('A');
+  });
+
+  it('N2: new row with null counterpart_display_name falls back to (shared) placeholder', () => {
+    upsertBootstrappedSharedRelations([makeB4Row(CANON_NEW)]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_NEW);
+    expect(rel!.name).toBe('(shared)');
+    expect(rel!.avatarSeed).toBe('?');
+    expect(rel!.handle).toBeUndefined();
+  });
+
+  it('N3: existing (shared) relation is patched with counterpart_display_name on next bootstrap', () => {
+    // First bootstrap: no display_name → placeholder
+    upsertBootstrappedSharedRelations([makeB4Row(CANON_EXIST)]);
+    const before = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_EXIST)!;
+    expect(before.name).toBe('(shared)');
+
+    // Second bootstrap (after B4 SQL apply): RPC now returns display_name
+    upsertBootstrappedSharedRelations([
+      makeB4Row(CANON_EXIST, { counterpart_display_name: 'Bob', counterpart_handle: '@bob' }),
+    ]);
+    const after = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_EXIST)!;
+    expect(after.name).toBe('Bob');
+    expect(after.privateLabel).toBe('Bob');
+    expect(after.handle).toBe('@bob');
+    expect(after.avatarSeed).toBe('B');
+    expect(after.id).toBe(before.id);
+  });
+
+  it('N4: existing non-placeholder name is never overwritten by counterpart_display_name', () => {
+    // Simulate a relation the user already renamed
+    upsertBootstrappedSharedRelations([makeB4Row(CANON_EXIST, { counterpart_display_name: 'Alice' })]);
+    // User renames it locally — not simulated here since updateRelation requires id,
+    // but we verify the guard: if existing.name !== '(shared)', patch is skipped.
+    // Bootstrap again with different name
+    upsertBootstrappedSharedRelations([
+      makeB4Row(CANON_EXIST, { counterpart_display_name: 'Different' }),
+    ]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_EXIST)!;
+    // First bootstrap set name to 'Alice'; second call skips (existing.name !== '(shared)')
+    expect(rel.name).toBe('Alice');
   });
 });

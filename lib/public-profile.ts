@@ -36,8 +36,10 @@ export type UpsertHandleResult = { success: boolean; taken: boolean };
  *
  * Handle must be pre-normalised by the caller (normalizeHandleInput from lib/identity-format).
  */
-export async function upsertUserHandle(handle: string): Promise<UpsertHandleResult> {
-  const { data, error } = await supabase.rpc('upsert_user_handle', { p_handle: handle });
+export async function upsertUserHandle(handle: string, displayName?: string): Promise<UpsertHandleResult> {
+  const params: { p_handle: string; p_display_name?: string } = { p_handle: handle };
+  if (displayName?.trim()) params.p_display_name = displayName.trim();
+  const { data, error } = await supabase.rpc('upsert_user_handle', params);
   if (error) throw error;
   const result = data as { success: boolean; reason?: string };
   if (!result.success && result.reason === 'taken') {

@@ -2557,6 +2557,8 @@ export type SharedRelationBootstrapInput = {
    * Signal only — not a relation key. Does not authorize automatic merge.
    */
   counterpart_public_profile_id: string | null;
+  counterpart_display_name: string | null;
+  counterpart_handle: string | null;
 };
 
 /**
@@ -2628,16 +2630,30 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     const canonicalId = typeof row.relationship_id === 'string' ? row.relationship_id.trim() : '';
     if (!canonicalId) continue;
 
-    // Idempotent: skip if already materialized. Patch counterpartPublicProfileId if
-    // the local copy is null and the RPC now provides a value (e.g. after day11 apply).
+    // Idempotent: skip if already materialized.
+    // Patch counterpartPublicProfileId (day11) and counterpart identity (B4)
+    // when the RPC now provides values the local copy is missing.
     const existing = state.relations.find((r) => r.canonicalRelationId === canonicalId);
     if (existing) {
-      if (!existing.counterpartPublicProfileId && row.counterpart_public_profile_id) {
-        state.relations = state.relations.map((r) =>
-          r.id === existing.id
-            ? { ...r, counterpartPublicProfileId: row.counterpart_public_profile_id }
-            : r,
-        );
+      const newPpid = !existing.counterpartPublicProfileId && row.counterpart_public_profile_id
+        ? row.counterpart_public_profile_id : null;
+      const counterpartName = row.counterpart_display_name?.trim() ?? '';
+      const nameNeedsUpdate = existing.name === '(shared)' && counterpartName.length > 0;
+
+      if (newPpid || nameNeedsUpdate) {
+        state.relations = state.relations.map((r) => {
+          if (r.id !== existing.id) return r;
+          const patch: Partial<Relation> = {};
+          if (newPpid) patch.counterpartPublicProfileId = newPpid;
+          if (nameNeedsUpdate) {
+            patch.name = counterpartName;
+            patch.privateLabel = counterpartName;
+            patch.avatarSeed = counterpartName.charAt(0).toUpperCase();
+            const h = row.counterpart_handle?.trim();
+            if (h) patch.handle = h;
+          }
+          return { ...r, ...patch };
+        });
         didChange = true;
       }
       continue;
@@ -2646,18 +2662,21 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     const localState = buildSharedRevealLocalState(row);
     const revealed = localState.revealSnapshot.revealed;
 
+    const counterpartName = row.counterpart_display_name?.trim() ?? '';
+    const relationName = counterpartName || '(shared)';
+    const avatarSeed = counterpartName ? counterpartName.charAt(0).toUpperCase() : '?';
+    const counterpartHandle = row.counterpart_handle?.trim() || undefined;
+
     const relation = applyNormalizedRelationModel({
-      // Suffix ensures uniqueness when multiple rows are bootstrapped in the same tick.
       id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      // Placeholder: name is not available from the shared record.
-      // The user can rename via the relation edit screen.
-      name: '(shared)',
-      privateLabel: '(shared)',
+      name: relationName,
+      privateLabel: relationName,
       archived: false,
       createdAt: new Date().toISOString(),
       identityStatus: 'verified',
       relationshipNameRevealed: revealed,
-      avatarSeed: '?',
+      avatarSeed,
+      handle: counterpartHandle,
       anchorMode: 'bootstrap',
       anchorValue: null,
       relationDepth: 'known',

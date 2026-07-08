@@ -303,6 +303,8 @@ export default function InviteArrivalScreen() {
           revealed_at: claimResult.revealed_at,
           relationship_name_revealed: claimResult.relationship_name_revealed,
           counterpart_public_profile_id: claimResult.counterpart_public_profile_id,
+          counterpart_display_name: null,
+          counterpart_handle: null,
         };
         // Materialize the relation with the inviter's identity snapshot when
         // present. Legacy invites (pre-snapshot migration) fall back to the

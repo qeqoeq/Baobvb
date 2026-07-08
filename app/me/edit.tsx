@@ -69,7 +69,7 @@ export default function EditMyCardScreen() {
     setIsSaving(true);
     setError(null);
     try {
-      const result = await upsertUserHandle(cleanHandle);
+      const result = await upsertUserHandle(cleanHandle, cleanDisplayName);
       if (result.taken) {
         setError('This handle is already taken. Choose another.');
         setIsSaving(false);
