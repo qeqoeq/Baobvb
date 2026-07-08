@@ -196,10 +196,16 @@ export default function PlaceDetailScreen() {
   );
   const hasShapingSignals = latestReadDrivers.length > 0 || latestReadContextFit.length > 0;
 
-  // Eligible pass targets: revealed + not archived. No trust gate, no score.
+  // Eligible pass targets: revealed + canonicalRelationId + not archived.
+  // canonicalRelationId is required: without it createPassDelivery is never called
+  // (the delivery guard at line 134 would silently skip), and a relation that
+  // cannot be served cross-device must not be offered in the picker.
+  // No trust gate, no score — decision figée B6.
   // sourceRelationId placed last so the original suggester doesn't crowd the top.
   const eligibleRelations = relations
-    .filter((r: Relation) => r.localState.revealSnapshot.revealed && !r.archived)
+    .filter((r: Relation) =>
+      r.localState.revealSnapshot.revealed && !!r.canonicalRelationId && !r.archived,
+    )
     .sort((a: Relation, b: Relation) => {
       const aIsSource = place.sourceRelationId !== undefined && a.id === place.sourceRelationId;
       const bIsSource = place.sourceRelationId !== undefined && b.id === place.sourceRelationId;
