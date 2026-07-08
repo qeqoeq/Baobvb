@@ -6,3 +6,4 @@ Révision à chaque porte de sortie de phase.
 | Date | Idée | Origine | Statut |
 |---|---|---|---|
 | 2026-07-03 | AASA / Universal Links (scheme baobab:// suffit pour TestFlight) | P0.5 audit | En attente Phase 1 |
+| 2026-07-08 | Réintroduire expo-font (plugin app.json) quand les fonts custom du chantier design bible Jardin de Nuit seront implémentées | B4 triage | En attente chantier design |

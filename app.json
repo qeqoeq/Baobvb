@@ -17,7 +17,9 @@
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "LSApplicationQueriesSchemes": ["whatsapp"]
+        "LSApplicationQueriesSchemes": [
+          "whatsapp"
+        ]
       },
       "buildNumber": "24"
     },
@@ -69,7 +71,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
