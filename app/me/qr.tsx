@@ -168,7 +168,9 @@ export default function MyCardQrScreen() {
             </View>
             <Text style={styles.name}>{me.displayName}</Text>
             <View style={styles.handleRow}>
-              <Text style={styles.handle}>{me.handle}</Text>
+              <Text style={styles.handle}>
+                {me.handle}{me.identitySuffix ? `·${me.identitySuffix}` : ''}
+              </Text>
               {baobabCode !== null ? (
                 <Text style={styles.baobabCode}>{`· ${baobabCode}`}</Text>
               ) : null}

@@ -16,6 +16,7 @@ import {
   getLaunchRelationIdFromLastNotification,
   registerDevicePushTokenForCurrentUser,
 } from '../lib/push-notifications';
+import { loadOrCreateIdentityKeyPair } from '../lib/identity-keypair';
 import { getOrCreatePublicProfileId } from '../lib/public-profile';
 import { resolvePostAuthDestination, resolveSignInRedirectTarget } from '../lib/auth-routing';
 import { supabase } from '../lib/supabase';
@@ -27,13 +28,22 @@ export default function RootLayout() {
   const [authResolved, setAuthResolved] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const pushRegistrationRef = useRef(false);
-  const { me, isHydrated, setAuthIdentity, setPublicProfileId, bootstrapSharedRelations } = useRelationsStore();
+  const { me, isHydrated, setAuthIdentity, setPublicProfileId, setIdentitySuffix, bootstrapSharedRelations } = useRelationsStore();
   const provisionedForUserIdRef = useRef<string | null>(null);
   const bootstrappedForUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     configureNotificationPresentation();
   }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    void loadOrCreateIdentityKeyPair().then((result) => {
+      setIdentitySuffix(result?.suffix ?? null);
+    });
+  // setIdentitySuffix is a stable function ref — safe to omit from deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHydrated]);
 
   useEffect(() => {
     void (async () => {

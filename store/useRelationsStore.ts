@@ -386,6 +386,13 @@ export type MeProfile = {
    * Persisted in AsyncStorage. Not synced to the backend.
    */
   photoUri?: string | null;
+  /**
+   * 6-char lowercase base32 suffix derived from the Ed25519 public key.
+   * Runtime-only — not persisted in AsyncStorage. Recomputed from SecureStore
+   * at each boot by loadOrCreateIdentityKeyPair(). Null until loaded.
+   * Display form: @{handle}·{identitySuffix}. The handle field never contains ·.
+   */
+  identitySuffix?: string | null;
 };
 
 export type MeProfileUpdate = {
@@ -1456,11 +1463,12 @@ function normalizeRelationshipLocalState(
 
 function persist() {
   if (!hydrated) return;
-  // internalAuthUserId and publicProfileId are runtime fields — not persisted.
+  // internalAuthUserId, publicProfileId, and identitySuffix are runtime fields — not persisted.
   // internalAuthUserId is always re-derived from the live Supabase session on bootstrap.
   // publicProfileId will be provisioned from the backend, not from AsyncStorage.
+  // identitySuffix is recomputed from SecureStore at each boot.
   // Using undefined so JSON.stringify omits these keys entirely.
-  const { internalAuthUserId: _a, publicProfileId: _b, ...persistableMe } = state.me;
+  const { internalAuthUserId: _a, publicProfileId: _b, identitySuffix: _c, ...persistableMe } = state.me;
   persistState<PersistedState>({
     me: persistableMe as MeProfile,
     relations: state.relations,
@@ -1695,6 +1703,12 @@ function hydrateAuthIdentity(userId: string | null): void {
 function hydratePublicProfileId(id: string | null): void {
   if (state.me.publicProfileId === id) return;
   state.me = { ...state.me, publicProfileId: id };
+  emitChange();
+}
+
+function hydrateIdentitySuffix(suffix: string | null): void {
+  if (state.me.identitySuffix === suffix) return;
+  state.me = { ...state.me, identitySuffix: suffix };
   emitChange();
 }
 
@@ -2775,6 +2789,7 @@ export function materializePassDeliveries(
 // Exported for regression testing — not part of the public store API.
 export { upsertBootstrappedSharedRelations };
 export { openMutualReveal as openMutualRevealForTest };
+export { hydrateIdentitySuffix as setIdentitySuffixForTest };
 
 export function resetDevStateToSeed() {
   state.me = { ...SEED_ME };
@@ -2929,6 +2944,7 @@ export function useRelationsStore() {
   const loadLargeNetworkSeed = () => loadLargeNetworkSeedData();
   const setAuthIdentity = (userId: string | null) => hydrateAuthIdentity(userId);
   const setPublicProfileId = (id: string | null) => hydratePublicProfileId(id);
+  const setIdentitySuffix = (suffix: string | null) => hydrateIdentitySuffix(suffix);
   const setCanonicalRelationId = (localId: string, canonicalId: string) =>
     attachCanonicalRelationId(localId, canonicalId);
   const markInviteDeliveryOpened = (id: string) => setInviteDeliveryOpened(id);
@@ -2985,6 +3001,7 @@ export function useRelationsStore() {
     isHydrated,
     setAuthIdentity,
     setPublicProfileId,
+    setIdentitySuffix,
     setCanonicalRelationId,
     markInviteDeliveryOpened,
     bootstrapSharedRelations,

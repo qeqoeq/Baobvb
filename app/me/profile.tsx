@@ -61,7 +61,9 @@ export default function ProfileScreen() {
         </Pressable>
 
         <Text style={styles.displayName}>{me.displayName}</Text>
-        <Text style={styles.handle}>{me.handle}</Text>
+        <Text style={styles.handle}>
+          {me.handle}{me.identitySuffix ? `·${me.identitySuffix}` : ''}
+        </Text>
 
         {baobabCode !== null && (
           <Pressable onPress={handleToggleCode} style={styles.codePill}>
