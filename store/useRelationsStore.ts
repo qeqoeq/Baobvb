@@ -159,6 +159,21 @@ export type Relation = {
    */
   counterpartPublicProfileId?: string | null;
   /**
+   * Server truth for the counterpart's public display name, from
+   * my_shared_relationships().counterpart_display_name (B4/B11).
+   *
+   * Distinct from `name`/`privateLabel`: this field is owned by the server and
+   * is patched unconditionally at every bootstrap so a renamed counterpart
+   * propagates across devices. It is NEVER written by the local edit screen —
+   * that path writes `privateLabel` (the user's private override).
+   *
+   * Display cascade (getNormalizedPrivateLabel):
+   *   privateLabel (user override) ?? counterpartDisplayName (server) ?? name (fallback)
+   *
+   * Null when the counterpart has not published a display name yet.
+   */
+  counterpartDisplayName?: string | null;
+  /**
    * Via relation ID — the better path to this person.
    *
    * V1 CONSTRAINT: declarative only. Set explicitly by the user (or seed).
@@ -1561,6 +1576,18 @@ export function applyHydratedState(persisted: unknown): void {
           const w = sanitizeRelationOpenWorlds((relation as Record<string, unknown>).privateOpenWorlds);
           return w.length > 0 ? { privateOpenWorlds: w } : {};
         })(),
+        ...(() => {
+          // Legacy cleanup (B11 Volet B, one-time): older builds auto-set
+          // privateLabel = name (or the '(shared)' placeholder). Clearing that
+          // auto-set signature lets the display cascade fall through to the
+          // server-owned counterpartDisplayName — otherwise a build-27 relation
+          // would show '(shared)' forever. A genuine user override (privateLabel
+          // that differs from name and is not the placeholder) is preserved.
+          const pl = typeof relation.privateLabel === 'string' ? relation.privateLabel.trim() : '';
+          const nm = typeof relation.name === 'string' ? relation.name.trim() : '';
+          if (pl && (pl === '(shared)' || pl === nm)) return { privateLabel: undefined };
+          return {};
+        })(),
       }),
     );
     // Re-derive tier on every persisted evaluation. Defensive against legacy
@@ -2704,17 +2731,26 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
       const newPpid = !existing.counterpartPublicProfileId && row.counterpart_public_profile_id
         ? row.counterpart_public_profile_id : null;
       const counterpartName = row.counterpart_display_name?.trim() ?? '';
-      const nameNeedsUpdate = existing.name === '(shared)' && counterpartName.length > 0;
+      // B11 Volet B: counterpartDisplayName is server-owned. Patch it whenever
+      // the RPC carries a name that differs from the stored one — this covers
+      // BOTH the initial backfill (was empty) AND rename propagation across
+      // devices. NEVER touch name/privateLabel here: those belong to the user's
+      // private override, edited only via the edit screen.
+      const displayNameNeedsUpdate =
+        counterpartName.length > 0 && existing.counterpartDisplayName !== counterpartName;
 
-      if (newPpid || nameNeedsUpdate) {
+      if (newPpid || displayNameNeedsUpdate) {
         state.relations = state.relations.map((r) => {
           if (r.id !== existing.id) return r;
           const patch: Partial<Relation> = {};
           if (newPpid) patch.counterpartPublicProfileId = newPpid;
-          if (nameNeedsUpdate) {
-            patch.name = counterpartName;
-            patch.privateLabel = counterpartName;
-            patch.avatarSeed = counterpartName.charAt(0).toUpperCase();
+          if (displayNameNeedsUpdate) {
+            patch.counterpartDisplayName = counterpartName;
+            // Avatar follows the displayed name, but only when the user has no
+            // private override (privateLabel) driving the display.
+            if (!existing.privateLabel?.trim()) {
+              patch.avatarSeed = counterpartName.charAt(0).toUpperCase();
+            }
             const h = row.counterpart_handle?.trim();
             if (h) patch.handle = h;
           }
@@ -2729,14 +2765,16 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     const revealed = localState.revealSnapshot.revealed;
 
     const counterpartName = row.counterpart_display_name?.trim() ?? '';
-    const relationName = counterpartName || '(shared)';
+    // name stays the '(shared)' placeholder — the last-resort cascade fallback.
+    // The real name lives in counterpartDisplayName (server truth). privateLabel
+    // is left unset so the cascade resolves to counterpartDisplayName until the
+    // user sets a private override via the edit screen.
     const avatarSeed = counterpartName ? counterpartName.charAt(0).toUpperCase() : '?';
     const counterpartHandle = row.counterpart_handle?.trim() || undefined;
 
     const relation = applyNormalizedRelationModel({
       id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      name: relationName,
-      privateLabel: relationName,
+      name: '(shared)',
       archived: false,
       createdAt: new Date().toISOString(),
       identityStatus: 'verified',
@@ -2749,6 +2787,7 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
       source: 'bootstrap',
       canonicalRelationId: canonicalId,
       counterpartPublicProfileId: row.counterpart_public_profile_id ?? null,
+      counterpartDisplayName: counterpartName || null,
       localState,
     });
 

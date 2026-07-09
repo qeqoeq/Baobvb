@@ -66,11 +66,21 @@ export function deriveRelationDepth(
 }
 
 export function getNormalizedPrivateLabel(
-  relation: Pick<Relation, 'name'> & { privateLabel?: string | null },
+  relation: Pick<Relation, 'name'> & {
+    privateLabel?: string | null;
+    counterpartDisplayName?: string | null;
+  },
 ): string {
+  // Cascade (B11 / Volet B): the user's private override wins, then the server
+  // truth (counterpart_display_name), then the legacy local `name` fallback.
   const explicit =
     typeof relation.privateLabel === 'string' ? relation.privateLabel.trim() : '';
   if (explicit) return explicit;
+  const counterpart =
+    typeof relation.counterpartDisplayName === 'string'
+      ? relation.counterpartDisplayName.trim()
+      : '';
+  if (counterpart) return counterpart;
   return relation.name.trim();
 }
 
@@ -90,7 +100,15 @@ export function normalizeRelationModelFields(
     | 'localState'
   >,
 ): Pick<Relation, 'privateLabel' | 'anchorMode' | 'anchorValue' | 'relationDepth'> {
-  const privateLabel = getNormalizedPrivateLabel(relation);
+  // B11 Volet B: privateLabel is the user's private override ONLY. It is no
+  // longer synthesized from name/counterpartDisplayName — the display cascade
+  // (getNormalizedPrivateLabel) resolves those at read time. Preserve an
+  // explicit override; leave it undefined otherwise so the cascade can fall
+  // through to the server-owned counterpartDisplayName.
+  const privateLabel =
+    typeof relation.privateLabel === 'string' && relation.privateLabel.trim().length > 0
+      ? relation.privateLabel.trim()
+      : undefined;
   const anchorMode = deriveRelationAnchorMode(relation);
   const normalizedAnchorValue =
     typeof relation.anchorValue === 'string' && relation.anchorValue.trim().length > 0

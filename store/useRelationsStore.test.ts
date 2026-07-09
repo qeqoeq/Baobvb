@@ -27,6 +27,7 @@ import {
   type Place,
   type SharedRelationBootstrapInput,
 } from './useRelationsStore';
+import { getNormalizedPrivateLabel } from '../lib/relation-model';
 
 // Stable seed ids already used elsewhere in this codebase (X.71 distribution
 // script) — kept and tried places with no quickSignal/restaurant dimensions,
@@ -1168,12 +1169,15 @@ describe('upsertBootstrappedSharedRelations — counterpartPublicProfileId backf
   });
 });
 
-// ── upsertBootstrappedSharedRelations — counterpart identity (B4) ─────────────
+// ── upsertBootstrappedSharedRelations — counterpart identity (B4 / B11 Volet B) ─
 //
-// New rows: counterpart_display_name/handle become name, privateLabel, handle,
-// avatarSeed. Existing placeholder '(shared)' rows are patched lazily.
+// New contract (B11 Volet B): counterpart_display_name is stored in the
+// server-owned field `counterpartDisplayName`. `name` stays the '(shared)'
+// placeholder (last-resort cascade fallback) and `privateLabel` is left unset
+// so the display cascade (getNormalizedPrivateLabel) resolves to the server
+// name until the user sets a private override via the edit screen.
 
-describe('upsertBootstrappedSharedRelations — counterpart identity (B4)', () => {
+describe('upsertBootstrappedSharedRelations — counterpart identity (B4 / B11 Volet B)', () => {
   const CANON_NEW  = 'b4-new-canon-001';
   const CANON_EXIST = 'b4-exist-canon-002';
 
@@ -1202,56 +1206,184 @@ describe('upsertBootstrappedSharedRelations — counterpart identity (B4)', () =
     resetDevStateToSeed();
   });
 
-  it('N1: new row with counterpart_display_name uses it as name and privateLabel', () => {
+  it('N1: new row stores counterpart_display_name in counterpartDisplayName; name stays placeholder, privateLabel unset', () => {
     upsertBootstrappedSharedRelations([
       makeB4Row(CANON_NEW, { counterpart_display_name: 'Alice', counterpart_handle: '@alice' }),
     ]);
     const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_NEW);
     expect(rel).toBeDefined();
-    expect(rel!.name).toBe('Alice');
-    expect(rel!.privateLabel).toBe('Alice');
+    expect(rel!.counterpartDisplayName).toBe('Alice');
+    expect(rel!.name).toBe('(shared)');
+    expect(rel!.privateLabel).toBeUndefined();
     expect(rel!.handle).toBe('@alice');
     expect(rel!.avatarSeed).toBe('A');
+    // Display cascade resolves to the server name.
+    expect(getNormalizedPrivateLabel(rel!)).toBe('Alice');
   });
 
-  it('N2: new row with null counterpart_display_name falls back to (shared) placeholder', () => {
+  it('N2: new row with null counterpart_display_name → placeholder, counterpartDisplayName null', () => {
     upsertBootstrappedSharedRelations([makeB4Row(CANON_NEW)]);
     const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_NEW);
     expect(rel!.name).toBe('(shared)');
+    expect(rel!.counterpartDisplayName).toBeNull();
     expect(rel!.avatarSeed).toBe('?');
     expect(rel!.handle).toBeUndefined();
+    expect(getNormalizedPrivateLabel(rel!)).toBe('(shared)');
   });
 
-  it('N3: existing (shared) relation is patched with counterpart_display_name on next bootstrap', () => {
-    // First bootstrap: no display_name → placeholder
+  it('N3 (backfill initial): existing placeholder relation gains counterpartDisplayName on next bootstrap', () => {
+    // First bootstrap: no display_name → placeholder, counterpartDisplayName null
     upsertBootstrappedSharedRelations([makeB4Row(CANON_EXIST)]);
     const before = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_EXIST)!;
     expect(before.name).toBe('(shared)');
+    expect(before.counterpartDisplayName).toBeNull();
 
     // Second bootstrap (after B4 SQL apply): RPC now returns display_name
     upsertBootstrappedSharedRelations([
       makeB4Row(CANON_EXIST, { counterpart_display_name: 'Bob', counterpart_handle: '@bob' }),
     ]);
     const after = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_EXIST)!;
-    expect(after.name).toBe('Bob');
-    expect(after.privateLabel).toBe('Bob');
+    expect(after.counterpartDisplayName).toBe('Bob');
+    expect(after.name).toBe('(shared)');       // never touched
+    expect(after.privateLabel).toBeUndefined(); // never touched
     expect(after.handle).toBe('@bob');
     expect(after.avatarSeed).toBe('B');
     expect(after.id).toBe(before.id);
+    expect(getNormalizedPrivateLabel(after)).toBe('Bob');
   });
 
-  it('N4: existing non-placeholder name is never overwritten by counterpart_display_name', () => {
-    // Simulate a relation the user already renamed
+  it('N4 (rename propagated): a changed counterpart_display_name updates counterpartDisplayName', () => {
     upsertBootstrappedSharedRelations([makeB4Row(CANON_EXIST, { counterpart_display_name: 'Alice' })]);
-    // User renames it locally — not simulated here since updateRelation requires id,
-    // but we verify the guard: if existing.name !== '(shared)', patch is skipped.
-    // Bootstrap again with different name
+    const first = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_EXIST)!;
+    expect(first.counterpartDisplayName).toBe('Alice');
+
+    // Counterpart renamed themselves server-side → RPC returns a new name.
     upsertBootstrappedSharedRelations([
-      makeB4Row(CANON_EXIST, { counterpart_display_name: 'Different' }),
+      makeB4Row(CANON_EXIST, { counterpart_display_name: 'Alice B.' }),
+    ]);
+    const after = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_EXIST)!;
+    expect(after.counterpartDisplayName).toBe('Alice B.');
+    expect(getNormalizedPrivateLabel(after)).toBe('Alice B.');
+  });
+
+  it('N5 (local edit preserved): a privateLabel override wins over server counterpartDisplayName', () => {
+    // Inject a relation the user has renamed ('Coloc du 3e') that already
+    // carries a server name. The override is neither '(shared)' nor === name,
+    // so hydration keeps it.
+    applyHydratedState({
+      me: getMeSnapshot(),
+      relations: [
+        {
+          id: 'b11-edited',
+          name: '(shared)',
+          privateLabel: 'Coloc du 3e',
+          counterpartDisplayName: 'Alice',
+          source: 'bootstrap' as const,
+          archived: false,
+          createdAt: '2026-01-01T00:00:00Z',
+          identityStatus: 'verified' as const,
+          relationshipNameRevealed: true,
+          avatarSeed: 'C',
+          anchorMode: 'bootstrap' as const,
+          anchorValue: null,
+          relationDepth: 'known' as const,
+          canonicalRelationId: CANON_EXIST,
+          localState: {
+            sideA: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: true },
+            sideB: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: true },
+            revealSnapshot: { status: 'revealed', revealed: true },
+          },
+        },
+      ],
+      evaluations: [],
+      places: [],
+      passedObjects: [],
+      receivedObjects: [],
+      progressivePrivateSignals: {},
+      seedVersion: SEED_VERSION,
+    });
+    // Server sends a fresh name — counterpartDisplayName updates, override untouched.
+    upsertBootstrappedSharedRelations([
+      makeB4Row(CANON_EXIST, { counterpart_display_name: 'Alice B.' }),
     ]);
     const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_EXIST)!;
-    // First bootstrap set name to 'Alice'; second call skips (existing.name !== '(shared)')
-    expect(rel.name).toBe('Alice');
+    expect(rel.privateLabel).toBe('Coloc du 3e');       // user override preserved
+    expect(rel.counterpartDisplayName).toBe('Alice B.'); // server truth still refreshed
+    expect(getNormalizedPrivateLabel(rel)).toBe('Coloc du 3e'); // override wins
+  });
+
+  it('N6 (empty name → no patch): a null counterpart_display_name never clobbers an existing one', () => {
+    upsertBootstrappedSharedRelations([makeB4Row(CANON_EXIST, { counterpart_display_name: 'Alice' })]);
+    // Later bootstrap where the RPC momentarily returns null (counterpart profile gap).
+    upsertBootstrappedSharedRelations([makeB4Row(CANON_EXIST, { counterpart_display_name: null })]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON_EXIST)!;
+    expect(rel.counterpartDisplayName).toBe('Alice'); // preserved, not wiped
+  });
+});
+
+// ── applyHydratedState — legacy privateLabel cleanup (B11 Volet B) ────────────
+//
+// Older builds auto-set privateLabel = name (or the '(shared)' placeholder).
+// Hydration strips that auto-set signature so the display cascade can fall
+// through to counterpartDisplayName. Genuine user overrides are preserved.
+
+describe('applyHydratedState — legacy privateLabel cleanup (B11 Volet B)', () => {
+  function hydrateOne(relation: Record<string, unknown>) {
+    applyHydratedState({
+      me: getMeSnapshot(),
+      relations: [
+        {
+          id: 'legacy-1',
+          name: '(shared)',
+          source: 'bootstrap' as const,
+          archived: false,
+          createdAt: '2026-01-01T00:00:00Z',
+          identityStatus: 'verified' as const,
+          relationshipNameRevealed: true,
+          avatarSeed: '?',
+          anchorMode: 'bootstrap' as const,
+          anchorValue: null,
+          relationDepth: 'known' as const,
+          canonicalRelationId: 'legacy-canon',
+          localState: {
+            sideA: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: true },
+            sideB: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: true },
+            revealSnapshot: { status: 'revealed', revealed: true },
+          },
+          ...relation,
+        },
+      ],
+      evaluations: [],
+      places: [],
+      passedObjects: [],
+      receivedObjects: [],
+      progressivePrivateSignals: {},
+      seedVersion: SEED_VERSION,
+    });
+    return getRelationsSnapshot().find((r) => r.id === 'legacy-1')!;
+  }
+
+  beforeEach(() => {
+    resetDevStateToSeed();
+  });
+
+  it('L1: privateLabel === "(shared)" placeholder is stripped', () => {
+    const rel = hydrateOne({ name: '(shared)', privateLabel: '(shared)', counterpartDisplayName: 'Alice' });
+    expect(rel.privateLabel).toBeUndefined();
+    expect(getNormalizedPrivateLabel(rel)).toBe('Alice');
+  });
+
+  it('L2: privateLabel === name (auto-set signature) is stripped', () => {
+    const rel = hydrateOne({ name: 'Alice', privateLabel: 'Alice', counterpartDisplayName: 'Alice B.' });
+    expect(rel.privateLabel).toBeUndefined();
+    // Cascade now falls through name → counterpartDisplayName wins over name.
+    expect(getNormalizedPrivateLabel(rel)).toBe('Alice B.');
+  });
+
+  it('L3: a genuine user override (privateLabel !== name, !== placeholder) is preserved', () => {
+    const rel = hydrateOne({ name: '(shared)', privateLabel: 'Coloc du 3e', counterpartDisplayName: 'Alice' });
+    expect(rel.privateLabel).toBe('Coloc du 3e');
+    expect(getNormalizedPrivateLabel(rel)).toBe('Coloc du 3e');
   });
 });
 
