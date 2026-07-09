@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Linking from 'expo-linking';
-import { Stack, router, useGlobalSearchParams, usePathname } from 'expo-router';
+import { Stack, router, useGlobalSearchParams, usePathname, type Href } from 'expo-router';
 
 import { colors } from '../constants/colors';
 import { devLogLinking, maskIdForLog } from '../lib/dev-linking-log';
@@ -17,7 +17,7 @@ import {
   registerDevicePushTokenForCurrentUser,
 } from '../lib/push-notifications';
 import { loadOrCreateIdentityKeyPair } from '../lib/identity-keypair';
-import { getOrCreatePublicProfileId } from '../lib/public-profile';
+import { getOrCreatePublicProfileId, reconcileHandleOwnership } from '../lib/public-profile';
 import { resolvePostAuthDestination, resolveSignInRedirectTarget } from '../lib/auth-routing';
 import { supabase } from '../lib/supabase';
 import { useRelationsStore } from '../store/useRelationsStore';
@@ -28,9 +28,10 @@ export default function RootLayout() {
   const [authResolved, setAuthResolved] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const pushRegistrationRef = useRef(false);
-  const { me, isHydrated, setAuthIdentity, setPublicProfileId, setIdentitySuffix, bootstrapSharedRelations } = useRelationsStore();
+  const { me, isHydrated, identityDivergent, setIdentityDivergence, setAuthIdentity, setPublicProfileId, setIdentitySuffix, bootstrapSharedRelations } = useRelationsStore();
   const provisionedForUserIdRef = useRef<string | null>(null);
   const bootstrappedForUserIdRef = useRef<string | null>(null);
+  const reconciledForUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     configureNotificationPresentation();
@@ -73,6 +74,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!authResolved) return;
+    // Identity conflict wins: let the conflict gate hold the screen.
+    if (identityDivergent) return;
     const onAuthScreen = pathname === '/auth/sign-in';
 
     // Not authenticated and not already on the auth screen → redirect to sign-in.
@@ -152,18 +155,19 @@ export default function RootLayout() {
       router.replace('/(tabs)');
       return;
     }
-  }, [authResolved, isAuthenticated, pathname, globalParams.redirectPath, globalParams.relationId, globalParams.token]);
+  }, [authResolved, isAuthenticated, identityDivergent, pathname, globalParams.redirectPath, globalParams.relationId, globalParams.token]);
 
   // Profile setup gate — runs continuously so it catches both first-run and
   // Cancel-back-to-tabs. Exits immediately for every authenticated+setup user.
   useEffect(() => {
+    if (identityDivergent) return; // conflict gate wins
     if (!isAuthenticated || !isHydrated || me.isProfileSetup) return;
     // Don't interrupt invite/auth flows that handle identity themselves.
     if (pathname === '/me/edit') return;
     if (pathname.startsWith('/auth/') || pathname.startsWith('/invite/')) return;
     devLogLinking('auth-gate → profile setup (first-run)', { pathname });
     router.replace({ pathname: '/me/edit', params: { setup: '1' } });
-  }, [isAuthenticated, isHydrated, me.isProfileSetup, pathname]);
+  }, [isAuthenticated, isHydrated, identityDivergent, me.isProfileSetup, pathname]);
 
   useEffect(() => {
     const userId = me.internalAuthUserId ?? null;
@@ -235,6 +239,45 @@ export default function RootLayout() {
         bootstrappedForUserIdRef.current = null;
       });
   }, [me.internalAuthUserId]);
+
+  // Identity reconciliation (B11 Volet C — R1+R2). Once per authenticated user:
+  // verify the local handle still belongs to the active auth session and
+  // defensively re-publish display_name. A 'divergent' result means the
+  // persisted Supabase session drifted from the local MeProfile (ghost auth) —
+  // surface the conflict screen. Never signs out silently.
+  useEffect(() => {
+    const userId = me.internalAuthUserId ?? null;
+    if (!userId || !isHydrated) {
+      reconciledForUserIdRef.current = null;
+      return;
+    }
+    const handle = me.handle?.trim();
+    if (!handle) return; // nothing to reconcile until the profile has a handle
+    if (reconciledForUserIdRef.current === userId) return;
+    reconciledForUserIdRef.current = userId;
+    void reconcileHandleOwnership(handle, me.displayName ?? '').then((result) => {
+      if (reconciledForUserIdRef.current !== userId) return;
+      if (result === 'divergent') {
+        setIdentityDivergence(true);
+      } else if (result === 'skipped') {
+        // Network hiccup — allow a retry on the next launch.
+        reconciledForUserIdRef.current = null;
+      }
+    });
+  // setIdentityDivergence is a stable store action — safe to omit.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me.internalAuthUserId, me.handle, me.displayName, isHydrated]);
+
+  // Identity-conflict gate. Takes precedence over the other gates: when a ghost
+  // session is detected, route to the explanatory screen and keep the user
+  // there until they choose a clean re-auth (never a silent logout).
+  useEffect(() => {
+    if (!identityDivergent) return;
+    if (pathname === '/identity/conflict') return;
+    // Cast: expo-router's typed-route table (.expo/types/router.d.ts) is
+    // generated on `expo start`; this newly-added static route is not in it yet.
+    router.replace('/identity/conflict' as Href);
+  }, [identityDivergent, pathname]);
 
   useEffect(() => {
     if (!isAuthenticated || pushRegistrationRef.current) return;
@@ -351,6 +394,10 @@ export default function RootLayout() {
         options={{ title: 'Sign in', presentation: 'modal', gestureEnabled: false }}
       />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="identity/conflict"
+        options={{ headerShown: false, gestureEnabled: false }}
+      />
       <Stack.Screen
         name="me/qr"
         options={{ headerShown: false, presentation: 'modal' }}

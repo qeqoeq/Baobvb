@@ -8,7 +8,7 @@ vi.mock('./supabase', () => ({
 
 // Must import after vi.mock is hoisted
 import { supabase } from './supabase';
-import { publishHandleBestEffort, upsertUserHandle } from './public-profile';
+import { publishHandleBestEffort, reconcileHandleOwnership, upsertUserHandle } from './public-profile';
 
 const mockRpc = supabase.rpc as ReturnType<typeof vi.fn>;
 
@@ -66,5 +66,36 @@ describe('publishHandleBestEffort', () => {
   it('P4: thrown exception → "error", swallowed (no throw)', async () => {
     mockRpc.mockRejectedValueOnce(new Error('boom'));
     await expect(publishHandleBestEffort('@alice', 'Alice')).resolves.toBe('error');
+  });
+});
+
+// ── reconcileHandleOwnership — R1+R2 (B11 Volet C): identity divergence check ──
+
+describe('reconcileHandleOwnership', () => {
+  it('R1: handle owned by me / free → "consistent" (idempotent, display_name re-published)', async () => {
+    mockRpc.mockResolvedValueOnce({ data: { success: true }, error: null });
+    const result = await reconcileHandleOwnership('@iphonebb', 'iPhone BB');
+    expect(result).toBe('consistent');
+    // R2 side effect: display_name re-published to the registry.
+    expect(mockRpc).toHaveBeenCalledWith('upsert_user_handle', {
+      p_handle: '@iphonebb',
+      p_display_name: 'iPhone BB',
+    });
+  });
+
+  it('R2: handle owned by ANOTHER auth user → "divergent" (ghost session detected)', async () => {
+    mockRpc.mockResolvedValueOnce({ data: { success: false, reason: 'taken' }, error: null });
+    await expect(reconcileHandleOwnership('@iphonebb', 'iPhone BB')).resolves.toBe('divergent');
+  });
+
+  it('R3: network error → "skipped", never throws (retried next boot)', async () => {
+    mockRpc.mockRejectedValueOnce(new Error('offline'));
+    await expect(reconcileHandleOwnership('@iphonebb', 'iPhone BB')).resolves.toBe('skipped');
+  });
+
+  it('R4: empty local handle → "skipped" without hitting the RPC', async () => {
+    const result = await reconcileHandleOwnership('   ', 'iPhone BB');
+    expect(result).toBe('skipped');
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 });

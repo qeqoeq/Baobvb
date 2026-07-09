@@ -1127,6 +1127,12 @@ const state: StoreState = {
 
 let hydrated = false;
 
+// Runtime-only (never persisted): set at bootstrap when reconcileHandleOwnership
+// detects that the local handle belongs to a different auth user (B11 Volet C).
+// Drives the identity-conflict explanatory screen. Never triggers a silent
+// logout — the user chooses to re-authenticate.
+let identityDivergence = false;
+
 // ── pub/sub ────────────────────────────────────────────────────────────
 
 const listeners = new Set<() => void>();
@@ -1179,6 +1185,21 @@ function getProgressivePrivateSignalsSnapshot() {
 
 function getHydratedSnapshot() {
   return hydrated;
+}
+
+function getIdentityDivergenceSnapshot() {
+  return identityDivergence;
+}
+
+/**
+ * Marks (or clears) the identity-divergence state (B11 Volet C). Runtime-only,
+ * never persisted. Setting true routes the app to the identity-conflict screen;
+ * a clean re-auth clears it. Idempotent — no emit when the value is unchanged.
+ */
+export function setIdentityDivergence(value: boolean): void {
+  if (identityDivergence === value) return;
+  identityDivergence = value;
+  emitChange();
 }
 
 function sanitizePlaceCategory(value: unknown): PlaceCategory {
@@ -2983,6 +3004,11 @@ export function useRelationsStore() {
     getProgressivePrivateSignalsSnapshot,
   );
   const isHydrated = useSyncExternalStore(subscribe, getHydratedSnapshot, getHydratedSnapshot);
+  const identityDivergent = useSyncExternalStore(
+    subscribe,
+    getIdentityDivergenceSnapshot,
+    getIdentityDivergenceSnapshot,
+  );
 
   const activeRelations = relations.filter((r) => !r.archived);
   const archivedRelations = relations.filter((r) => r.archived);
@@ -3078,6 +3104,8 @@ export function useRelationsStore() {
     updatePhotoUri,
     addPlace,
     isHydrated,
+    identityDivergent,
+    setIdentityDivergence,
     setAuthIdentity,
     setPublicProfileId,
     setIdentitySuffix,

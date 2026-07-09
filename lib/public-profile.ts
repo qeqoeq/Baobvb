@@ -73,3 +73,34 @@ export async function publishHandleBestEffort(
     return 'error';
   }
 }
+
+export type HandleReconcileResult = 'consistent' | 'divergent' | 'skipped';
+
+/**
+ * R1 + R2 (B11 Volet C): verify at bootstrap that the local handle still
+ * belongs to the active auth session, and defensively re-publish display_name.
+ *
+ * upsert_user_handle is idempotent: a handle the caller already owns — or a
+ * free handle — returns success (R2: display_name re-published as a side
+ * effect). A handle owned by a DIFFERENT auth user returns 'taken'. 'taken'
+ * therefore signals identity divergence: the persisted Supabase session
+ * (AsyncStorage) has drifted from the local MeProfile, so claims would fire
+ * under a ghost identity and relations would go invisible cross-device.
+ *
+ * Never throws and NEVER signs the user out. A network error yields 'skipped'
+ * (retried next boot). The caller surfaces an explanatory screen on 'divergent'
+ * and lets the user choose to re-authenticate — no silent logout.
+ */
+export async function reconcileHandleOwnership(
+  handle: string,
+  displayName: string,
+): Promise<HandleReconcileResult> {
+  const h = handle.trim();
+  if (!h) return 'skipped';
+  try {
+    const result = await upsertUserHandle(h, displayName);
+    return result.taken ? 'divergent' : 'consistent';
+  } catch {
+    return 'skipped';
+  }
+}
