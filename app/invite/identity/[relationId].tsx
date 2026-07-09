@@ -6,6 +6,7 @@ import { colors } from '../../../constants/colors';
 import { radius, spacing } from '../../../constants/spacing';
 import { deriveAvatarSeed, normalizeHandleInput } from '../../../lib/identity-format';
 import { devLogLinking } from '../../../lib/dev-linking-log';
+import { publishHandleBestEffort } from '../../../lib/public-profile';
 import { useRelationsStore } from '../../../store/useRelationsStore';
 
 export default function InviteIdentityScreen() {
@@ -52,6 +53,12 @@ export default function InviteIdentityScreen() {
       setError('Could not save your card. Please try again.');
       return;
     }
+
+    // Best-effort (Volet A / B11): publish display_name + handle to the public
+    // registry so the counterpart receives a name via my_shared_relationships()
+    // even if this claimer never opens Me → Edit. Fire-and-forget: a 'taken'
+    // handle or network error must never block the invite flow.
+    void publishHandleBestEffort(cleanHandle, cleanName);
 
     returnToInvite();
   };

@@ -47,3 +47,29 @@ export async function upsertUserHandle(handle: string, displayName?: string): Pr
   }
   return { success: true, taken: false };
 }
+
+export type PublishHandleOutcome = 'published' | 'taken' | 'error';
+
+/**
+ * Best-effort publish of the caller's handle + display_name to the public
+ * registry from a non-critical flow (invite identity — Volet A / B11).
+ *
+ * Never throws and never blocks the caller: a 'taken' handle or a network error
+ * is swallowed. The local MeProfile stays the source of truth for the invite
+ * flow; this call only opportunistically makes display_name visible to the
+ * counterpart via my_shared_relationships() — closing the hole where a claimer
+ * who never opens Me → Edit would leave display_name NULL server-side forever.
+ *
+ * Returns the outcome for optional dev logging only.
+ */
+export async function publishHandleBestEffort(
+  handle: string,
+  displayName: string,
+): Promise<PublishHandleOutcome> {
+  try {
+    const result = await upsertUserHandle(handle, displayName);
+    return result.taken ? 'taken' : 'published';
+  } catch {
+    return 'error';
+  }
+}
