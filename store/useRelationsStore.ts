@@ -49,6 +49,7 @@ import {
   normalizePersistedEvaluationTier,
   normalizePersistedRevealSnapshotTier,
 } from '../lib/persisted-tier-normalization';
+import type { RevealSnapshotSource } from '../lib/reveal-shared-types';
 // Dev-only — bundled but only callable inside __DEV__ guard. Tree-shaken in production.
 import { generateLargeNetworkSeed } from '../lib/dev/large-network-seed';
 
@@ -1130,6 +1131,10 @@ export function getRelationsSnapshot() {
   return state.relations;
 }
 
+export function getRelationSnapshotById(id: string): Relation | undefined {
+  return state.relations.find((r) => r.id === id);
+}
+
 export function getMeSnapshot() {
   return state.me;
 }
@@ -1897,6 +1902,35 @@ function openMutualRevealInState(relationId: string): boolean {
   });
 
   return true;
+}
+
+// Patches the local revealSnapshot to 'reveal_ready' using the server record's
+// timestamps. Called before openMutualRevealInState when the server returned
+// reveal_ready but Guard B blocked (mutual_score IS NULL legacy case), ensuring
+// openMutualRevealInState always finds reveal_ready regardless of stale local state.
+function syncLocalSnapshotToRevealReady(
+  relationId: string,
+  serverRecord: Pick<RevealSnapshotSource, 'cooking_started_at' | 'unlock_at' | 'ready_at'>,
+): void {
+  state.relations = state.relations.map((item) => {
+    if (item.id !== relationId) return item;
+    const snap = item.localState.revealSnapshot;
+    return applyNormalizedRelationModel({
+      ...item,
+      localState: {
+        ...item.localState,
+        revealSnapshot: {
+          ...snap,
+          status: 'reveal_ready',
+          revealed: false,
+          cookingStartedAt: serverRecord.cooking_started_at ?? snap.cookingStartedAt,
+          unlockAt: serverRecord.unlock_at ?? snap.unlockAt,
+          readyAt: serverRecord.ready_at ?? snap.readyAt,
+        },
+      },
+    });
+  });
+  emitChange();
 }
 
 function pushEvaluationForSide(
@@ -2790,6 +2824,7 @@ export function materializePassDeliveries(
 export { upsertBootstrappedSharedRelations };
 export { openMutualReveal as openMutualRevealForTest };
 export { hydrateIdentitySuffix as setIdentitySuffixForTest };
+export { syncLocalSnapshotToRevealReady as syncLocalSnapshotForTest };
 
 export function resetDevStateToSeed() {
   state.me = { ...SEED_ME };
@@ -2940,6 +2975,10 @@ export function useRelationsStore() {
   const startCookingReveal = (relationId: string) => finalizeCookingStart(relationId);
   const syncRevealReadyState = (relationId: string) => markRevealReadyIfUnlocked(relationId);
   const revealMutualRelationship = (relationId: string) => openMutualReveal(relationId);
+  const syncSharedRevealToReady = (
+    relationId: string,
+    serverRecord: Pick<RevealSnapshotSource, 'cooking_started_at' | 'unlock_at' | 'ready_at'>,
+  ) => syncLocalSnapshotToRevealReady(relationId, serverRecord);
   const resetDevState = () => resetDevStateToSeed();
   const loadLargeNetworkSeed = () => loadLargeNetworkSeedData();
   const setAuthIdentity = (userId: string | null) => hydrateAuthIdentity(userId);
@@ -2992,6 +3031,7 @@ export function useRelationsStore() {
     startCookingReveal,
     syncRevealReadyState,
     revealMutualRelationship,
+    syncSharedRevealToReady,
     resetDevState,
     loadLargeNetworkSeed,
     updateMe,

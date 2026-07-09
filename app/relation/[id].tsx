@@ -50,7 +50,7 @@ import {
   getRelationOpenWorldLabel,
   RELATION_OPEN_WORLD_OPTIONS,
 } from '../../lib/relation-open-worlds';
-import { useRelationsStore } from '../../store/useRelationsStore';
+import { getRelationSnapshotById, useRelationsStore } from '../../store/useRelationsStore';
 
 function getHeaderTitle(
   privateLabel: string,
@@ -73,7 +73,7 @@ const PILLAR_ORDER: PillarKey[] = [
 
 export default function RelationDetailScreen() {
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
-  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation, progressivePrivateSignals, setRelationPrivateOpenWorlds } = useRelationsStore();
+  const { me, relations, evaluations, syncRevealReadyState, revealMutualRelationship, syncSharedRevealToReady, setCanonicalRelationId, markInviteDeliveryOpened, archiveRelation, getAssistedReconciliationSuggestionForRelation, getDraftResolutionSuggestionForRelation, progressivePrivateSignals, setRelationPrivateOpenWorlds } = useRelationsStore();
   const [sharedReveal, setSharedReveal] = useState<import('../../lib/reveal-shared-types').RevealSnapshotSource | null>(null);
   // Prevents refreshSharedReveal from fetching an incomplete backend record
   // during the invite creation window, which would override local state.
@@ -319,11 +319,15 @@ export default function RelationDetailScreen() {
   const frozenMutualScore = relationForDisplay.localState.revealSnapshot.mutualScore;
   const frozenMutualTier  = relationForDisplay.localState.revealSnapshot.tier;
   // Single revealed source of truth: mutual when available, private as fallback.
+  // Correction 3 (B10): when revealed, never fall back to private tier/score.
+  // A missing mutualScore means the server didn't compute it (legacy Guard B case).
+  // Fall back would silently display a unilateral score as "Shared reading" — misleading.
+  // Instead, null flows through to getSharedRevealDisplayState → kind:'pending'.
   const revealedTier = nameRevealed
-    ? (frozenMutualTier ?? reading?.linkTier ?? null)
+    ? (frozenMutualTier ?? null)
     : (reading?.linkTier ?? null);
   const revealedScore = nameRevealed
-    ? (frozenMutualScore ?? evaluation?.score ?? null)
+    ? (frozenMutualScore ?? null)
     : (evaluation?.score ?? null);
   const headerAccent = relation.archived ? colors.text.muted : colors.accent.deepTeal;
   const readingAccent = revealedTier ? getTierAccent(revealedTier) : colors.accent.deepTeal;
@@ -459,7 +463,21 @@ export default function RelationDetailScreen() {
           try {
             const relationshipId = relation.canonicalRelationId ?? relation.id;
             updatedRecord = await openSharedReveal(relationshipId);
-            if (!updatedRecord || updatedRecord.status !== 'revealed') notReady = true;
+            if (!updatedRecord || updatedRecord.status !== 'revealed') {
+              if (updatedRecord?.status === 'reveal_ready') {
+                // Fix B (B10): Guard B fired — server reveal_ready with mutual_score IS NULL.
+                // Sync local snapshot to reveal_ready (bootstrap never updates existing relations)
+                // then open locally so the cinematic can play on both sides.
+                syncSharedRevealToReady(relation.id, updatedRecord);
+                revealMutualRelationship(relation.id);
+                // Re-read from store post-mutation — never rely on openMutualRevealInState
+                // return value (returns false for the already-revealed branch, line 1875).
+                const snap = getRelationSnapshotById(relation.id)?.localState.revealSnapshot;
+                if (snap?.status !== 'revealed' || !snap.firstViewedAt) notReady = true;
+              } else {
+                notReady = true;
+              }
+            }
           } catch {
             revealError = true;
           }

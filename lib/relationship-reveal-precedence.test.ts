@@ -195,6 +195,74 @@ describe('getEffectiveRevealSnapshot — non-tier fields preserved', () => {
   });
 });
 
+// ── getEffectiveRevealSnapshot — Fix A: local revealed wins over server non-revealed ──
+//
+// B10 fix: a server row stuck at reveal_ready (mutual_score IS NULL, Guard B)
+// must not downgrade a locally-revealed relation. Local status, firstViewedAt,
+// and revealedAt are preserved. mutualScore and tier are absorbed if the server
+// provides them (e.g. after SQL backfill).
+
+describe('getEffectiveRevealSnapshot — Fix A: local revealed / server non-revealed', () => {
+  const LOCAL_REVEALED: RelationshipRevealSnapshot = {
+    status: 'revealed',
+    revealed: true,
+    firstViewedAt: '2026-07-01T12:00:00.000Z',
+    revealedAt: '2026-07-01T11:59:00.000Z',
+    mutualScore: undefined,
+    tier: undefined,
+    relationshipNameRevealed: true,
+    finalizedVersion: 1,
+  };
+
+  it('A1: local revealed + server reveal_ready (no mutual_score) → keeps local status and firstViewedAt', () => {
+    const server = buildSharedReveal({ status: 'reveal_ready', mutual_score: null });
+    const result = getEffectiveRevealSnapshot(LOCAL_REVEALED, server);
+    expect(result.status).toBe('revealed');
+    expect(result.firstViewedAt).toBe('2026-07-01T12:00:00.000Z');
+    expect(result.revealedAt).toBe('2026-07-01T11:59:00.000Z');
+    expect(result.mutualScore).toBeUndefined();
+    expect(result.tier).toBeUndefined();
+  });
+
+  it('A2: local revealed + server reveal_ready WITH mutual_score → keeps local status, absorbs mutual_score and tier', () => {
+    // mutual_score:80 → getMutualTier(80) = 'Anchor' (79-89 band)
+    const server = buildSharedReveal({ status: 'reveal_ready', mutual_score: 80, tier: 'Anchor' });
+    const result = getEffectiveRevealSnapshot(LOCAL_REVEALED, server);
+    expect(result.status).toBe('revealed');
+    expect(result.firstViewedAt).toBe('2026-07-01T12:00:00.000Z');
+    expect(result.mutualScore).toBe(80);
+    expect(result.tier).toBe('Anchor');
+  });
+
+  it('A3: local reveal_ready + server revealed → server wins (server more advanced)', () => {
+    const localReady: RelationshipRevealSnapshot = {
+      status: 'reveal_ready',
+      revealed: false,
+      readyAt: '2026-07-01T10:00:00.000Z',
+    };
+    const server = buildSharedReveal({ status: 'revealed', mutual_score: 80, tier: 'Steady' });
+    const result = getEffectiveRevealSnapshot(localReady, server);
+    expect(result.status).toBe('revealed');
+    expect(result.mutualScore).toBe(80);
+  });
+
+  it('A4: local revealed + server revealed → server wins (both revealed, normal path unchanged)', () => {
+    const server = buildSharedReveal({ status: 'revealed', mutual_score: 65, tier: 'Steady', first_viewed_at: '2026-07-01T13:00:00.000Z' });
+    const result = getEffectiveRevealSnapshot(LOCAL_REVEALED, server);
+    expect(result.status).toBe('revealed');
+    // Server firstViewedAt wins (both revealed → server path)
+    expect(result.firstViewedAt).toBe('2026-07-01T13:00:00.000Z');
+    expect(result.mutualScore).toBe(65);
+  });
+
+  it('A5: local revealed + server cooking_reveal → keeps local (same guard as reveal_ready)', () => {
+    const server = buildSharedReveal({ status: 'cooking_reveal', mutual_score: null });
+    const result = getEffectiveRevealSnapshot(LOCAL_REVEALED, server);
+    expect(result.status).toBe('revealed');
+    expect(result.firstViewedAt).toBe('2026-07-01T12:00:00.000Z');
+  });
+});
+
 // ── applyEffectiveRevealToRelation — end-to-end tier normalization ─────────
 // This wrapper is the actual entry point used by RelationDetailScreen
 // (app/relation/[id].tsx:146). The patch must hold across this composition.

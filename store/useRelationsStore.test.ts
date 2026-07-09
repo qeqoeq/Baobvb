@@ -10,6 +10,7 @@ import {
   getPassedObjectsSnapshot,
   getPlacesSnapshot,
   getReceivedObjectsSnapshot,
+  getRelationSnapshotById,
   getRelationsSnapshot,
   materializePassDeliveries,
   openMutualRevealForTest,
@@ -20,6 +21,7 @@ import {
   sanitizePersistedReceivedObjects,
   SEED_VERSION,
   setReceivedObjectStatus,
+  syncLocalSnapshotForTest,
   upsertBootstrappedSharedRelations,
   type PassDeliveryMaterializationInput,
   type Place,
@@ -1309,5 +1311,177 @@ describe('openMutualRevealForTest — B5 firstViewedAt gate', () => {
     // Only firstViewedAt should differ (was undefined, now set)
     expect(snapBefore.firstViewedAt).toBeUndefined();
     expect(snapAfter.firstViewedAt).toBeDefined();
+  });
+});
+
+// ── openMutualRevealForTest — B10: return values for every local status ───────
+//
+// Documents the exact boolean contract of openMutualRevealInState so Fix B can
+// branch correctly. Six cases from the B10 diagnostic correction-1 table.
+// Seed relations used: '1' (waiting_other_side), '4' (cooking_reveal, no unlockAt),
+// '5' (reveal_ready), '7' (revealed, no firstViewedAt).
+// Cases 2c (cooking elapsed) and 7-fvt (revealed with firstViewedAt) use
+// applyHydratedState to inject the required state.
+
+describe('openMutualRevealForTest — B10 return values per local status', () => {
+  const MINIMAL_SIDES = {
+    sideA: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: true },
+    sideB: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: true },
+  };
+
+  function injectRelation(id: string, revealSnapshot: object) {
+    applyHydratedState({
+      me: getMeSnapshot(),
+      relations: [
+        {
+          id,
+          name: 'Test',
+          source: 'bootstrap' as const,
+          archived: false,
+          createdAt: '2026-01-01T00:00:00Z',
+          identityStatus: 'verified' as const,
+          relationshipNameRevealed: false,
+          avatarSeed: 'T',
+          anchorMode: 'bootstrap' as const,
+          anchorValue: null,
+          relationDepth: 'known' as const,
+          privateLabel: 'Test',
+          canonicalRelationId: null,
+          localState: { ...MINIMAL_SIDES, revealSnapshot },
+        },
+      ],
+      evaluations: [],
+      places: [],
+      passedObjects: [],
+      receivedObjects: [],
+      progressivePrivateSignals: {},
+      seedVersion: SEED_VERSION,
+    });
+  }
+
+  beforeEach(() => {
+    resetDevStateToSeed();
+  });
+
+  it('B10-R1: waiting_other_side → returns false, local status unchanged', () => {
+    // Seed '1' has status 'waiting_other_side'
+    const returned = openMutualRevealForTest('1');
+    expect(returned).toBe(false);
+    const rel = getRelationsSnapshot().find((r) => r.id === '1');
+    expect(rel!.localState.revealSnapshot.status).toBe('waiting_other_side');
+  });
+
+  it('B10-R2: cooking_reveal without unlockAt → returns false, local status unchanged', () => {
+    // Seed '4' has status 'cooking_reveal' with no unlockAt — markRevealReady exits early
+    const returned = openMutualRevealForTest('4');
+    expect(returned).toBe(false);
+    const rel = getRelationsSnapshot().find((r) => r.id === '4');
+    expect(rel!.localState.revealSnapshot.status).toBe('cooking_reveal');
+  });
+
+  it('B10-R3: cooking_reveal with elapsed unlockAt → returns true, transitions to revealed', () => {
+    injectRelation('cook-elapsed', {
+      status: 'cooking_reveal',
+      revealed: false,
+      cookingStartedAt: '2026-01-01T10:00:00Z',
+      unlockAt: '2026-01-01T10:00:15Z', // past
+      relationshipNameRevealed: false,
+    });
+    const returned = openMutualRevealForTest('cook-elapsed');
+    expect(returned).toBe(true);
+    const snap = getRelationSnapshotById('cook-elapsed')!.localState.revealSnapshot;
+    expect(snap.status).toBe('revealed');
+    expect(snap.firstViewedAt).toBeDefined();
+  });
+
+  it('B10-R4: reveal_ready → returns true, transitions to revealed', () => {
+    // Seed '5' has status 'reveal_ready'
+    const returned = openMutualRevealForTest('5');
+    expect(returned).toBe(true);
+    const snap = getRelationsSnapshot().find((r) => r.id === '5')!.localState.revealSnapshot;
+    expect(snap.status).toBe('revealed');
+    expect(snap.firstViewedAt).toBeDefined();
+  });
+
+  it('B10-R5: revealed without firstViewedAt → stamps firstViewedAt, returns false', () => {
+    // Seed '7' has status 'revealed', no firstViewedAt — the bootstrap case (B5)
+    const before = getRelationsSnapshot().find((r) => r.id === '7')!;
+    expect(before.localState.revealSnapshot.status).toBe('revealed');
+    expect(before.localState.revealSnapshot.firstViewedAt).toBeUndefined();
+
+    const returned = openMutualRevealForTest('7');
+    expect(returned).toBe(false); // movedToReady=false, returns movedToReady (line 1875)
+
+    const after = getRelationsSnapshot().find((r) => r.id === '7')!;
+    expect(after.localState.revealSnapshot.firstViewedAt).toBeDefined(); // stamp succeeded
+    expect(after.localState.revealSnapshot.status).toBe('revealed'); // status unchanged
+  });
+
+  it('B10-R6: revealed with firstViewedAt already set → no-op, returns false', () => {
+    // First call stamps firstViewedAt
+    openMutualRevealForTest('7');
+    const ts = getRelationsSnapshot().find((r) => r.id === '7')!.localState.revealSnapshot.firstViewedAt;
+    expect(ts).toBeDefined();
+
+    // Second call: firstViewedAt already set → no-op
+    const returned = openMutualRevealForTest('7');
+    expect(returned).toBe(false);
+
+    const after = getRelationsSnapshot().find((r) => r.id === '7')!;
+    expect(after.localState.revealSnapshot.firstViewedAt).toBe(ts); // unchanged
+  });
+});
+
+// ── syncLocalSnapshotForTest — B10: sync stale local snapshot to reveal_ready ──
+//
+// Verifies that syncLocalSnapshotToRevealReady patches the local revealSnapshot
+// regardless of current status (waiting_other_side, cooking_reveal, reveal_ready),
+// allowing openMutualRevealInState to run Branch 3 reliably on the next call.
+
+describe('syncLocalSnapshotForTest — B10 local snapshot sync', () => {
+  const SERVER_RECORD = {
+    cooking_started_at: '2026-01-01T10:00:00Z',
+    unlock_at: '2026-01-01T10:00:15Z',
+    ready_at: '2026-01-01T10:00:15Z',
+  };
+
+  beforeEach(() => {
+    resetDevStateToSeed();
+  });
+
+  it('S1: patches waiting_other_side to reveal_ready and absorbs server timestamps', () => {
+    // Seed '1' is waiting_other_side
+    syncLocalSnapshotForTest('1', SERVER_RECORD);
+    const snap = getRelationSnapshotById('1')!.localState.revealSnapshot;
+    expect(snap.status).toBe('reveal_ready');
+    expect(snap.unlockAt).toBe('2026-01-01T10:00:15Z');
+    expect(snap.readyAt).toBe('2026-01-01T10:00:15Z');
+  });
+
+  it('S2: after sync, openMutualRevealForTest on patched waiting_other_side returns true and transitions to revealed', () => {
+    syncLocalSnapshotForTest('1', SERVER_RECORD);
+    const returned = openMutualRevealForTest('1');
+    expect(returned).toBe(true);
+    const snap = getRelationSnapshotById('1')!.localState.revealSnapshot;
+    expect(snap.status).toBe('revealed');
+    expect(snap.firstViewedAt).toBeDefined();
+  });
+
+  it('S3: patches cooking_reveal (no unlockAt) to reveal_ready and absorbs server timestamps', () => {
+    // Seed '4' is cooking_reveal without unlockAt
+    syncLocalSnapshotForTest('4', SERVER_RECORD);
+    const snap = getRelationSnapshotById('4')!.localState.revealSnapshot;
+    expect(snap.status).toBe('reveal_ready');
+    expect(snap.unlockAt).toBe('2026-01-01T10:00:15Z');
+  });
+
+  it('S4: does not alter relation id, name, or other fields', () => {
+    const before = getRelationsSnapshot().find((r) => r.id === '1')!;
+    syncLocalSnapshotForTest('1', SERVER_RECORD);
+    const after = getRelationSnapshotById('1')!;
+    expect(after.id).toBe(before.id);
+    expect(after.name).toBe(before.name);
+    expect(after.canonicalRelationId).toBe(before.canonicalRelationId);
+    expect(after.archived).toBe(before.archived);
   });
 });

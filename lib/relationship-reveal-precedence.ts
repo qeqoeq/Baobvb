@@ -8,6 +8,23 @@ export function getEffectiveRevealSnapshot(
 ): RelationshipRevealSnapshot {
   if (!sharedReveal) return localSnapshot;
 
+  // Fix A (B10): local 'revealed' wins over a less-advanced server status.
+  // Happens for legacy relations where the server row is stuck at reveal_ready
+  // with mutual_score IS NULL (Guard B). Absorb mutualScore/tier from the server
+  // if they arrive later (e.g. after SQL backfill) so the display improves.
+  if (localSnapshot.status === 'revealed' && sharedReveal.status !== 'revealed') {
+    return {
+      ...localSnapshot,
+      mutualScore:
+        typeof sharedReveal.mutual_score === 'number'
+          ? sharedReveal.mutual_score
+          : localSnapshot.mutualScore,
+      tier:
+        normalizePersistedRevealSnapshotTier(sharedReveal.tier, sharedReveal.mutual_score) ??
+        localSnapshot.tier,
+    };
+  }
+
   const status = sharedReveal.status;
   const revealed = status === 'revealed';
 
