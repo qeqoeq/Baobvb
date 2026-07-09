@@ -20,6 +20,9 @@ export default function EditMyCardScreen() {
   }>();
   const isSetupMode = params.setup === '1';
   const { me, updateMe, updatePhotoUri } = useRelationsStore();
+  // D2 (B15): the handle is frozen once the profile is set up. Robust form —
+  // depends on the actual profile state, not on how this screen was opened.
+  const handleLocked = Boolean(me.isProfileSetup) && !!me.handle;
   const [displayName, setDisplayName] = useState(me.displayName);
   const [handle, setHandle] = useState(me.handle);
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(me.photoUri ?? null);
@@ -50,7 +53,11 @@ export default function EditMyCardScreen() {
     if (isSaving) return;
 
     const cleanDisplayName = displayName.trim();
-    const cleanHandle = normalizeHandleInput(handle);
+    // D2 (B15): when the handle is frozen, ALWAYS use the existing me.handle —
+    // never a field value. Post-setup this screen only edits displayName; the
+    // handle is re-published unchanged, which keeps reconcileHandleOwnership
+    // (bootstrap) working since it too re-publishes the existing handle.
+    const cleanHandle = handleLocked ? me.handle : normalizeHandleInput(handle);
     const cleanAvatarSeed = deriveAvatarSeed(cleanDisplayName);
 
     if (!cleanDisplayName) {
@@ -64,8 +71,8 @@ export default function EditMyCardScreen() {
 
     // Sync handle to the backend registry on every save.
     // upsert_user_handle is idempotent — unchanged handles are a no-op on the backend.
-    // Calling unconditionally ensures new handles are claimed, changed handles are
-    // re-claimed, and existing users are lazily migrated on their next edit.
+    // At setup this claims the new handle; post-setup it re-publishes the frozen
+    // handle together with the (possibly changed) display name.
     setIsSaving(true);
     setError(null);
     try {
@@ -163,21 +170,32 @@ export default function EditMyCardScreen() {
 
         <View style={styles.fieldBlock}>
           <Text style={styles.fieldLabel}>{'Username'}</Text>
-          <TextInput
-            ref={handleInputRef}
-            value={handle}
-            onChangeText={(value) => {
-              setHandle(value);
-              if (error) setError(null);
-            }}
-            placeholder="@your.handle"
-            placeholderTextColor={colors.text.muted}
-            style={[styles.input, styles.inputSecondary]}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="done"
-            onSubmitEditing={() => void handleSave()}
-          />
+          {handleLocked ? (
+            <View style={[styles.input, styles.inputSecondary, styles.inputReadOnly]}>
+              <Text style={styles.inputReadOnlyText}>
+                {me.handle}{me.identitySuffix ? `·${me.identitySuffix}` : ''}
+              </Text>
+            </View>
+          ) : (
+            <TextInput
+              ref={handleInputRef}
+              value={handle}
+              onChangeText={(value) => {
+                setHandle(value);
+                if (error) setError(null);
+              }}
+              placeholder="@your.handle"
+              placeholderTextColor={colors.text.muted}
+              style={[styles.input, styles.inputSecondary]}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="done"
+              onSubmitEditing={() => void handleSave()}
+            />
+          )}
+          {handleLocked ? (
+            <Text style={styles.helperText}>Your username is set and can't be changed.</Text>
+          ) : null}
         </View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -293,6 +311,20 @@ const styles = StyleSheet.create({
   inputSecondary: {
     opacity: 0.7,
     fontSize: 14,
+  },
+  inputReadOnly: {
+    justifyContent: 'center',
+    backgroundColor: colors.background.secondary,
+  },
+  inputReadOnlyText: {
+    color: colors.text.secondary,
+    fontSize: 14,
+  },
+  helperText: {
+    marginTop: spacing.xs,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.muted,
   },
   errorText: {
     fontSize: 12,
