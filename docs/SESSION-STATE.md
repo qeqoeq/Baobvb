@@ -1,4 +1,4 @@
-# SESSION-STATE.md — Passation session bugs B1→B9
+# SESSION-STATE.md — Passation bugs B1→B15
 
 > Règle d'or : le repo est la source de vérité. Ce document POINTE vers fichiers et commits.
 > Il ne recopie JAMAIS de code déjà commité. Interdiction de régénérer du code de mémoire.
@@ -10,13 +10,13 @@
 
 Projet Baobab (Expo/React Native + Supabase, local-first). Double rôle de l'assistant :
 EXÉCUTANT (implémente les fixes) + AUDITEUR (refuse tout [DONE] sans preuve : dumps, sorties
-de tests, résultats SQL collés). Session en cours : correction des bugs B1→B9 issus du smoke
-test du build 27, un commit par bug. Fichiers à lire en premier, dans cet ordre : CLAUDE.md,
+de tests, résultats SQL collés). Session en cours : correction des bugs B1→B9 issus du smoke test du build 27
+(commités, build 28 soumis). Nouvelle session : bugs B10→B15 issus du smoke test build 28. Fichiers à lire en premier, dans cet ordre : CLAUDE.md,
 docs/SESSION-STATE.md, docs/PHASE-0.md, docs/SUPABASE-REGISTRY.md, docs/SMOKE-TEST.md,
 docs/PARKING.md, docs/baobab-design-bible.md si présent. NB : docs/PASSATION.md n'existe pas
 encore dans le repo (le doc de passation stratégique vit hors-repo, à committer plus tard).
 
-## ÉTAT ACTUEL — B1→B9
+## ÉTAT ACTUEL — B1→B15
 
 | Bug | Statut | Cause racine | Fix | Preuve | Commit |
 |---|---|---|---|---|---|
@@ -27,17 +27,19 @@ encore dans le repo (le doc de passation stratégique vit hors-repo, à committe
 | B5 — Tier visible avant reveal | **DONE prouvé** | Bootstrap copie `status='revealed'` depuis le serveur sans `firstViewedAt` → `nameRevealed=true` immédiatement → tier affiché avant ouverture locale | Gate `firstViewedAt !== undefined` ajouté à `nameRevealed` + à toutes les dérives indirectes (garden, EgoGraph, lexique). `openMutualRevealInState` patch `firstViewedAt` au lieu de bail-early. `handleOpenReveal` appelle `revealMutualRelationship` sur tous les paths de succès. CTA "Open reveal" conservé pour `status='revealed'` sans `firstViewedAt` (gate B5 fermé mais path UI ouvert). | tsc + 1018/1018 verts, 8 nouveaux tests | `e7b212f` |
 | B6 — Picker de pass filtré | **DONE prouvé** | Nom `'(shared)'` dans le picker rendait le counterpart non identifiable (cascade B4) + filtre manquait `canonicalRelationId` → envoi silencieux possible pour relations sans canonical | Fix B4 résout le nom. Fix B6 : ajout `&&!!r.canonicalRelationId` au filtre `eligibleRelations` (line 202) — une relation sans canonical ne peut pas livrer de pass cross-device (`createPassDelivery` gated dessus). À confirmer sur device au smoke test build 28. | tsc + vitest verts | `301078a` |
 | B7 — Back incorrect post-claim | **DONE prouvé** | `invite/identity/[relationId]` présenté en modal → Expo Router empilait une 2e instance de `invite` ; back retombait dessus | Param `fromClaim: '1'` passé de `invite/[relationId]` vers evaluate (3 points de nav, `push` → `replace`) ; dans `evaluate/[id]`, les 4 navigations succès vont vers `/(tabs)` si `isFromClaim` | tsc + 1006/1006 verts | `3a87c94` |
-| B8 — Doublons de claim | **STOP SQL écrit — à re-tester device smoke test build 28** | Diagnostic 2026-07-08 : 0 doublon (110/110 distinct) — base saine. Smoke test B8 était faux positif ou issue client transiente. Fix préventif : contrainte `UNIQUE(relationship_id)` sur `shared_relationship_reveals`. | `docs/sql/b8_b4_counterpart_name.sql` BLOC 1. Bouton disabled pendant claim déjà géré par `isSubmitting` guard dans `handleAddMySide`. | Diagnostic SQL : "Success. No rows returned" + count=110 distinct_ids=110 | — |
+| B8 — Doublons de claim | **DONE prouvé + device** | Diagnostic 2026-07-08 : 0 doublon (110/110 distinct) — base saine. Faux positif ou transient client. Fix préventif : `UNIQUE(relationship_id)` appliqué. Smoke test build 28 : 111/111 distinct ✓ — aucun doublon observé, bouton disabled pendant claim. | `docs/sql/b8_b4_counterpart_name.sql` BLOC 1. | SQL count=111 distinct_ids=111 ; smoke test device validé 2026-07-09 | `d0d2b54` (SQL) |
 | B9 — Identité | **DONE prouvé** | Pas de clé d'identité on-device → aucun suffixe distinctif sur le handle | Ed25519 keypair via `@noble/ed25519` v1.7.3 + entropie `expo-crypto.getRandomBytesAsync(32)` (zéro dépendance `globalThis.crypto`) + stockage `expo-secure-store` (`WHEN_UNLOCKED`). Suffixe : SHA-256(pubkey)[0..3] → 30 bits → 6 chars base32 lowercase. Display-only : `@{handle}·{suffix}` dans `me/profile.tsx` et `me/qr.tsx` uniquement — jamais envoyé au serveur, `me.handle` reste propre. `identitySuffix` runtime-only (exclu de `persist()`). iOS Keychain survit à la réinstallation. Spec complète : `docs/IDENTITY.md`. | tsc 0 erreur + 1029/1029 verts, vecteur `deriveIdentitySuffix(Uint8Array(32))` = `'mzuhvl'` | `a19506f` |
+| B10 — Reveal not ready (legacy) | **OPEN — diagnostic validé, fix à implémenter** | Serveur bloqué à `reveal_ready` avec `mutual_score IS NULL` (Guard B migration `20260529`) ; `getEffectiveRevealSnapshot` écrase le local `revealed` avec le statut serveur moins avancé → boucle infinie. | Fix client en deux points : (1) `lib/relationship-reveal-precedence.ts` `getEffectiveRevealSnapshot` — ne pas downgrader local `revealed` si serveur < `revealed` ; (2) `app/relation/[id].tsx:462` `handleOpenReveal` — fallback local (`revealMutualRelationship`) si server Guard B bloque. Pas de SQL. | — | — |
+| B11 — Nom absent sur relations existantes (propagation B4) | **OPEN — diagnostic à faire** | Fix B4 peuple `counterpart_display_name`/`handle` uniquement pour les nouvelles relations bootstrappées. Relations déjà en store (build 27) restent avec `name='(shared)'`. + D1 : le nom doit être affiché même avant reveal. | — | — | — |
+| B12 — Double écran/sheet sur lien invite | **OPEN — diagnostic à faire** | Ouverture d'un lien invite depuis un état app déjà ouvert empile un deuxième écran ou sheet par-dessus l'existant. | — | — | — |
+| B13 — Countdown disparu + scroll fold leak | **OPEN — diagnostic à faire** | Effet de bord du fix B5 sur le layout : le countdown `cooking_reveal` a disparu et un espace vide apparaît au scroll. | — | — | — |
+| B14 — Push token non ré-enregistré à la réinstallation | **OPEN — diagnostic à faire** | Sur device propre (réinstall), le push token Expo n'est pas ré-envoyé au serveur → les notifications reveal-ready ne sont pas délivrées. | — | — | — |
+| B15 — Handle modifiable après setup | **OPEN — décision D2 figée, à implémenter** | L'utilisateur peut changer son handle en re-entrant dans `me/edit`. D2 : le handle doit être gelé après le setup initial (non modifiable). | — | — | — |
 
-### git status / push — VÉRIFIÉ 2026-07-08
+### git status / push — VÉRIFIÉ 2026-07-09
 
-Ordre chronologique réel (git log, du plus ancien au plus récent) :
-`9788cb0` (B1) → `d3d3bf6` (B2) → `aa6c580` (B3 pt.1) → `eb4ee6d` (B3 pt.2) → `3a87c94` (B7)
-→ `4ee8871` (runner catch-up).
-Note : SESSION-STATE.md hors-repo avait B7 et B3pt.2 inversés — corrigé ici.
-Branche 21 commits ahead of origin/main. Aucun push effectué. Working tree propre après commit runner.
-Fichiers non commités traités : runner ✓ commité ; app.json en attente (expo-font non utilisé — STOP).
+Build 27 : `9788cb0` (B1) → `d3d3bf6` (B2) → `aa6c580` (B3 pt.1) → `eb4ee6d` (B3 pt.2) → `3a87c94` (B7) → `4ee8871` (runner) → `d0d2b54` (B4+B8 SQL) → `d6c689e` (B4 client) → `301078a` (B6) → `e7b212f` (B5) → `a19506f` (B9) → `5bbb39e` (docs session close, build 28).
+Build 28 soumis et validé smoke test. Branche main, working tree propre.
 
 ## DÉCISIONS FIGÉES DE CETTE SESSION (non renégociables)
 
@@ -65,6 +67,14 @@ Fichiers non commités traités : runner ✓ commité ; app.json en attente (exp
 VÉRIFIÉ 2026-07-08 : aucune décision supplémentaire prise sur B5/B6/B8/B9 après la fin du
 transcript. Les décisions ci-dessus sont complètes. app.json bloqué : expo-font ajouté en plugin
 mais aucun import dans le code — attente de confirmation avant commit.
+
+**Nouvelles décisions figées — smoke test build 28 (2026-07-09)**
+
+- **D1** : le nom du counterpart est affiché partout (fiche relation, picker, garden) **avant**
+  le reveal — pas seulement après. Le reveal expose le score, pas le nom.
+- **D2** : le handle est gelé après le setup initial (`me/edit?setup=1`). L'utilisateur ne peut
+  plus modifier son handle une fois le profil créé. L'UI doit supprimer le champ ou le rendre
+  read-only dans les sessions post-setup.
 
 ## SQL EN ATTENTE (verbatim)
 
@@ -117,13 +127,16 @@ Rappels permanents :
 
 ## PROCHAINE ACTION
 
-**Build 28 :** `eas build --platform ios --profile production`, puis `eas submit`, puis
-smoke test S01–S45 sur les deux devices avec attention particulière aux 9 scénarios B1–B9 :
-- B4 : vérification visuelle — nom du counterpart affiché (non `'(shared)'`) dans le picker et sur la fiche relation
-- B8 : vérification double claim — bouton disabled pendant soumission, pas de doublon `shared_relationship_reveals`
-- B5 : tier invisible jusqu'à ouverture du reveal côté local
-- B6 : picker de pass liste les relations revealed avec `canonicalRelationId`
-- B9 : suffixe `·{6chars}` visible sur `me/profile` et `me/qr`, absent du payload QR scanné
+**Session B10–B15** — corriger dans l'ordre, un commit par bug, preuve avant [DONE] :
+
+1. **B10** — Implémenter le fix (deux fichiers, aucun SQL) après validation du diagnostic :
+   - `lib/relationship-reveal-precedence.ts` : guard "ne pas downgrader local `revealed`"
+   - `app/relation/[id].tsx:462` : fallback local si Guard B bloque le serveur
+2. **B11** — Diagnostic : propagation du nom B4 aux relations existantes + implémentation D1
+3. **B12** — Diagnostic : double écran/sheet sur lien invite
+4. **B13** — Diagnostic : countdown disparu + scroll fold leak (effet de bord B5)
+5. **B14** — Diagnostic : push token non ré-enregistré à la réinstallation
+6. **B15** — Implémenter D2 : handle gelé après setup
 
 ---
-Session B1–B9 close. Tous les bugs sont fixés et commités.
+Session B1–B9 close (build 28 soumis). Session B10–B15 en cours.
