@@ -263,6 +263,70 @@ describe('getEffectiveRevealSnapshot — Fix A: local revealed / server non-reve
   });
 });
 
+// ── B13 countdown pipeline — does precedence drop status/unlockAt during cooking? ──
+//
+// The cooking countdown effect (relation/[id].tsx) reads status and unlockAt
+// from the EFFECTIVE snapshot (getEffectiveRevealSnapshot(local, server)). If
+// precedence dropped either during cooking_reveal, cookingRemainingSeconds would
+// null out and the countdown would silently vanish. These tests reproduce the
+// exact pipeline across the server states a cooking relation can be in.
+
+describe('getEffectiveRevealSnapshot — B13 cooking countdown survival', () => {
+  const LOCAL_COOKING: RelationshipRevealSnapshot = {
+    status: 'cooking_reveal',
+    revealed: false,
+    cookingStartedAt: '2026-07-01T10:00:00.000Z',
+    unlockAt: '2026-07-01T10:00:15.000Z',
+  };
+
+  it('C1: local cooking + server cooking (well-formed unlock_at) → status + unlockAt survive', () => {
+    const server = buildSharedReveal({
+      status: 'cooking_reveal',
+      cooking_started_at: '2026-07-01T10:00:00.000Z',
+      unlock_at: '2026-07-01T10:00:15.000Z',
+      ready_at: null,
+      mutual_score: null,
+    });
+    const result = getEffectiveRevealSnapshot(LOCAL_COOKING, server);
+    expect(result.status).toBe('cooking_reveal');
+    expect(result.unlockAt).toBe('2026-07-01T10:00:15.000Z'); // countdown works
+  });
+
+  it('C2: local cooking + server null (not yet fetched) → local kept, status + unlockAt survive', () => {
+    const result = getEffectiveRevealSnapshot(LOCAL_COOKING, null);
+    expect(result.status).toBe('cooking_reveal');
+    expect(result.unlockAt).toBe('2026-07-01T10:00:15.000Z'); // countdown works
+  });
+
+  it('C3: local cooking + server ALREADY reveal_ready → advances (countdown legitimately gone)', () => {
+    const server = buildSharedReveal({
+      status: 'reveal_ready',
+      unlock_at: '2026-07-01T10:00:15.000Z',
+      ready_at: '2026-07-01T10:00:15.000Z',
+      mutual_score: 70,
+    });
+    const result = getEffectiveRevealSnapshot(LOCAL_COOKING, server);
+    // Server is more advanced: the reading is ready. No countdown is correct.
+    expect(result.status).toBe('reveal_ready');
+  });
+
+  it('C4 (degenerate): server cooking but unlock_at null → unlockAt is lost (only way countdown vanishes)', () => {
+    // Documents the ONLY precedence path that drops unlockAt during cooking: a
+    // malformed server row (cooking_reveal without unlock_at). The server sets
+    // unlock_at atomically when entering cooking_reveal, so this should not occur
+    // in practice — but the test pins the contract.
+    const server = buildSharedReveal({
+      status: 'cooking_reveal',
+      unlock_at: null,
+      ready_at: null,
+      mutual_score: null,
+    });
+    const result = getEffectiveRevealSnapshot(LOCAL_COOKING, server);
+    expect(result.status).toBe('cooking_reveal');
+    expect(result.unlockAt).toBeUndefined(); // countdown would vanish here
+  });
+});
+
 // ── applyEffectiveRevealToRelation — end-to-end tier normalization ─────────
 // This wrapper is the actual entry point used by RelationDetailScreen
 // (app/relation/[id].tsx:146). The patch must hold across this composition.
