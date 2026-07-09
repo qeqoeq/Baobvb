@@ -32,6 +32,10 @@ export default function RootLayout() {
   const provisionedForUserIdRef = useRef<string | null>(null);
   const bootstrappedForUserIdRef = useRef<string | null>(null);
   const reconciledForUserIdRef = useRef<string | null>(null);
+  // Live mirror of the current route so the deep-link handler (mounted once,
+  // empty-deps effect) can read the up-to-date pathname at call time (B12).
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
 
   useEffect(() => {
     configureNotificationPresentation();
@@ -360,13 +364,25 @@ export default function RootLayout() {
         devLogLinking('linking: non-invite url', { origin });
         return;
       }
+      // B12 — do not stack a second invite screen. In production, expo-router's
+      // native linking ALSO routes this URL to /invite/[relationId]; the manual
+      // handler here is a dev-client fallback. If the native linking already
+      // landed us on an invite screen, skip. Mark the URL as handled BEFORE
+      // navigating (intent, not completion) so the getInitialURL/addEventListener
+      // pair — and the race with native linking — cannot double-fire. Navigate
+      // with replace (not push) so no second instance ever stacks.
+      if (pathnameRef.current.startsWith('/invite/')) {
+        devLogLinking('linking: invite already active — skip', { origin });
+        lastHandledInviteUrlRef.current = url;
+        return;
+      }
       lastHandledInviteUrlRef.current = url;
       devLogLinking('linking: invite route', {
         origin,
         relationId: maskIdForLog(parsed.relationId),
         hasToken: Boolean(parsed.token),
       });
-      router.push({
+      router.replace({
         pathname: '/invite/[relationId]',
         params: { relationId: parsed.relationId, token: parsed.token },
       });
