@@ -1,4 +1,4 @@
-# SESSION-STATE.md — Passation bugs B1→B15
+# SESSION-STATE.md — Passation bugs B1→B16
 
 > Règle d'or : le repo est la source de vérité. Ce document POINTE vers fichiers et commits.
 > Il ne recopie JAMAIS de code déjà commité. Interdiction de régénérer du code de mémoire.
@@ -11,12 +11,12 @@
 Projet Baobab (Expo/React Native + Supabase, local-first). Double rôle de l'assistant :
 EXÉCUTANT (implémente les fixes) + AUDITEUR (refuse tout [DONE] sans preuve : dumps, sorties
 de tests, résultats SQL collés). Session en cours : correction des bugs B1→B9 issus du smoke test du build 27
-(commités, build 28 soumis). Nouvelle session : bugs B10→B15 issus du smoke test build 28. Fichiers à lire en premier, dans cet ordre : CLAUDE.md,
+(commités, build 28 soumis). Nouvelle session : bugs B10→B16 issus du smoke test build 28 (B16 = suffixe null Hermes). Fichiers à lire en premier, dans cet ordre : CLAUDE.md,
 docs/SESSION-STATE.md, docs/PHASE-0.md, docs/SUPABASE-REGISTRY.md, docs/SMOKE-TEST.md,
 docs/PARKING.md, docs/baobab-design-bible.md si présent. NB : docs/PASSATION.md n'existe pas
 encore dans le repo (le doc de passation stratégique vit hors-repo, à committer plus tard).
 
-## ÉTAT ACTUEL — B1→B15
+## ÉTAT ACTUEL — B1→B16
 
 | Bug | Statut | Cause racine | Fix | Preuve | Commit |
 |---|---|---|---|---|---|
@@ -31,10 +31,11 @@ encore dans le repo (le doc de passation stratégique vit hors-repo, à committe
 | B9 — Identité | **DONE prouvé** | Pas de clé d'identité on-device → aucun suffixe distinctif sur le handle | Ed25519 keypair via `@noble/ed25519` v1.7.3 + entropie `expo-crypto.getRandomBytesAsync(32)` (zéro dépendance `globalThis.crypto`) + stockage `expo-secure-store` (`WHEN_UNLOCKED`). Suffixe : SHA-256(pubkey)[0..3] → 30 bits → 6 chars base32 lowercase. Display-only : `@{handle}·{suffix}` dans `me/profile.tsx` et `me/qr.tsx` uniquement — jamais envoyé au serveur, `me.handle` reste propre. `identitySuffix` runtime-only (exclu de `persist()`). iOS Keychain survit à la réinstallation. Spec complète : `docs/IDENTITY.md`. | tsc 0 erreur + 1029/1029 verts, vecteur `deriveIdentitySuffix(Uint8Array(32))` = `'mzuhvl'` | `a19506f` |
 | B10 — Reveal not ready (legacy) | **DONE prouvé (client)** — device en validation Samo | Serveur bloqué à `reveal_ready` avec `mutual_score IS NULL` (Guard B migration `20260529`) ; `getEffectiveRevealSnapshot` écrasait le local `revealed` avec le statut serveur moins avancé. | Fix A merge (`lib/relationship-reveal-precedence.ts`) + `syncLocalSnapshotToRevealReady` + Fix B relu-snapshot (`app/relation/[id].tsx`) + correction 3 (pending au lieu de score privé). Pas de SQL. | tsc + 1044/1044 | `402503a` |
 | B11 — Nom absent / '(shared)' + propagation (racine : identités auth orphelines) | **DONE (client) — device en validation Samo** | Diagnostic Volet C : la vraie racine est le découplage session Supabase (AsyncStorage, purgée au reinstall) ↔ MeProfile ↔ privkey Keychain (survit) → claims sous identité fantôme, invisibles cross-device. Sous-symptômes : condition `existing.name==='(shared)'` verrouillait le patch ; `invite/identity` n'envoyait jamais `display_name` au serveur. | **Volet A** : `publishHandleBestEffort` depuis `invite/identity` (`28d8d35`). **Volet B** : `counterpartDisplayName` server-owned + cascade `privateLabel ?? counterpartDisplayName ?? name` + nettoyage legacy des `privateLabel` auto-posés à l'hydratation (`4643337`). **Volet C R1+R2** : `reconcileHandleOwnership` au bootstrap + écran `/identity/conflict` (jamais de logout silencieux) (`3228ac4`). Purge SQL 142 comptes de test (voir SUPABASE-REGISTRY, `219522b`). | tsc + 1060/1060 | `28d8d35` `4643337` `3228ac4` |
-| B12 — Double écran/sheet sur lien invite | **OPEN — diagnostic à faire** | Ouverture d'un lien invite depuis un état app déjà ouvert empile un deuxième écran ou sheet par-dessus l'existant. | — | — | — |
-| B13 — Countdown disparu + scroll fold leak | **OPEN — diagnostic à faire** | Effet de bord du fix B5 sur le layout : le countdown `cooking_reveal` a disparu et un espace vide apparaît au scroll. | — | — | — |
+| B12 — Double écran/sheet sur lien invite | **DONE (client)** — à vérifier device build 29 | En production, le linking natif d'expo-router route l'URL vers `/invite/[relationId]` ET le handler manuel (fallback dev-client, `_layout.tsx`) le faisait aussi via `router.push` → deux instances empilées. | Guard `pathname` (via `pathnameRef` live) : skip si un écran invite est déjà actif ; marquage de l'URL **avant** navigation (intention, pas complétion) pour fermer la course avec le linking natif ; `push`→`replace`. `devLogLinking` conservés pour la vérif device. | tsc + 1062/1062 | `53767df` |
+| B13 — Countdown disparu + scroll fold leak | **Scroll leak DONE ; countdown = à observer build 29** | (1) Fuite scroll : l'overlay cinématique était en absolute-fill **dans la carte d'action** → le rebond d'overscroll du ScrollView laissait voir le contenu dessous. (2) Countdown : suspecté effet de bord du remap B5 `revealed→reveal_ready`. | (1) Overlay déplacé à l'**échelle écran** (sibling du ScrollView, `styles.screen`), bounce conservé (`841be6d`). (2) **PREUVE** : test pipeline `getEffectiveRevealSnapshot` (C1-C4) → `status`/`unlockAt` **survivent** pour tous les états bien formés (C1 serveur ok, C2 serveur null) ; le countdown ne disparaît légitimement que si le serveur est déjà `reveal_ready` (C3) ou via une ligne serveur malformée sans `unlock_at` (C4, jamais produite — le serveur pose `unlock_at` atomiquement). **Pas de bug de précédence, aucun changement prod** (`0b162d6`). Hypothèse smoke test : cooking 15s écoulé, les deux côtés `in` → countdown correctement absent. | tsc + 1066/1066 | `841be6d` (scroll) · `0b162d6` (preuve countdown) |
 | B14 — Push token non ré-enregistré à la réinstallation | **PROBABLEMENT DISSOUS par la purge 2026-07-09** — à confirmer | Le "No active push token" concernait le compte fantôme `1eadf1cc` (supprimé). Les deux comptes légitimes ont des tokens actifs frais d'aujourd'hui. **Résidu à diagnostiquer plus tard (ne pas traiter maintenant)** : 3 tokens actifs par compte (enregistrements successifs jamais désactivés) → risque de notifications en double ou d'envois vers tokens morts. Lien avec B11 Volet C : les tokens se rattachent à la session auth active, pas au profil affiché. | — | — | — |
-| B15 — Handle modifiable après setup | **OPEN — décision D2 figée, à implémenter** | L'utilisateur peut changer son handle en re-entrant dans `me/edit`. D2 : le handle doit être gelé après le setup initial (non modifiable). | — | — | — |
+| B15 — Handle modifiable après setup | **DONE (client)** — à vérifier device build 29 | L'utilisateur pouvait changer son handle en re-entrant dans `me/edit`. D2 : handle gelé après le setup initial. | `handleLocked = me.isProfileSetup && !!me.handle` : champ Username en **read-only** `@handle·suffixe` (suffixe fiable depuis B16), seul `displayName` éditable ; `handleSave` envoie **toujours** `me.handle` existant (jamais la valeur d'un champ) → `reconcileHandleOwnership` intact. Guard SQL optionnel laissé en STOP (rejeter `handle != existant` post-setup, autoriser l'idempotence). Client seul. | tsc + 1066/1066 | `5cdeaf8` |
+| B16 — Suffixe d'identité null en production (Hermes) | **DONE prouvé (client)** — à vérifier device build 29 | `@noble/ed25519` v1.7.3 `getPublicKey` a besoin de SHA-512 ; son `utils.sha512` par défaut exige WebCrypto ou crypto Node — **absents sur Hermes** → throw systématique → `catch` silencieux (`if __DEV__`) → `identitySuffix` null. Tests verts par fausse assurance (Node a crypto, et ne touchait jamais `getPublicKey`). | SHA-512 pur-JS `@noble/hashes/sha512` câblé sur `ed.utils.sha512` (inconditionnel) ; `hermesSafeSha512` exporté + assert d'installation (W1) ; known-answer W2 (priv 0..31 → suffixe `kzdvvj`) ; `console.error` inconditionnel dans le catch (lisible Xcode/Console.app) ; IDENTITY.md corrigé (entropie vs hash, fonction par fonction). | tsc + 1062/1062, vecteur `kzdvvj` | `ac9cb7e` |
 
 ### git status / push — VÉRIFIÉ 2026-07-09
 
@@ -127,16 +128,20 @@ Rappels permanents :
 
 ## PROCHAINE ACTION
 
-**Session B10–B15** — corriger dans l'ordre, un commit par bug, preuve avant [DONE] :
+**Session B10–B16 : close côté client. Préparer BUILD 29.**
 
-1. **B10** — Implémenter le fix (deux fichiers, aucun SQL) après validation du diagnostic :
-   - `lib/relationship-reveal-precedence.ts` : guard "ne pas downgrader local `revealed`"
-   - `app/relation/[id].tsx:462` : fallback local si Guard B bloque le serveur
-2. **B11** — Diagnostic : propagation du nom B4 aux relations existantes + implémentation D1
-3. **B12** — Diagnostic : double écran/sheet sur lien invite
-4. **B13** — Diagnostic : countdown disparu + scroll fold leak (effet de bord B5)
-5. **B14** — Diagnostic : push token non ré-enregistré à la réinstallation
-6. **B15** — Implémenter D2 : handle gelé après setup
+Tous corrigés côté client (tsc + vitest verts, commités, **pas de push**) : B10, B11 (A/B/C), B12, B13 (scroll), B15, B16. B13-countdown : pas de bug (preuve), à observer. B14 : probablement dissous par la purge, résidu 3-tokens à diagnostiquer plus tard.
+
+À faire pour le build 29 :
+1. **Push** (sur demande Samo) les commits B10–B16.
+2. **Build 29** + TestFlight.
+3. **Vérifications device build 29** :
+   - B12 : ouvrir un lien invite (app fermée / ouverte) → **un seul** écran invite (logs `linking:` pour compter les déclenchements).
+   - B13 : scroll-bounce fiche pré-reveal → aucun contenu de score ne fuit ; countdown cooking visible tant que `unlock_at` non écoulé.
+   - B15 : `me/edit` post-setup → username **read-only** `@handle·suffixe`, seul le nom éditable.
+   - B16 : `me/profile` / `me/qr` → handle **avec** suffixe `·xxxxxx` (6 chars). Si absent : lire `console.error('[identity]…')` via Xcode/Console.app.
+   - B10/B11 : validation reveal + noms cross-device (en cours Samo).
+4. **SQL en attente (STOP — Samo applique)** : guard gel handle B15 (voir SUPABASE-REGISTRY / rapport de session).
 
 ---
-Session B1–B9 close (build 28 soumis). Session B10–B15 en cours.
+Session B1–B9 close (build 28 soumis). Session B10–B16 close côté client — build 29 en préparation.
