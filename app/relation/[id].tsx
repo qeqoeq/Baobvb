@@ -775,35 +775,6 @@ export default function RelationDetailScreen() {
               <Text style={styles.ctaButtonText}>{revealAwaitingLoad ? 'Preparing reveal…' : nextAction.ctaLabel}</Text>
             </Pressable>
           ) : null}
-
-          {isRevealing ? (
-            <Animated.View
-              style={[
-                StyleSheet.absoluteFillObject,
-                styles.revealOverlay,
-                { opacity: revealOverlayOpacity },
-              ]}
-            >
-              <Animated.View
-                style={[
-                  styles.revealTree,
-                  {
-                    transform: [
-                      {
-                        scale: revealTreeScale.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.05, 1],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <View style={styles.revealCanopy} />
-                <View style={styles.revealTrunk} />
-              </Animated.View>
-            </Animated.View>
-          ) : null}
         </View>
       ) : null}
 
@@ -1129,6 +1100,38 @@ export default function RelationDetailScreen() {
         </View>
       )}
     </ScrollView>
+    {/* B13: the reveal cinematic overlay is rendered at SCREEN scale (sibling of
+        the ScrollView), not inside the action card. At card scale a ScrollView
+        overscroll bounce exposed the content beneath it during the animation.
+        Screen scale covers the whole viewport, including the bounce region. */}
+    {isRevealing ? (
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFillObject,
+          styles.revealOverlay,
+          { opacity: revealOverlayOpacity },
+        ]}
+      >
+        <Animated.View
+          style={[
+            styles.revealTree,
+            {
+              transform: [
+                {
+                  scale: revealTreeScale.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.05, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.revealCanopy} />
+          <View style={styles.revealTrunk} />
+        </Animated.View>
+      </Animated.View>
+    ) : null}
     {showSharedReadingMoment ? (
       <View style={styles.sharedReadingMomentOverlay}>
         <View style={styles.sharedReadingMomentCard}>
@@ -1386,8 +1389,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   revealOverlay: {
+    // Screen-scale (B13): no borderRadius — this now fills the viewport.
     backgroundColor: colors.background.secondary,
-    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
