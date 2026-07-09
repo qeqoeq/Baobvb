@@ -1,10 +1,35 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { toBase32Prefix, deriveIdentitySuffix } from './identity-keypair';
+import * as ed from '@noble/ed25519';
+import { toBase32Prefix, deriveIdentitySuffix, hermesSafeSha512 } from './identity-keypair';
 import { getMeSnapshot, setIdentitySuffixForTest } from '../store/useRelationsStore';
 
 // loadOrCreateIdentityKeyPair depends on expo-crypto and expo-secure-store
 // (native modules); its integration is smoke-tested on device. Tests here
 // cover the pure derivation logic that runs in any JS environment.
+
+// ── Hermes SHA-512 wiring (B16) ───────────────────────────────────────────────
+// On Hermes, @noble/ed25519 v1.7.3's getPublicKey threw because its default
+// utils.sha512 needs WebCrypto or Node crypto (absent on-device) → identitySuffix
+// stayed null in production. The module wires a pure-JS SHA-512 from @noble/hashes.
+describe('Hermes SHA-512 wiring (B16)', () => {
+  it('W1: the pure-JS override is installed on ed.utils.sha512', () => {
+    // Fails if the wiring assignment is ever removed — Node crypto would
+    // otherwise keep getPublicKey working and hide the on-device regression.
+    expect(ed.utils.sha512).toBe(hermesSafeSha512);
+  });
+
+  it('W2: known-answer — priv vector 0..31 → getPublicKey → deriveIdentitySuffix', async () => {
+    // Exercises the exact on-device path (getPublicKey → SHA-512 → SHA-256 suffix)
+    // through the wired override. Expected suffix computed once against the lib.
+    const priv = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) priv[i] = i;
+    const pubkey = await ed.getPublicKey(priv);
+    expect(Buffer.from(pubkey).toString('hex')).toBe(
+      '03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8',
+    );
+    expect(deriveIdentitySuffix(pubkey)).toBe('kzdvvj');
+  });
+});
 
 describe('toBase32Prefix', () => {
   it('all-zero bytes → aaaaaa (each 5-bit group = 0 → "a")', () => {

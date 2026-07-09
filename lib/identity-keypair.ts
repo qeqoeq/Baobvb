@@ -1,8 +1,24 @@
 import { sha256 } from '@noble/hashes/sha256';
+import { sha512 } from '@noble/hashes/sha512';
 import * as ed from '@noble/ed25519';
 // expo-crypto and expo-secure-store are imported lazily inside
 // loadOrCreateIdentityKeyPair so this module is importable in Vitest (which
 // cannot parse react-native/index.js Flow syntax at the top-level).
+
+// Hermes-safe SHA-512 wiring (B16). @noble/ed25519 v1.7.3's getPublicKey needs
+// SHA-512, and its default utils.sha512 requires WebCrypto (self.crypto.subtle)
+// or Node's crypto — neither exists on Hermes, so on-device getPublicKey threw
+// systematically and identitySuffix stayed null in production (the failure was
+// swallowed by the catch below). Wire a pure-JS SHA-512 from @noble/hashes so
+// getPublicKey works in every environment. Unconditional: the override is used
+// in Node/Vitest too, so tests exercise the exact on-device code path.
+//
+// Exported so a test can assert it is actually installed — if the assignment
+// below is ever removed, Node's crypto would silently keep getPublicKey working
+// and the regression would go unnoticed (the exact false-assurance trap of B16).
+export const hermesSafeSha512 = (...m: Uint8Array[]): Promise<Uint8Array> =>
+  Promise.resolve(sha512(ed.utils.concatBytes(...m)));
+ed.utils.sha512 = hermesSafeSha512;
 
 const STORE_KEY = 'baobab.identity.ed25519.privkey';
 const BASE32_ALPHABET = 'abcdefghijklmnopqrstuvwxyz234567';
@@ -78,7 +94,13 @@ export async function loadOrCreateIdentityKeyPair(): Promise<{ suffix: string } 
     const suffix = deriveIdentitySuffix(pubkey);
     return { suffix };
   } catch (err) {
-    if (__DEV__) console.warn('[identity] loadOrCreateIdentityKeyPair failed:', err);
+    // Unconditional (B16): logged in production too so a device-attached
+    // Xcode/Console.app session surfaces the real error instead of a silent
+    // null suffix. Message only — no stack, no PII, no key material.
+    console.error(
+      '[identity] loadOrCreateIdentityKeyPair failed:',
+      err instanceof Error ? err.message : String(err),
+    );
     return null;
   }
 }

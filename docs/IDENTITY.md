@@ -13,8 +13,9 @@ Aucune vérification cryptographique n'est effectuée à ce stade.
 | Champ | Valeur |
 |---|---|
 | Algorithme | Ed25519 (courbe de Bernstein, 128 bits de sécurité) |
-| Lib | `@noble/ed25519` v1.7.3 (pure-JS, BigInt, Hermes-safe) |
+| Lib | `@noble/ed25519` v1.7.3 (pure-JS, BigInt) |
 | Entropie | `expo-crypto.getRandomBytesAsync(32)` — CSPRNG natif, indépendant de `globalThis.crypto` |
+| Hash SHA-512 (dérivation pubkey) | **pur-JS `@noble/hashes/sha512`, câblé sur `ed.utils.sha512`** (`identity-keypair.ts`) — voir note Hermes ci-dessous |
 | Stockage privkey | `expo-secure-store` v15 — iOS Keychain (`WHEN_UNLOCKED`), Android Keystore |
 | Clé SecureStore | `baobab.identity.ed25519.privkey` (hex, 64 chars) |
 | Export privkey | **Jamais** — aucune API d'export exposée |
@@ -24,7 +25,20 @@ Aucune vérification cryptographique n'est effectuée à ce stade.
 - **Génération** : lazy, au premier `loadOrCreateIdentityKeyPair()` après hydration du store (`_layout.tsx`).
 - **iOS** : la Keychain **survit à la réinstallation** (comportement Apple par défaut). La même paire est retrouvée. Nouvelle paire seulement si la Keychain a été explicitement purgée (factory reset, MDM enterprise wipe, ou effacement manuel).
 - **Android** : Keystore lié à l'installation → nouvelle paire à chaque réinstallation.
-- **Échec SecureStore** : capturé silencieusement, `identitySuffix = null` dans le store, handle affiché sans suffixe. Aucun blocage de l'utilisateur. Nouvelle tentative au prochain lancement.
+- **Échec** : capturé, `identitySuffix = null` dans le store, handle affiché sans suffixe. Aucun blocage de l'utilisateur. Nouvelle tentative au prochain lancement. Depuis B16 l'erreur est loggée **inconditionnellement** (`console.error`) — lisible via Xcode/Console.app sur device attaché (avant B16, `if (__DEV__)` masquait la cause en production).
+
+### Note Hermes — indépendance à l'environnement, fonction par fonction (B16)
+
+« Indépendant de `globalThis.crypto` » doit se vérifier **fonction par fonction**, pas par déclaration :
+
+- **Entropie** : `expo-crypto.getRandomBytesAsync(32)` — natif, OK sur Hermes. ✓
+- **SHA-512** : `@noble/ed25519` v1.7.3 `getPublicKey` a besoin de SHA-512. Son `utils.sha512` par défaut exige **WebCrypto (`self.crypto.subtle`)** ou **le `crypto` de Node** — **aucun des deux n'existe sur Hermes** → `getPublicKey` throwait systématiquement en production → `identitySuffix` null. Corrigé en câblant un SHA-512 **pur-JS** de `@noble/hashes` :
+
+  ```ts
+  ed.utils.sha512 = (...m) => Promise.resolve(sha512(ed.utils.concatBytes(...m)));
+  ```
+
+  Câblage **inconditionnel** (utilisé aussi en Node/Vitest → les tests parcourent le chemin réel). Un test (`identity-keypair.test.ts` W1) assert que l'override est installé : s'il était retiré, Node masquerait la régression via son propre crypto (le piège de fausse assurance de B16).
 
 ---
 
