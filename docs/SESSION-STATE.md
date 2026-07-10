@@ -1,4 +1,4 @@
-# SESSION-STATE.md — Passation bugs B1→B16
+# SESSION-STATE.md — Passation bugs B1→B19
 
 > Règle d'or : le repo est la source de vérité. Ce document POINTE vers fichiers et commits.
 > Il ne recopie JAMAIS de code déjà commité. Interdiction de régénérer du code de mémoire.
@@ -16,7 +16,7 @@ docs/SESSION-STATE.md, docs/PHASE-0.md, docs/SUPABASE-REGISTRY.md, docs/SMOKE-TE
 docs/PARKING.md, docs/baobab-design-bible.md si présent. NB : docs/PASSATION.md n'existe pas
 encore dans le repo (le doc de passation stratégique vit hors-repo, à committer plus tard).
 
-## ÉTAT ACTUEL — B1→B16
+## ÉTAT ACTUEL — B1→B19
 
 | Bug | Statut | Cause racine | Fix | Preuve | Commit |
 |---|---|---|---|---|---|
@@ -36,6 +36,9 @@ encore dans le repo (le doc de passation stratégique vit hors-repo, à committe
 | B14 — Push token non ré-enregistré à la réinstallation | **PROBABLEMENT DISSOUS par la purge 2026-07-09** — à confirmer | Le "No active push token" concernait le compte fantôme `1eadf1cc` (supprimé). Les deux comptes légitimes ont des tokens actifs frais d'aujourd'hui. **Résidu à diagnostiquer plus tard (ne pas traiter maintenant)** : 3 tokens actifs par compte (enregistrements successifs jamais désactivés) → risque de notifications en double ou d'envois vers tokens morts. Lien avec B11 Volet C : les tokens se rattachent à la session auth active, pas au profil affiché. | — | — | — |
 | B15 — Handle modifiable après setup | **DONE (client)** — à vérifier device build 29 | L'utilisateur pouvait changer son handle en re-entrant dans `me/edit`. D2 : handle gelé après le setup initial. | `handleLocked = me.isProfileSetup && !!me.handle` : champ Username en **read-only** `@handle·suffixe` (suffixe fiable depuis B16), seul `displayName` éditable ; `handleSave` envoie **toujours** `me.handle` existant (jamais la valeur d'un champ) → `reconcileHandleOwnership` intact. Guard SQL optionnel laissé en STOP (rejeter `handle != existant` post-setup, autoriser l'idempotence). Client seul. | tsc + 1066/1066 | `5cdeaf8` |
 | B16 — Suffixe d'identité null en production (Hermes) | **DONE prouvé (client)** — à vérifier device build 29 | `@noble/ed25519` v1.7.3 `getPublicKey` a besoin de SHA-512 ; son `utils.sha512` par défaut exige WebCrypto ou crypto Node — **absents sur Hermes** → throw systématique → `catch` silencieux (`if __DEV__`) → `identitySuffix` null. Tests verts par fausse assurance (Node a crypto, et ne touchait jamais `getPublicKey`). | SHA-512 pur-JS `@noble/hashes/sha512` câblé sur `ed.utils.sha512` (inconditionnel) ; `hermesSafeSha512` exporté + assert d'installation (W1) ; known-answer W2 (priv 0..31 → suffixe `kzdvvj`) ; `console.error` inconditionnel dans le catch (lisible Xcode/Console.app) ; IDENTITY.md corrigé (entropie vs hash, fonction par fonction). | tsc + 1062/1062, vecteur `kzdvvj` | `ac9cb7e` |
+| B17 — Fantômes locaux "(shared)" (relations purgées côté serveur) | **DONE (client)** — à vérifier device build 30 | Diagnostic D-A : les relations shared-backed dont le `canonicalRelationId` n'est plus retourné par `my_shared_relationships()` (lignes purgées) survivent en AsyncStorage avec `name='(shared)'` — le bootstrap ne les visite jamais (n'itère que sur `rows`). D'où 14 "(shared)" PhoneA vs 3 reveals serveur. Collision de scan « already exists » = handle du fantôme ; add-via-scan "(shared)" = ouverture du fantôme, pas un bug d'écriture. | `reconcileOrphanedSharedRelations(serverCanonicalIds)` : **archive** (réversible, jamais delete) les relations `bootstrap`/`claim` avec `canonicalRelationId` absent du set serveur ; appelée **uniquement** sur réponse RPC résolue (le fetch throw sur erreur → `.catch`) **et** si `rows.length > 0` (option b — un `[]` transitoire ne wipe pas tout) ; jamais `manual`/`scan`/`invite_number`. Log du compte. Bonus scan-prefill parké. Tests A1-A6. | tsc + 1072/1072 | `e770e51` |
+| B18 — Nom du counterpart absent de l'écran de reveal | **DONE (client)** — à vérifier device build 30 | Diagnostic D-B : la carte de reveal menait avec le tier (32pt), le nom n'apparaissait que dans le petit header. « Private link » = fallback claim sans nom (résorbé par la cascade B11 + nettoyage legacy `privateLabel===name`). Résidu = layout. | Pur layout `app/relation/[id].tsx` : `relationIdentity.primaryTitle` en 34pt en tête de la carte revealed, tier démoté en sous-titre 16pt. Cascade inchangée. | tsc + 1072/1072 | `cb499e8` |
+| B19 — Atterrissage post-save incohérent + espace reveal/en-attente perdu | **DONE (client)** — à vérifier device build 30 | Diagnostic D-C : `/reveals` ne montrait que `reveal_ready` et son entrée garden disparaissait sans ready ; post-save claim atterrissait sur `/(tabs)` (ego-graph abstrait). | `/reveals` à deux sections **Ready** + **Waiting** (`cooking_reveal` + `waiting_other_side` avec lecture) ; post-save **claim** → `/reveals` (Stack normal, pas de modal → compatible B7), non-claim → fiche relation ; capsule garden visible dès `pendingRevealCount = ready + waiting > 0`. | tsc + 1072/1072 | `7ca17ff` |
 
 ### git status / push — VÉRIFIÉ 2026-07-09
 
@@ -128,20 +131,19 @@ Rappels permanents :
 
 ## PROCHAINE ACTION
 
-**Session B10–B16 : close côté client. Préparer BUILD 29.**
+**Session B17–B19 : close côté client. BUILD 30 en cours.**
 
-Tous corrigés côté client (tsc + vitest verts, commités, **pas de push**) : B10, B11 (A/B/C), B12, B13 (scroll), B15, B16. B13-countdown : pas de bug (preuve), à observer. B14 : probablement dissous par la purge, résidu 3-tokens à diagnostiquer plus tard.
+Issus du smoke test build 29 (résultats mixtes). Corrigés côté client (tsc + 1072/1072, commités, poussés) : B17 (fantômes "(shared)"), B18 (nom dominant reveal), B19 (espace reveal Ready+Waiting + atterrissage post-save). SQL B15 appliqué + vérifié (voir SUPABASE-REGISTRY).
 
-À faire pour le build 29 :
-1. **Push** (sur demande Samo) les commits B10–B16.
-2. **Build 29** + TestFlight.
-3. **Vérifications device build 29** :
-   - B12 : ouvrir un lien invite (app fermée / ouverte) → **un seul** écran invite (logs `linking:` pour compter les déclenchements).
-   - B13 : scroll-bounce fiche pré-reveal → aucun contenu de score ne fuit ; countdown cooking visible tant que `unlock_at` non écoulé.
-   - B15 : `me/edit` post-setup → username **read-only** `@handle·suffixe`, seul le nom éditable.
-   - B16 : `me/profile` / `me/qr` → handle **avec** suffixe `·xxxxxx` (6 chars). Si absent : lire `console.error('[identity]…')` via Xcode/Console.app.
-   - B10/B11 : validation reveal + noms cross-device (en cours Samo).
-4. **SQL en attente (STOP — Samo applique)** : guard gel handle B15 (voir SUPABASE-REGISTRY / rapport de session).
+**Vérifications device build 30** (Update TestFlight, pas de réinstall) :
+- B17 : les "(shared)" fantômes disparaissent du garden (archivés) après un bootstrap réussi ; log `[bootstrap] archived N…` lisible via Console.app. Le scan d'une carte ne collisionne plus avec un fantôme.
+- B18 : écran de reveal → le **nom** domine (34pt), tier en sous-titre.
+- B19 : après une éval issue d'un claim → atterrissage sur **/reveals** (sections Ready + Waiting) ; capsule garden visible même sans `reveal_ready` (waiting/cooking).
+- Re-vérifier B10/B11/B12/B13/B15/B16 non régressés.
+
+**Note V8 (build 29)** : notifications push envoyées à 17h54 — réception observée, mais **suppression probable en foreground** (app active au moment du push). **À confirmer device verrouillé / app en background** au build 30. Lien possible avec le résidu 3-tokens B14 (doublons/tokens morts) — à surveiller.
+
+**Résidus ouverts** : B13-countdown (observation build 30) ; B14 (dissous ? + 3-tokens/compte) ; bonus scan-prefill (PARKING).
 
 ---
-Session B1–B9 close (build 28 soumis). Session B10–B16 close côté client — build 29 en préparation.
+Sessions B1–B9 (build 28), B10–B16 (build 29), B17–B19 (build 30). Toutes close côté client.
