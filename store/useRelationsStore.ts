@@ -2880,6 +2880,50 @@ export function materializePassDeliveries(
   return created;
 }
 
+/**
+ * Archives shared-backed relations whose canonical id is no longer returned by
+ * my_shared_relationships() — orphans left behind when the server row was purged
+ * or is otherwise gone (B17). Without this, such relations linger forever in the
+ * local store showing '(shared)' (the bootstrap can never backfill a name for a
+ * canonical id the server doesn't return).
+ *
+ * Contract (safety-critical):
+ *   - `serverCanonicalIds` MUST come from a RESOLVED my_shared_relationships()
+ *     response — never call this from a network-failure path. A thrown fetch
+ *     means we don't know the server truth and must NOT archive anything.
+ *   - Guard (option b): a caller passing an empty set is a no-op. We only
+ *     reconcile when the server confirmed at least one shared relation, so a
+ *     transient empty response can't wipe every shared relation.
+ *   - Scope: only source 'bootstrap' | 'claim' WITH a non-empty
+ *     canonicalRelationId. Never touches manual / scan / invite_number / local
+ *     drafts. Archive only (reversible) — never delete.
+ *
+ * Returns the number of relations archived.
+ */
+export function reconcileOrphanedSharedRelations(serverCanonicalIds: Set<string>): number {
+  if (serverCanonicalIds.size === 0) return 0;
+
+  let archivedCount = 0;
+  state.relations = state.relations.map((r) => {
+    if (r.archived) return r;
+    const isSharedBacked = r.source === 'bootstrap' || r.source === 'claim';
+    const canonicalId =
+      typeof r.canonicalRelationId === 'string' ? r.canonicalRelationId.trim() : '';
+    if (!isSharedBacked || !canonicalId) return r;
+    if (serverCanonicalIds.has(canonicalId)) return r;
+    archivedCount += 1;
+    return { ...r, archived: true };
+  });
+
+  if (archivedCount > 0) {
+    // Unconditional (device-readable via Xcode/Console.app on build 30).
+    console.log(`[bootstrap] archived ${archivedCount} orphaned shared relation(s)`);
+    emitChange();
+    persist();
+  }
+  return archivedCount;
+}
+
 // Exported for regression testing — not part of the public store API.
 export { upsertBootstrappedSharedRelations };
 export { openMutualReveal as openMutualRevealForTest };

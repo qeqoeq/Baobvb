@@ -13,6 +13,7 @@ import {
   getRelationSnapshotById,
   getRelationsSnapshot,
   materializePassDeliveries,
+  reconcileOrphanedSharedRelations,
   openMutualRevealForTest,
   purgeSeedData,
   resetDevStateToSeed,
@@ -1384,6 +1385,101 @@ describe('applyHydratedState — legacy privateLabel cleanup (B11 Volet B)', () 
     const rel = hydrateOne({ name: '(shared)', privateLabel: 'Coloc du 3e', counterpartDisplayName: 'Alice' });
     expect(rel.privateLabel).toBe('Coloc du 3e');
     expect(getNormalizedPrivateLabel(rel)).toBe('Coloc du 3e');
+  });
+});
+
+// ── reconcileOrphanedSharedRelations — B17 orphan archival ────────────────────
+//
+// Shared-backed relations whose canonical id is no longer returned by
+// my_shared_relationships() (server row purged) linger as local '(shared)'
+// ghosts. Reconciliation archives them — but ONLY on a resolved server response
+// carrying ≥1 id, and never touches manual/scan/invite_number relations.
+
+describe('reconcileOrphanedSharedRelations — B17 orphan archival', () => {
+  const SIDES = {
+    sideA: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: true },
+    sideB: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: true },
+  };
+  const SNAP = { status: 'revealed' as const, revealed: true, firstViewedAt: '2026-07-01T00:00:00Z' };
+
+  function rel(over: Record<string, unknown>) {
+    return {
+      id: 'x',
+      name: '(shared)',
+      source: 'bootstrap' as const,
+      archived: false,
+      createdAt: '2026-01-01T00:00:00Z',
+      identityStatus: 'verified' as const,
+      relationshipNameRevealed: true,
+      avatarSeed: '?',
+      anchorMode: 'bootstrap' as const,
+      anchorValue: null,
+      relationDepth: 'known' as const,
+      localState: { ...SIDES, revealSnapshot: SNAP },
+      ...over,
+    };
+  }
+
+  function hydrate(relations: Record<string, unknown>[]) {
+    applyHydratedState({
+      me: getMeSnapshot(),
+      relations,
+      evaluations: [],
+      places: [],
+      passedObjects: [],
+      receivedObjects: [],
+      progressivePrivateSignals: {},
+      seedVersion: SEED_VERSION,
+    });
+  }
+
+  beforeEach(() => {
+    resetDevStateToSeed();
+  });
+
+  it('A1: a bootstrap orphan (canonical id absent from server set) is archived', () => {
+    hydrate([rel({ id: 'orphan-b', source: 'bootstrap', canonicalRelationId: 'canon-gone' })]);
+    const n = reconcileOrphanedSharedRelations(new Set(['canon-present']));
+    expect(n).toBe(1);
+    expect(getRelationsSnapshot().find((r) => r.id === 'orphan-b')!.archived).toBe(true);
+  });
+
+  it('A2: a claim orphan is archived too', () => {
+    hydrate([rel({ id: 'orphan-c', source: 'claim', canonicalRelationId: 'canon-gone' })]);
+    const n = reconcileOrphanedSharedRelations(new Set(['canon-present']));
+    expect(n).toBe(1);
+    expect(getRelationsSnapshot().find((r) => r.id === 'orphan-c')!.archived).toBe(true);
+  });
+
+  it('A3: a legitimate shared relation present in the server set is untouched', () => {
+    hydrate([rel({ id: 'legit', source: 'bootstrap', canonicalRelationId: 'canon-present' })]);
+    const n = reconcileOrphanedSharedRelations(new Set(['canon-present']));
+    expect(n).toBe(0);
+    expect(getRelationsSnapshot().find((r) => r.id === 'legit')!.archived).toBe(false);
+  });
+
+  it('A4: manual / scan relations are never archived, even absent from the set', () => {
+    hydrate([
+      rel({ id: 'manual', source: 'manual', anchorMode: 'manual', name: 'Alice', canonicalRelationId: null }),
+      rel({ id: 'scan', source: 'scan', anchorMode: 'scan', name: 'Bob', canonicalRelationId: null }),
+    ]);
+    const n = reconcileOrphanedSharedRelations(new Set(['canon-present']));
+    expect(n).toBe(0);
+    expect(getRelationsSnapshot().find((r) => r.id === 'manual')!.archived).toBe(false);
+    expect(getRelationsSnapshot().find((r) => r.id === 'scan')!.archived).toBe(false);
+  });
+
+  it('A5: an empty server set is a no-op (covers rows-vide AND network-failure — no server truth → archive nothing)', () => {
+    hydrate([rel({ id: 'orphan-b', source: 'bootstrap', canonicalRelationId: 'canon-gone' })]);
+    const n = reconcileOrphanedSharedRelations(new Set());
+    expect(n).toBe(0);
+    expect(getRelationsSnapshot().find((r) => r.id === 'orphan-b')!.archived).toBe(false);
+  });
+
+  it('A6: an already-archived orphan is left alone (count not inflated)', () => {
+    hydrate([rel({ id: 'was-archived', source: 'bootstrap', archived: true, canonicalRelationId: 'canon-gone' })]);
+    const n = reconcileOrphanedSharedRelations(new Set(['canon-present']));
+    expect(n).toBe(0);
   });
 });
 

@@ -6,7 +6,7 @@ import { colors } from '../constants/colors';
 import { devLogLinking, maskIdForLog } from '../lib/dev-linking-log';
 import { fetchMySharedRelationships } from '../lib/bootstrap-shared-relations';
 import { fetchPassDeliveries } from '../lib/pass-delivery-repo';
-import { materializePassDeliveries } from '../store/useRelationsStore';
+import { materializePassDeliveries, reconcileOrphanedSharedRelations } from '../store/useRelationsStore';
 import { parseInviteDeepLink } from '../lib/parse-invite-deep-link';
 import {
   addPassDeliveryNotificationResponseListener,
@@ -221,7 +221,21 @@ export default function RootLayout() {
     if (bootstrappedForUserIdRef.current === userId) return;
     bootstrappedForUserIdRef.current = userId;
     void fetchMySharedRelationships()
-      .then((rows) => bootstrapSharedRelations(rows))
+      .then((rows) => {
+        bootstrapSharedRelations(rows);
+        // B17: this .then only runs on a RESOLVED RPC (fetch throws on error →
+        // handled in .catch), so the id set is the authoritative server truth.
+        // Guard (option b): only reconcile when the server confirmed ≥1 relation.
+        if (rows.length > 0) {
+          reconcileOrphanedSharedRelations(
+            new Set(
+              rows
+                .map((r) => (typeof r.relationship_id === 'string' ? r.relationship_id.trim() : ''))
+                .filter(Boolean),
+            ),
+          );
+        }
+      })
       .then(() => fetchPassDeliveries())
       .then((deliveries) => {
         if (deliveries.length === 0) return;
