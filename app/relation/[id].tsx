@@ -792,16 +792,16 @@ export default function RelationDetailScreen() {
               {readingVariant === 'revealed' ? (
                 sharedRevealDisplay.kind === 'score' ? (
                   <>
-                    <View style={styles.readingCardBrand}>
-                      <Text style={styles.readingCardKicker}>{'BAOBAB'}</Text>
-                      <Text style={styles.readingCardSubtitle}>{'Shared reading'}</Text>
+                    {/* B18: the counterpart's name dominates the reveal card;
+                        the tier is demoted to a subtitle under it. */}
+                    <View style={styles.revealNameHeader}>
+                      <Text style={styles.readingCardKicker}>{'BAOBAB · SHARED READING'}</Text>
+                      <Text style={styles.revealName}>{relationIdentity.primaryTitle}</Text>
+                      <Text style={[styles.revealTierSubtitle, { color: readingAccent }]}>
+                        {sharedRevealDisplay.tier}
+                      </Text>
                     </View>
                     <View style={styles.tierHeader}>
-                      <View style={styles.tierTitleRow}>
-                        <Text style={[styles.tierName, { color: readingAccent }]}>
-                          {sharedRevealDisplay.tier}
-                        </Text>
-                      </View>
                       {tierLexicon ? (
                         <Text style={styles.tierDefinition}>{tierLexicon.definition}</Text>
                       ) : null}
@@ -1237,6 +1237,27 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     color: colors.text.secondary,
     textAlign: 'center',
+  },
+  // B18: name-dominant reveal header.
+  revealNameHeader: {
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: spacing.xs,
+  },
+  revealName: {
+    fontSize: 34,
+    lineHeight: 38,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    color: colors.text.primary,
+    textAlign: 'center',
+  },
+  revealTierSubtitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
   identityBlock: {
     alignItems: 'center',
