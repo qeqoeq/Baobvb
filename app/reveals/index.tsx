@@ -57,6 +57,23 @@ export default function RevealLinksScreen() {
     [activeRelations, evaluations],
   );
 
+  // B19: relations in flight toward a reveal — cooking, or waiting on the other
+  // side once this side has submitted a reading. Grouped here so the "en attente"
+  // space is visible again in one place.
+  const waitingEntries = useMemo(
+    () =>
+      getFoundationalReadings(activeRelations, evaluations)
+        .filter((entry) => {
+          const s = entry.relation.localState.revealSnapshot.status;
+          return (
+            s === 'cooking_reveal' ||
+            (s === 'waiting_other_side' && entry.hasFoundationalReading)
+          );
+        })
+        .sort((a, b) => b.recentDate.localeCompare(a.recentDate)),
+    [activeRelations, evaluations],
+  );
+
   useEffect(() => {
     if (readyEntries.length === 0) return;
     const loop = Animated.loop(
@@ -123,7 +140,7 @@ export default function RevealLinksScreen() {
       </View>
 
       {/* ── List / Empty ───────────────────────────────────────────────────── */}
-      {readyEntries.length === 0 ? (
+      {readyEntries.length === 0 && waitingEntries.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>All clear</Text>
           <Text style={styles.emptyBody}>
@@ -134,26 +151,65 @@ export default function RevealLinksScreen() {
           </Pressable>
         </View>
       ) : (
-        <View style={styles.momentList}>
-          {readyEntries.map((entry) => {
-            const identity    = getRelationSheetIdentity({ relation: entry.relation });
-            const avatarColor = getAvatarRevealColor(entry.relation.name);
-            const initial     = (entry.relation.avatarSeed || entry.relation.name.charAt(0) || '?').toUpperCase();
-            return (
-              <Pressable
-                key={entry.relation.id}
-                onPress={() => handleMomentPress(entry.relation.id)}
-                style={styles.momentCard}
-              >
-                <View style={[styles.momentAvatar, { backgroundColor: avatarColor + '22', borderColor: avatarColor + '66' }]}>
-                  <Text style={[styles.momentInitial, { color: avatarColor + 'EE' }]}>{initial}</Text>
-                </View>
-                <Text style={styles.momentTitle}>{identity.primaryTitle}</Text>
-                <Text style={styles.momentChevron}>›</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <>
+          {readyEntries.length > 0 ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Ready</Text>
+              <View style={styles.momentList}>
+                {readyEntries.map((entry) => {
+                  const identity    = getRelationSheetIdentity({ relation: entry.relation });
+                  const avatarColor = getAvatarRevealColor(entry.relation.name);
+                  const initial     = (entry.relation.avatarSeed || entry.relation.name.charAt(0) || '?').toUpperCase();
+                  return (
+                    <Pressable
+                      key={entry.relation.id}
+                      onPress={() => handleMomentPress(entry.relation.id)}
+                      style={styles.momentCard}
+                    >
+                      <View style={[styles.momentAvatar, { backgroundColor: avatarColor + '22', borderColor: avatarColor + '66' }]}>
+                        <Text style={[styles.momentInitial, { color: avatarColor + 'EE' }]}>{initial}</Text>
+                      </View>
+                      <Text style={styles.momentTitle}>{identity.primaryTitle}</Text>
+                      <Text style={styles.momentChevron}>›</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
+          {waitingEntries.length > 0 ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Waiting</Text>
+              <View style={styles.momentList}>
+                {waitingEntries.map((entry) => {
+                  const identity    = getRelationSheetIdentity({ relation: entry.relation });
+                  const avatarColor = getAvatarRevealColor(entry.relation.name);
+                  const initial     = (entry.relation.avatarSeed || entry.relation.name.charAt(0) || '?').toUpperCase();
+                  const status      = entry.relation.localState.revealSnapshot.status === 'cooking_reveal'
+                    ? 'Reveal in progress'
+                    : 'Waiting for them';
+                  return (
+                    <Pressable
+                      key={entry.relation.id}
+                      onPress={() => handleMomentPress(entry.relation.id)}
+                      style={styles.momentCard}
+                    >
+                      <View style={[styles.momentAvatar, styles.momentAvatarWaiting]}>
+                        <Text style={styles.momentInitialWaiting}>{initial}</Text>
+                      </View>
+                      <View style={styles.momentTitleBlock}>
+                        <Text style={styles.momentTitle}>{identity.primaryTitle}</Text>
+                        <Text style={styles.momentStatus}>{status}</Text>
+                      </View>
+                      <Text style={styles.momentChevron}>›</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+        </>
       )}
     </ScrollView>
   );
@@ -296,10 +352,41 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
 
+  // ── Sections ──────────────────────────────────────────────────────────────
+
+  section: {
+    gap: spacing.sm,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: p.textMuted,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+
   // ── Moment list ───────────────────────────────────────────────────────────
 
   momentList: {
     gap: spacing.sm,
+  },
+  momentTitleBlock: {
+    flex: 1,
+    gap: 2,
+  },
+  momentStatus: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: p.textMuted,
+  },
+  momentAvatarWaiting: {
+    backgroundColor: p.textMuted + '1A',
+    borderColor: p.backBorder,
+  },
+  momentInitialWaiting: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: p.textSub,
   },
   momentCard: {
     backgroundColor: p.cardBg,

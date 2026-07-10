@@ -259,17 +259,17 @@ export default function EvaluateScreen() {
             fullMessage: url ? `${message}\n${url}` : message,
             onDeliveryChannelOpened: () => markInviteDeliveryOpened(relation.id),
             onDismiss: () => {
-              if (isFromClaim) { router.replace('/(tabs)'); } else { router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }); }
+              if (isFromClaim) { router.replace('/reveals'); } else { router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }); }
             },
           });
         } catch {
           // Invite creation failed — land on relation detail where retry is available.
-          if (isFromClaim) { router.replace('/(tabs)'); } else { router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }); }
+          if (isFromClaim) { router.replace('/reveals'); } else { router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }); }
         }
         return;
       }
       if (__DEV__) console.log('[evaluate:save] local-only → navigate to', relation.id);
-      if (isFromClaim) { router.replace('/(tabs)'); } else { router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }); }
+      if (isFromClaim) { router.replace('/reveals'); } else { router.replace({ pathname: '/relation/[id]', params: { id: relation.id } }); }
       return;
     }
     if (__DEV__) console.log('[evaluate:save] shared-backed → canonical', relation.canonicalRelationId);

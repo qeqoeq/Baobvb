@@ -164,7 +164,19 @@ export default function GardenScreen() {
         .sort((a, b) => b.recentDate.localeCompare(a.recentDate)),
     [entries],
   );
-  const readySignalCount = Math.min(readyEntries.length, 5);
+  // B19: relations in flight toward a reveal (cooking, or waiting on the other
+  // side once this side has a reading). Used only to keep the reveal-space entry
+  // visible even when nothing is `reveal_ready` yet.
+  const waitingCount = useMemo(
+    () =>
+      entries.filter((entry) => {
+        const s = entry.relation.localState.revealSnapshot.status;
+        return s === 'cooking_reveal' || (s === 'waiting_other_side' && entry.hasFoundationalReading);
+      }).length,
+    [entries],
+  );
+  const pendingRevealCount = readyEntries.length + waitingCount;
+  const readySignalCount = Math.min(Math.max(pendingRevealCount, 1), 5);
 
   const revealedEntries = useMemo(
     () =>
@@ -569,12 +581,13 @@ export default function GardenScreen() {
       ) : isOverviewMode ? (
         <>
           {/* ── Reveal card ──────────────────────────────────────────────────────── */}
-          {readyEntries.length > 0 ? (
+          {/* B19: visible as soon as anything is ready OR waiting/cooking-with-reading. */}
+          {pendingRevealCount > 0 ? (
             <View style={styles.readyMomentsSection}>
               <Pressable onPress={onReadyCardPress} style={styles.readyClusterCard}>
                 <View style={styles.readyClusterTopRow}>
                   <View style={styles.readyClusterCountRow}>
-                    <Text style={styles.readyClusterCount}>{readyEntries.length}</Text>
+                    <Text style={styles.readyClusterCount}>{pendingRevealCount}</Text>
                     <Text style={styles.readyClusterConcept}>Reveals</Text>
                   </View>
                   <View style={styles.readyClusterCTA}>
