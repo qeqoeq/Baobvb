@@ -21,6 +21,7 @@
       "autoIncrement": true,
       "distribution": "store",
       "environment": "production",
+      "channel": "production",
       "ios": {
         "credentialsSource": "remote"
       }

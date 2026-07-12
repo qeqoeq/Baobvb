@@ -8,6 +8,13 @@
     "scheme": "baobab",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d2eb9dbc-c750-49fa-91f0-71f344213d63",
+      "enabled": true
+    },
     "ios": {
       "supportsTablet": true,
       "usesAppleSignIn": true,
