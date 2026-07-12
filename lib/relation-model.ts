@@ -65,14 +65,20 @@ export function deriveRelationDepth(
   return 'encounter';
 }
 
+/** Placeholder name a bootstrap relation carries until a counterpart name is known. */
+export const SHARED_RELATION_PLACEHOLDER = '(shared)';
+/** Shown when a bootstrap relation has no counterpart name and no handle (B21). */
+export const PENDING_INVITE_LABEL = 'Invitation pending';
+
 export function getNormalizedPrivateLabel(
   relation: Pick<Relation, 'name'> & {
     privateLabel?: string | null;
     counterpartDisplayName?: string | null;
+    handle?: string | null;
   },
 ): string {
   // Cascade (B11 / Volet B): the user's private override wins, then the server
-  // truth (counterpart_display_name), then the legacy local `name` fallback.
+  // truth (counterpart_display_name), then the local `name`.
   const explicit =
     typeof relation.privateLabel === 'string' ? relation.privateLabel.trim() : '';
   if (explicit) return explicit;
@@ -81,7 +87,16 @@ export function getNormalizedPrivateLabel(
       ? relation.counterpartDisplayName.trim()
       : '';
   if (counterpart) return counterpart;
-  return relation.name.trim();
+  const name = relation.name.trim();
+  // B21: a bootstrap relation whose counterpart side is absent (invitation never
+  // claimed) or nameless carries the '(shared)' placeholder. Never surface it —
+  // fall back to the counterpart handle, else an explicit pending label.
+  if (name === SHARED_RELATION_PLACEHOLDER) {
+    const handle = typeof relation.handle === 'string' ? relation.handle.trim() : '';
+    if (handle) return handle;
+    return PENDING_INVITE_LABEL;
+  }
+  return name;
 }
 
 export function normalizeRelationModelFields(

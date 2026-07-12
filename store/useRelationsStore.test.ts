@@ -1229,7 +1229,9 @@ describe('upsertBootstrappedSharedRelations — counterpart identity (B4 / B11 V
     expect(rel!.counterpartDisplayName).toBeNull();
     expect(rel!.avatarSeed).toBe('?');
     expect(rel!.handle).toBeUndefined();
-    expect(getNormalizedPrivateLabel(rel!)).toBe('(shared)');
+    // B21: the '(shared)' placeholder is never surfaced — no name, no handle →
+    // explicit pending label instead.
+    expect(getNormalizedPrivateLabel(rel!)).toBe('Invitation pending');
   });
 
   it('N3 (backfill initial): existing placeholder relation gains counterpartDisplayName on next bootstrap', () => {
