@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
+import { getNormalizedPrivateLabel } from '../../lib/relation-model';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function ArchivedRelationsScreen() {
@@ -20,7 +21,7 @@ export default function ArchivedRelationsScreen() {
         <View style={styles.list}>
           {archivedRelations.map((relation) => (
             <View key={relation.id} style={styles.row}>
-              <Text style={styles.name}>{relation.name}</Text>
+              <Text style={styles.name}>{getNormalizedPrivateLabel(relation)}</Text>
               <Pressable
                 onPress={() => restoreRelation(relation.id)}
                 style={styles.restoreButton}

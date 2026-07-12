@@ -10,6 +10,7 @@ import {
   lookupPublicProfile,
   type PublicProfileLookupState,
 } from '../../lib/lookup-public-profile';
+import { getNormalizedPrivateLabel } from '../../lib/relation-model';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -181,7 +182,7 @@ export default function AddRelationScreen() {
           )
         : null;
       if (existingByCardMeId) {
-        Alert.alert('Person already exists', `${existingByCardMeId.name} is already in your Garden.`, [
+        Alert.alert('Person already exists', `${getNormalizedPrivateLabel(existingByCardMeId)} is already in your Garden.`, [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Open relationship', onPress: () => router.replace(`/relation/${existingByCardMeId.id}`) },
         ]);
@@ -194,7 +195,7 @@ export default function AddRelationScreen() {
           )
         : null;
       if (existingByHandle) {
-        Alert.alert('Likely duplicate', `${existingByHandle.name} already uses this scanned handle.`, [
+        Alert.alert('Likely duplicate', `${getNormalizedPrivateLabel(existingByHandle)} already uses this scanned handle.`, [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Open relationship', onPress: () => router.replace(`/relation/${existingByHandle.id}`) },
         ]);

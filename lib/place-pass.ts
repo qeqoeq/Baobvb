@@ -19,3 +19,11 @@ export function getPassSectionState(
   if (personalFit !== 'kept' && personalFit !== 'tried') return 'hidden';
   return eligibleCount > 0 ? 'cta' : 'empty';
 }
+
+/**
+ * Label for the pass button (B24). `name` should already be the cascade display
+ * name (getNormalizedPrivateLabel), never the raw relation.name placeholder.
+ */
+export function formatPassButtonLabel(name: string | null): string {
+  return name ? `Pass to ${name}` : 'Pass to…';
+}

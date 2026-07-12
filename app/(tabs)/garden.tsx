@@ -418,7 +418,7 @@ export default function GardenScreen() {
     const relationIdentity = getRelationSheetIdentity({ relation: entry.relation });
     const unread = entry.readingStatus === 'Unread';
     const sharedLink = getRevealedLinkStrength(entry.relation);
-    const avatarColor = getAvatarPersonalColor(entry.relation.name);
+    const avatarColor = getAvatarPersonalColor(relationIdentity.primaryTitle);
     const accent = isRevealed
       ? sharedLink?.accent ?? colors.accent.mutedSage
       : revealStatus === 'reveal_ready'
@@ -486,7 +486,7 @@ export default function GardenScreen() {
       >
         <View style={[styles.mappingAvatar, { backgroundColor: avatarColor + '22', borderColor: avatarColor + '44' }]}>
           <Text style={[styles.mappingInitial, { color: avatarColor }]}>
-            {(entry.relation.avatarSeed || entry.relation.name.charAt(0) || '?').toUpperCase()}
+            {(entry.relation.avatarSeed || relationIdentity.primaryTitle.charAt(0) || '?').toUpperCase()}
           </Text>
         </View>
         <View style={styles.mappingBody}>

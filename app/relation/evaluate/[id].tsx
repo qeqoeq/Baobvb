@@ -13,6 +13,7 @@ import {
   type PillarRating,
 } from '../../../lib/evaluation';
 import { newCanonicalRelationId } from '../../../lib/identity';
+import { getNormalizedPrivateLabel } from '../../../lib/relation-model';
 import { showPhoneInviteSheet } from '../../../lib/phone-invite-sheet';
 import {
   getMissingRequiredSignalsForPillar,
@@ -255,7 +256,7 @@ export default function EvaluateScreen() {
           });
           showPhoneInviteSheet({
             rawPhone: relation.anchorValue,
-            privateLabel: relation.name,
+            privateLabel: getNormalizedPrivateLabel(relation),
             fullMessage: url ? `${message}\n${url}` : message,
             onDeliveryChannelOpened: () => markInviteDeliveryOpened(relation.id),
             onDismiss: () => {
@@ -331,11 +332,11 @@ export default function EvaluateScreen() {
         <View style={styles.identityRow}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {(relation.avatarSeed || relation.name.charAt(0) || '?').toUpperCase()}
+              {(relation.avatarSeed || getNormalizedPrivateLabel(relation).charAt(0) || '?').toUpperCase()}
             </Text>
           </View>
           <View style={styles.identityBody}>
-            <Text style={styles.title}>{relation.name}</Text>
+            <Text style={styles.title}>{getNormalizedPrivateLabel(relation)}</Text>
             {relation.handle ? <Text style={styles.handle}>{relation.handle}</Text> : null}
             <Text style={styles.sourceText}>
               {sourceLabel}

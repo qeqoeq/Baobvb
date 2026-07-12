@@ -91,13 +91,13 @@ export default function ThroughScreen() {
       displayName: gatewayTitle,
       avatarSeed:
         gateway?.avatarSeed ||
-        (gateway?.name?.trim().charAt(0).toUpperCase() ?? '?'),
+        (gatewayTitle.trim().charAt(0).toUpperCase() || '?'),
     }),
     [gateway, gatewayTitle],
   );
 
   const gatewayInitial =
-    (gateway?.avatarSeed || gateway?.name?.trim().charAt(0) || '?').toUpperCase();
+    (gateway?.avatarSeed || gatewayTitle.trim().charAt(0) || '?').toUpperCase();
 
   // Gateway-aware tap: open gateways drill to Through X; locked → alert; others → relation.
   const handleNodeTap = useCallback((member: MapMember) => {

@@ -11,6 +11,8 @@ import {
 
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
+import { getNormalizedPrivateLabel } from '@/lib/relation-model';
+import { formatPassButtonLabel } from '@/lib/place-pass';
 import type { Relation } from '@/store/useRelationsStore';
 
 const NOTE_MAX_LENGTH = 80;
@@ -44,7 +46,7 @@ export function PlacePassSheet({
   const handlePass = () => {
     if (!selectedRelation) return;
     const trimmedNote = note.trim().slice(0, NOTE_MAX_LENGTH);
-    onPass(selectedRelation.id, selectedRelation.name, trimmedNote || undefined);
+    onPass(selectedRelation.id, getNormalizedPrivateLabel(selectedRelation), trimmedNote || undefined);
   };
 
   return (
@@ -66,6 +68,7 @@ export function PlacePassSheet({
         >
           {eligibleRelations.map((relation) => {
             const selected = relation.id === selectedId;
+            const label = getNormalizedPrivateLabel(relation);
             return (
               <Pressable
                 key={relation.id}
@@ -74,11 +77,11 @@ export function PlacePassSheet({
               >
                 <View style={[styles.avatar, selected && styles.avatarSelected]}>
                   <Text style={[styles.avatarText, selected && styles.avatarTextSelected]}>
-                    {relation.avatarSeed ?? '?'}
+                    {(relation.avatarSeed || label.charAt(0) || '?').toUpperCase()}
                   </Text>
                 </View>
                 <Text style={[styles.relationName, selected && styles.relationNameSelected]}>
-                  {relation.name}
+                  {label}
                 </Text>
               </Pressable>
             );
@@ -100,7 +103,7 @@ export function PlacePassSheet({
           style={[styles.passButton, !canPass && styles.passButtonDisabled]}
         >
           <Text style={styles.passButtonText}>
-            {canPass ? `Pass to ${selectedRelation.name}` : 'Pass to…'}
+            {formatPassButtonLabel(selectedRelation ? getNormalizedPrivateLabel(selectedRelation) : null)}
           </Text>
         </Pressable>
       </View>

@@ -142,7 +142,7 @@ export default function CircleScreen() {
   const pendingFromName = useMemo(() => {
     if (!pendingReceived) return null;
     const rel = relations.find((r) => r.id === pendingReceived.fromRelationId);
-    return rel ? rel.name : null;
+    return rel ? getRelationSheetIdentity({ relation: rel }).primaryTitle : null;
   }, [pendingReceived, relations]);
 
   const handleOpenReceived = useCallback(() => {

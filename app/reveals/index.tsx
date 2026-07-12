@@ -158,8 +158,8 @@ export default function RevealLinksScreen() {
               <View style={styles.momentList}>
                 {readyEntries.map((entry) => {
                   const identity    = getRelationSheetIdentity({ relation: entry.relation });
-                  const avatarColor = getAvatarRevealColor(entry.relation.name);
-                  const initial     = (entry.relation.avatarSeed || entry.relation.name.charAt(0) || '?').toUpperCase();
+                  const avatarColor = getAvatarRevealColor(identity.primaryTitle);
+                  const initial     = (entry.relation.avatarSeed || identity.primaryTitle.charAt(0) || '?').toUpperCase();
                   return (
                     <Pressable
                       key={entry.relation.id}
@@ -184,8 +184,8 @@ export default function RevealLinksScreen() {
               <View style={styles.momentList}>
                 {waitingEntries.map((entry) => {
                   const identity    = getRelationSheetIdentity({ relation: entry.relation });
-                  const avatarColor = getAvatarRevealColor(entry.relation.name);
-                  const initial     = (entry.relation.avatarSeed || entry.relation.name.charAt(0) || '?').toUpperCase();
+                  const avatarColor = getAvatarRevealColor(identity.primaryTitle);
+                  const initial     = (entry.relation.avatarSeed || identity.primaryTitle.charAt(0) || '?').toUpperCase();
                   const status      = entry.relation.localState.revealSnapshot.status === 'cooking_reveal'
                     ? 'Reveal in progress'
                     : 'Waiting for them';
