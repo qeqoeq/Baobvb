@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -9,6 +9,7 @@ import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import EgoGraph from '../../components/ui/EgoGraph';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
+import { getPrimaryNavItems, type PrimaryNavKey } from '../../lib/primary-nav';
 import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
 import { isRevealedNetworkMember } from '../../lib/relation-visibility';
 import {
@@ -377,6 +378,36 @@ export default function CircleScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* B23: permanent primary navigation. Always present — counts are only
+          informational badges, never the condition for an entry to exist. */}
+      <View style={[styles.primaryNav, { paddingBottom: bottomInset + spacing.xs }]}>
+        {getPrimaryNavItems({ pendingReveals: readyCount + formingCount }).map((item) => {
+          const routeByKey: Record<PrimaryNavKey, Href> = {
+            garden: '/garden',
+            places: '/place',
+            reveals: '/reveals',
+            profile: '/me/profile',
+          };
+          return (
+            <Pressable
+              key={item.key}
+              style={styles.primaryNavItem}
+              onPress={() => {
+                if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push(routeByKey[item.key]);
+              }}
+            >
+              <Text style={styles.primaryNavLabel}>{item.label}</Text>
+              {item.badge !== null ? (
+                <View style={styles.primaryNavBadge}>
+                  <Text style={styles.primaryNavBadgeText}>{item.badge}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -387,6 +418,46 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background.primary,
+  },
+  primaryNav: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.soft,
+    backgroundColor: colors.background.primary,
+  },
+  primaryNavItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  primaryNavLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text.secondary,
+    letterSpacing: 0.2,
+  },
+  primaryNavBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent.warmGold,
+  },
+  primaryNavBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.background.primary,
   },
   glowAccent: {
     position: 'absolute',

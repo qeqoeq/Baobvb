@@ -33,6 +33,9 @@ Les scores ne sont jamais visibles avant le mutual reveal. Le signatureBonus est
 - Décisions récepteur strictement locales — jamais de retour serveur
 - sourceRelationId jamais envoyé au serveur (constraint SQL + exclusion client)
 
+## Conventions UI
+- **Aucune surface de navigation ou fonctionnalité primaire ne disparaît quand son compteur est à zéro** — état vide explicite ou badge, jamais l'absence. (Pattern récurrent : B19 espace reveal, B22 CTA pass, B23 navigation home. Un compteur informe, il ne conditionne jamais l'existence de l'entrée.)
+
 ## Règles de travail
 - Aucune feature hors du périmètre de la phase courante (Phase 0 — TestFlight)
 - Toute idée nouvelle → docs/PARKING.md, pas dans le code
