@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PlaceNewReadSheet } from '@/components/place/PlaceNewReadSheet';
 import { PlacePassSheet } from '@/components/place/PlacePassSheet';
 import { createPassDelivery } from '@/lib/pass-delivery-repo';
+import { getPassSectionState } from '@/lib/place-pass';
 import { colors } from '@/constants/colors';
 import { radius, spacing } from '@/constants/spacing';
 import {
@@ -216,9 +217,7 @@ export default function PlaceDetailScreen() {
       return bAt.localeCompare(aAt);
     });
 
-  const showPassCta =
-    (place.personalFit === 'kept' || place.personalFit === 'tried') &&
-    eligibleRelations.length > 0;
+  const passSectionState = getPassSectionState(place.personalFit, eligibleRelations.length);
 
   return (
     <>
@@ -328,10 +327,17 @@ export default function PlaceDetailScreen() {
           <Text style={styles.readSavedText}>Read saved privately.</Text>
         ) : null}
 
-        {showPassCta ? (
+        {passSectionState === 'cta' ? (
           <Pressable onPress={handleOpenPassSheet} style={styles.passCtaButton}>
             <Text style={styles.passCtaText}>Who came to mind?</Text>
           </Pressable>
+        ) : passSectionState === 'empty' ? (
+          <View style={styles.passEmptyCard}>
+            <Text style={styles.passEmptyText}>Reveal a relation to start passing places.</Text>
+            <Pressable onPress={() => router.push('/reveals')} style={styles.passEmptyLink}>
+              <Text style={styles.passEmptyLinkText}>Go to reveals ›</Text>
+            </Pressable>
+          </View>
         ) : null}
         {passedToName !== null ? (
           <Text style={styles.passedConfirmText}>Passed to {passedToName}.</Text>
@@ -582,6 +588,28 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     fontSize: 13,
     fontWeight: '600',
+  },
+  passEmptyCard: {
+    marginTop: spacing.xs,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    backgroundColor: colors.background.secondary,
+    gap: spacing.xs,
+  },
+  passEmptyText: {
+    color: colors.text.secondary,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  passEmptyLink: {
+    alignSelf: 'flex-start',
+  },
+  passEmptyLinkText: {
+    color: colors.accent.warmGold,
+    fontSize: 13,
+    fontWeight: '700',
   },
   passedConfirmText: {
     color: colors.text.muted,

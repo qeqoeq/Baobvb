@@ -1324,6 +1324,125 @@ describe('upsertBootstrappedSharedRelations — counterpart identity (B4 / B11 V
   });
 });
 
+// ── upsertBootstrappedSharedRelations — B22 reveal status re-sync ──────────────
+//
+// The bootstrap row is server truth for status. An existing relation must adopt
+// a MORE advanced server status (waiting → revealed) so it becomes pass-eligible,
+// while never downgrading a local reveal and preserving firstViewedAt/mutualScore.
+
+describe('upsertBootstrappedSharedRelations — B22 reveal status re-sync', () => {
+  const CANON = 'b22-canon-001';
+  const SIDES = {
+    sideA: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: true },
+    sideB: { exists: true, identityStatus: 'verified' as const, hasPrivateReading: true },
+  };
+
+  function serverRow(status: string, over: Partial<SharedRelationBootstrapInput> = {}): SharedRelationBootstrapInput {
+    return {
+      relationship_id: CANON,
+      status,
+      my_side: 'sideA',
+      side_a_present: true,
+      side_b_present: true,
+      side_a_reading_id: 'ev-a',
+      side_b_reading_id: 'ev-b',
+      cooking_started_at: null,
+      unlock_at: null,
+      ready_at: status === 'reveal_ready' || status === 'revealed' ? '2026-07-01T00:00:00Z' : null,
+      revealed_at: status === 'revealed' ? '2026-07-01T00:00:00Z' : null,
+      relationship_name_revealed: status === 'revealed',
+      counterpart_public_profile_id: null,
+      counterpart_display_name: 'iPhoneBB',
+      counterpart_handle: '@iphonebb',
+      ...over,
+    };
+  }
+
+  function injectExisting(snapshot: object) {
+    applyHydratedState({
+      me: getMeSnapshot(),
+      relations: [
+        {
+          id: 'b22-rel',
+          name: '(shared)',
+          source: 'bootstrap' as const,
+          archived: false,
+          createdAt: '2026-05-01T00:00:00Z',
+          identityStatus: 'verified' as const,
+          relationshipNameRevealed: false,
+          avatarSeed: 'I',
+          anchorMode: 'bootstrap' as const,
+          anchorValue: null,
+          relationDepth: 'known' as const,
+          canonicalRelationId: CANON,
+          counterpartDisplayName: 'iPhoneBB',
+          localState: { ...SIDES, revealSnapshot: snapshot },
+        },
+      ],
+      evaluations: [],
+      places: [],
+      passedObjects: [],
+      receivedObjects: [],
+      progressivePrivateSignals: {},
+      seedVersion: SEED_VERSION,
+    });
+    return getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
+  }
+
+  beforeEach(() => {
+    resetDevStateToSeed();
+  });
+
+  it('Y1: existing waiting + server revealed → local advances to revealed', () => {
+    injectExisting({ status: 'waiting_other_side', revealed: false });
+    upsertBootstrappedSharedRelations([serverRow('revealed')]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
+    expect(rel.localState.revealSnapshot.status).toBe('revealed');
+    expect(rel.localState.revealSnapshot.revealed).toBe(true);
+    expect(rel.relationshipNameRevealed).toBe(true);
+  });
+
+  it('Y2: firstViewedAt is preserved when advancing (B5 gate not reset)', () => {
+    injectExisting({ status: 'reveal_ready', revealed: false, firstViewedAt: '2026-06-01T09:00:00Z' });
+    upsertBootstrappedSharedRelations([serverRow('revealed')]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
+    expect(rel.localState.revealSnapshot.status).toBe('revealed');
+    expect(rel.localState.revealSnapshot.firstViewedAt).toBe('2026-06-01T09:00:00Z');
+  });
+
+  it('Y3: local revealed + server waiting → NO downgrade (B10 Fix A)', () => {
+    injectExisting({ status: 'revealed', revealed: true, firstViewedAt: '2026-06-01T09:00:00Z' });
+    upsertBootstrappedSharedRelations([serverRow('waiting_other_side')]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
+    expect(rel.localState.revealSnapshot.status).toBe('revealed');
+    expect(rel.localState.revealSnapshot.revealed).toBe(true);
+  });
+
+  it('Y4: local mutualScore/tier preserved (server row carries neither)', () => {
+    // Hydration re-derives tier from mutualScore: getMutualTier(26) = 'Distant'.
+    injectExisting({ status: 'revealed', revealed: true, mutualScore: 26, tier: 'Distant', firstViewedAt: '2026-06-01T09:00:00Z' });
+    upsertBootstrappedSharedRelations([serverRow('revealed')]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
+    expect(rel.localState.revealSnapshot.mutualScore).toBe(26);
+    expect(rel.localState.revealSnapshot.tier).toBe('Distant');
+  });
+
+  it('Y5: a re-synced relation is pass-eligible (revealed + canonicalRelationId + !archived)', () => {
+    injectExisting({ status: 'waiting_other_side', revealed: false });
+    upsertBootstrappedSharedRelations([serverRow('revealed')]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
+    const eligible = rel.localState.revealSnapshot.revealed && !!rel.canonicalRelationId && !rel.archived;
+    expect(eligible).toBe(true);
+  });
+
+  it('Y6: a brand-new revealed row still creates a revealed relation (creation path unchanged)', () => {
+    upsertBootstrappedSharedRelations([serverRow('revealed', { relationship_id: 'b22-new-canon' })]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === 'b22-new-canon')!;
+    expect(rel).toBeDefined();
+    expect(rel.localState.revealSnapshot.revealed).toBe(true);
+  });
+});
+
 // ── applyHydratedState — legacy privateLabel cleanup (B11 Volet B) ────────────
 //
 // Older builds auto-set privateLabel = name (or the '(shared)' placeholder).

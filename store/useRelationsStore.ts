@@ -2728,12 +2728,46 @@ function buildSharedRevealLocalState(data: SharedRelationBootstrapInput): Relati
   };
 }
 
+const REVEAL_STATUS_RANK: Record<RelationshipRevealSnapshot['status'], number> = {
+  waiting_other_side: 0,
+  cooking_reveal: 1,
+  reveal_ready: 2,
+  revealed: 3,
+};
+
+/**
+ * Advances an existing relation's reveal snapshot from a bootstrap row (B22).
+ *
+ * The bootstrap row is server truth for `status`. Adopt it ONLY when the server
+ * is strictly more advanced than the local snapshot — never downgrade a local
+ * 'revealed' (B10 Fix A: a server row stuck at reveal_ready must not undo a
+ * local reveal). When advancing, preserve local `firstViewedAt` (the B5 open
+ * gate — the RPC row never carries it) and local `mutualScore`/`tier` (the
+ * 15-column RPC carries neither). Returns the same reference when unchanged.
+ */
+function mergeBootstrappedRevealSnapshot(
+  local: RelationshipRevealSnapshot,
+  server: RelationshipRevealSnapshot,
+): RelationshipRevealSnapshot {
+  if (REVEAL_STATUS_RANK[server.status] <= REVEAL_STATUS_RANK[local.status]) {
+    return local;
+  }
+  return {
+    ...server,
+    firstViewedAt: local.firstViewedAt ?? server.firstViewedAt,
+    mutualScore: local.mutualScore ?? server.mutualScore,
+    tier: local.tier ?? server.tier,
+    finalizedVersion: local.finalizedVersion ?? server.finalizedVersion,
+  };
+}
+
 /**
  * Idempotent upsert: for each backend row, create a minimal local relation if one
  * with the same canonicalRelationId does not already exist.
  *
  * Dedup key: canonicalRelationId only — never name / handle / heuristic.
- * Relations already present in the store (any source) are untouched.
+ * Existing relations: counterpart identity (B11) and reveal status (B22) are
+ * re-synced from the row; nothing else is touched.
  * Non-canonical rows (missing relationship_id) are silently skipped.
  */
 function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[]): void {
@@ -2760,7 +2794,18 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
       const displayNameNeedsUpdate =
         counterpartName.length > 0 && existing.counterpartDisplayName !== counterpartName;
 
-      if (newPpid || displayNameNeedsUpdate) {
+      // B22: re-sync the reveal status from the server row when it has advanced
+      // (e.g. waiting_other_side → revealed). Without this, a relation first
+      // materialized while waiting stays frozen locally even after the mutual
+      // reveal, so it never becomes pass-eligible and drops out of the picker.
+      const serverSnap = buildSharedRevealLocalState(row).revealSnapshot;
+      const mergedSnap = mergeBootstrappedRevealSnapshot(
+        existing.localState.revealSnapshot,
+        serverSnap,
+      );
+      const snapshotAdvanced = mergedSnap !== existing.localState.revealSnapshot;
+
+      if (newPpid || displayNameNeedsUpdate || snapshotAdvanced) {
         state.relations = state.relations.map((r) => {
           if (r.id !== existing.id) return r;
           const patch: Partial<Relation> = {};
@@ -2774,6 +2819,12 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
             }
             const h = row.counterpart_handle?.trim();
             if (h) patch.handle = h;
+          }
+          if (snapshotAdvanced) {
+            patch.localState = { ...r.localState, revealSnapshot: mergedSnap };
+            // Keep the top-level flag in sync so the B5 name-reveal gate can open
+            // once this side stamps firstViewedAt (never downgrades: only advances).
+            patch.relationshipNameRevealed = mergedSnap.revealed;
           }
           return { ...r, ...patch };
         });
