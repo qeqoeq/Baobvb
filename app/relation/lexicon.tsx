@@ -3,22 +3,17 @@ import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { type Tier } from '../../lib/evaluation';
-import {
-  getRelationshipLexiconEntry,
-  isRelationshipNameRevealed,
-} from '../../lib/relationship-lexicon';
+import { getRelationshipLexiconEntry } from '../../lib/relationship-lexicon';
+import { isLexiconDiscoverable } from '../../lib/relation-visibility';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 export default function RelationshipLexiconScreen() {
   const { evaluations, relations } = useRelationsStore();
 
+  // B20: archived relations no longer contribute a discovered tier.
   const revealedRelationIds = new Set(
     relations
-      .filter(
-        (relation) =>
-          isRelationshipNameRevealed(relation) &&
-          relation.localState.revealSnapshot.firstViewedAt !== undefined,
-      )
+      .filter((relation) => isLexiconDiscoverable(relation))
       .map((relation) => relation.id),
   );
 

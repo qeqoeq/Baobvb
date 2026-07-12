@@ -10,6 +10,7 @@ import { radius, spacing } from '../../constants/spacing';
 import EgoGraph from '../../components/ui/EgoGraph';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
 import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
+import { isRevealedNetworkMember } from '../../lib/relation-visibility';
 import {
   deriveGatewayAccessState,
   deriveGatewayPowerBand,
@@ -59,7 +60,9 @@ export default function CircleScreen() {
   // primarily_via are excluded from the canvas but count toward Network.
   const graphMembers = useMemo<MapMember[]>(
     () => readings
-      .filter((r) => r.relation.localState.revealSnapshot.status === 'revealed')
+      // B20: exclude archived — they must not appear on the canvas nor in the
+      // "in your Bao" count (networkCount = graphMembers.length).
+      .filter((r) => isRevealedNetworkMember(r.relation))
       .map((r) => {
         const gatewayPowerBand = deriveGatewayPowerBand(r);
         const relationIdentity = getRelationSheetIdentity({ relation: r.relation });

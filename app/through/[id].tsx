@@ -9,6 +9,7 @@ import { spacing } from '../../constants/spacing';
 import EgoGraph from '../../components/ui/EgoGraph';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
 import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
+import { isRevealedNetworkMember } from '../../lib/relation-visibility';
 import {
   deriveGatewayAccessState,
   deriveGatewayPowerBand,
@@ -59,7 +60,8 @@ export default function ThroughScreen() {
   const viaMembers = useMemo<MapMember[]>(
     () => readings
       .filter((r) => {
-        if (r.relation.localState.revealSnapshot.status !== 'revealed') return false;
+        // B20: archived relations never appear as gateway members.
+        if (!isRevealedNetworkMember(r.relation)) return false;
         const vs = deriveViaState(r, activeRelationsById);
         if (vs.kind !== 'via' || vs.relId !== id) return false;
         return derivePresenceMode(r, vs) === 'primarily_via';
