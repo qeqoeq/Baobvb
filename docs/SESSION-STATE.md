@@ -1,4 +1,4 @@
-# SESSION-STATE.md — Passation bugs B1→B19
+# SESSION-STATE.md — Passation bugs B1→B21
 
 > Règle d'or : le repo est la source de vérité. Ce document POINTE vers fichiers et commits.
 > Il ne recopie JAMAIS de code déjà commité. Interdiction de régénérer du code de mémoire.
@@ -16,7 +16,7 @@ docs/SESSION-STATE.md, docs/PHASE-0.md, docs/SUPABASE-REGISTRY.md, docs/SMOKE-TE
 docs/PARKING.md, docs/baobab-design-bible.md si présent. NB : docs/PASSATION.md n'existe pas
 encore dans le repo (le doc de passation stratégique vit hors-repo, à committer plus tard).
 
-## ÉTAT ACTUEL — B1→B19
+## ÉTAT ACTUEL — B1→B21
 
 | Bug | Statut | Cause racine | Fix | Preuve | Commit |
 |---|---|---|---|---|---|
@@ -39,6 +39,8 @@ encore dans le repo (le doc de passation stratégique vit hors-repo, à committe
 | B17 — Fantômes locaux "(shared)" (relations purgées côté serveur) | **DONE (client)** — à vérifier device build 30 | Diagnostic D-A : les relations shared-backed dont le `canonicalRelationId` n'est plus retourné par `my_shared_relationships()` (lignes purgées) survivent en AsyncStorage avec `name='(shared)'` — le bootstrap ne les visite jamais (n'itère que sur `rows`). D'où 14 "(shared)" PhoneA vs 3 reveals serveur. Collision de scan « already exists » = handle du fantôme ; add-via-scan "(shared)" = ouverture du fantôme, pas un bug d'écriture. | `reconcileOrphanedSharedRelations(serverCanonicalIds)` : **archive** (réversible, jamais delete) les relations `bootstrap`/`claim` avec `canonicalRelationId` absent du set serveur ; appelée **uniquement** sur réponse RPC résolue (le fetch throw sur erreur → `.catch`) **et** si `rows.length > 0` (option b — un `[]` transitoire ne wipe pas tout) ; jamais `manual`/`scan`/`invite_number`. Log du compte. Bonus scan-prefill parké. Tests A1-A6. | tsc + 1072/1072 | `e770e51` |
 | B18 — Nom du counterpart absent de l'écran de reveal | **DONE (client)** — à vérifier device build 30 | Diagnostic D-B : la carte de reveal menait avec le tier (32pt), le nom n'apparaissait que dans le petit header. « Private link » = fallback claim sans nom (résorbé par la cascade B11 + nettoyage legacy `privateLabel===name`). Résidu = layout. | Pur layout `app/relation/[id].tsx` : `relationIdentity.primaryTitle` en 34pt en tête de la carte revealed, tier démoté en sous-titre 16pt. Cascade inchangée. | tsc + 1072/1072 | `cb499e8` |
 | B19 — Atterrissage post-save incohérent + espace reveal/en-attente perdu | **DONE (client)** — à vérifier device build 30 | Diagnostic D-C : `/reveals` ne montrait que `reveal_ready` et son entrée garden disparaissait sans ready ; post-save claim atterrissait sur `/(tabs)` (ego-graph abstrait). | `/reveals` à deux sections **Ready** + **Waiting** (`cooking_reveal` + `waiting_other_side` avec lecture) ; post-save **claim** → `/reveals` (Stack normal, pas de modal → compatible B7), non-claim → fiche relation ; capsule garden visible dès `pendingRevealCount = ready + waiting > 0`. | tsc + 1072/1072 | `7ca17ff` |
+| B20 — EgoGraph home compte/affiche les archivés | **DONE prouvé (client)** — build 31 | Le home `graphMembers` (`app/(tabs)/index.tsx:62`) filtrait `status==='revealed'` **sans** `!archived` → les 14 fantômes archivés (B17) restaient sur le canvas + gonflaient « N in your Bao » (`networkCount = graphMembers.length`). Même trou dans Through (gateway members) et Lexique. | Prédicats testés `lib/relation-visibility.ts` : `isRevealedNetworkMember` (revealed && !archived) + `isLexiconDiscoverable` (name opened && !archived), appliqués à `index.tsx`, `through/[id].tsx`, `lexicon.tsx`. Garden + `/reveals` déjà OK. Tests N1-N5 (dont comptage) + L1-L3. | tsc + 1080/1080 | `1f96296` |
+| B21 — Entrée "(shared) / No reading yet / WAITING" persistante | **DONE (client, affichage)** — cause serveur à confirmer | Une relation bootstrap en `waiting_other_side`, sans lecture locale, dont le `counterpartDisplayName` reste vide → cascade retombe sur `name='(shared)'`. Hypothèse écartée par Samo (Q0 purge : seuls 2 profils, pas de `display_name=''`). **Contre-hypothèse (à confirmer par SQL)** : `side_b_user_id IS NULL` (invitation de mai jamais claimée) → LEFT JOIN sans counterpart → NULL légitime. Vise 34ed1c23 / 86aec1a5. Les deux "iPhoneBB" = 2 reveals distincts (51ed8b2b + 08ae6e54), pas un doublon. | **Affichage robuste aux deux hypothèses** : `getNormalizedPrivateLabel` ne surface plus jamais `'(shared)'` — fallback `counterpartHandle` sinon libellé explicite « Invitation pending » (anglicisé pour cohérence UI ; dire si FR souhaité). SQL de confirmation counterpart = STOP Samo. Tests B21-1..4. | tsc + 1087/1087 | `5e1705d` |
 
 ### git status / push — VÉRIFIÉ 2026-07-09
 
@@ -131,19 +133,25 @@ Rappels permanents :
 
 ## PROCHAINE ACTION
 
-**Session B17–B19 : close côté client. BUILD 30 en cours.**
+**Session B20–B21 : close côté client. BUILD 31 = dernière base OTA obligatoire.**
 
-Issus du smoke test build 29 (résultats mixtes). Corrigés côté client (tsc + 1072/1072, commités, poussés) : B17 (fantômes "(shared)"), B18 (nom dominant reveal), B19 (espace reveal Ready+Waiting + atterrissage post-save). SQL B15 appliqué + vérifié (voir SUPABASE-REGISTRY).
+Issus du smoke test build 30. Corrigés client (tsc + 1087/1087, poussés) : B20 (archivés exclus du graph/compteur/gateways/lexique), B21 (plus jamais "(shared)" en affichage → handle sinon « Invitation pending »).
 
-**Vérifications device build 30** (Update TestFlight, pas de réinstall) :
-- B17 : les "(shared)" fantômes disparaissent du garden (archivés) après un bootstrap réussi ; log `[bootstrap] archived N…` lisible via Console.app. Le scan d'une carte ne collisionne plus avec un fantôme.
-- B18 : écran de reveal → le **nom** domine (34pt), tier en sous-titre.
-- B19 : après une éval issue d'un claim → atterrissage sur **/reveals** (sections Ready + Waiting) ; capsule garden visible même sans `reveal_ready` (waiting/cooking).
-- Re-vérifier B10/B11/B12/B13/B15/B16 non régressés.
+**EAS Update configuré (`d77f941`)** : `expo-updates` installé, `app.json` (`updates.url` + `runtimeVersion.policy=appVersion`), `eas.json` (`channel=production`). **Build 31 embarque le runtime OTA → dernier build obligatoire.** Ensuite, tout fix **JS/asset-only** → `eas update --branch production`, **zéro build**. Limite : un changement natif (module, plugin, SDK, ou l'ajout d'expo-updates lui-même) exige un build + bump runtimeVersion.
 
-**Note V8 (build 29)** : notifications push envoyées à 17h54 — réception observée, mais **suppression probable en foreground** (app active au moment du push). **À confirmer device verrouillé / app en background** au build 30. Lien possible avec le résidu 3-tokens B14 (doublons/tokens morts) — à surveiller.
+**Vérifications device build 31** (Update TestFlight, pas de réinstall) :
+- B20 : home « in your Bao » ne compte/affiche plus les archivés ; Through + Lexique idem.
+- B21 : l'entrée ex-"(shared) WAITING" affiche maintenant un handle ou « Invitation pending », jamais "(shared)".
+- Re-vérifier B17/B18/B19 + B10-B16 non régressés.
+- **OTA smoke** : après build 31 installé, pousser un `eas update` trivial et confirmer réception au relaunch.
 
-**Résidus ouverts** : B13-countdown (observation build 30) ; B14 (dissous ? + 3-tokens/compte) ; bonus scan-prefill (PARKING).
+**SQL en attente (STOP — Samo applique)** :
+- B21 confirmation : identifier 34ed1c23 / 86aec1a5 — `side_b_user_id IS NULL` (invitation jamais claimée) ? ou counterpart display_name réel ? (requête dans le rapport de session).
+- (optionnel) critère de purge élargi `display_name IS NULL OR btrim(display_name)=''`.
+
+**Note V8 (build 29-30)** : push envoyées 17h54 — réception observée, **suppression probable en foreground**. **À confirmer device verrouillé / background**. Lien résidu 3-tokens B14 (doublons/tokens morts).
+
+**Résidus ouverts** : B13-countdown (observation) ; B14 (dissous ? + 3-tokens) ; bonus scan-prefill (PARKING) ; libellé « Invitation pending » (FR/EN à trancher).
 
 ---
-Sessions B1–B9 (build 28), B10–B16 (build 29), B17–B19 (build 30). Toutes close côté client.
+Sessions B1–B9 (build 28), B10–B16 (build 29), B17–B19 (build 30), B20–B21 (build 31 — 1ère base OTA). Toutes close côté client.
