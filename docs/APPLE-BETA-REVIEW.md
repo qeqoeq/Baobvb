@@ -17,28 +17,26 @@ Preuves code :
   - `handleVerify` → `verifyEmailOtp(email, code)` (ligne 74) — saisie d'un **code à 6 chiffres** (ligne 194-208)
   - `handleApple` → `signInWithApple()` (ligne 39) — bouton « Continue with Apple »
 - Implémentation : `lib/supabase-auth.ts`
-  - `requestEmailOtp` → `supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } })` (≈ ligne 102-105)
-  - `verifyEmailOtp` → `supabase.auth.verifyOtp({ email, token, type: 'email' })` (≈ ligne 116-120)
-  - `signInWithApple` → `supabase.auth.signInWithIdToken({ provider: 'apple', ... })` (≈ ligne 69-72)
+  - `requestEmailOtp` → `supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } })` (ligne 102-105)
+  - `verifyEmailOtp` → `supabase.auth.verifyOtp({ email, token, type: 'email' })` (ligne 116-120)
+  - `signInWithApple` → `supabase.auth.signInWithIdToken({ provider: 'apple', ... })` (ligne 69-72)
 
 **Il n'y a NI mot de passe, NI étape de confirmation d'email préalable.** `shouldCreateUser: true` :
 l'inscription est libre et se fait **dans l'app** — l'utilisateur saisit un email, reçoit un code à
 6 chiffres, le saisit, et il est connecté (le code EST l'authentification). Aucun `signInWithPassword`,
 aucun `signUp` mot de passe, aucun écran « confirmez votre email avant de vous connecter ».
 
-### ⚠️ Conséquence pour la review Apple (à traiter — voir §3 prérequis)
+### Stratégie reviewer : Sign in with Apple
 
-Un compte OTP **pré-rempli ne peut pas être ouvert par un reviewer** : le code part dans une boîte
-mail que le reviewer ne possède pas. Deux solutions, par ordre de préférence :
+Un compte OTP **pré-rempli ne peut pas être ouvert par un reviewer** (le code part dans une boîte mail
+qu'il ne possède pas), et **Supabase n'a PAS de "Test OTP" pour l'email** — cette fonctionnalité
+n'existe que pour le provider **Phone** (vérifié doc + discussions Supabase ; le chemin
+Authentication → Email → Test OTPs n'existe pas). N'improvise donc rien sur `auth.users` en prod.
 
-- **(recommandé) Test OTP fixe** (config dashboard Supabase, action Samo) : mapper
-  `mpksam+baobab.review@gmail.com` → code fixe **`424242`**. Le reviewer saisit l'email + ce code,
-  et atterrit sur le **compte review pré-seedé** (relation révélée, lieux, pass) sans accès à la boîte.
-  *Supabase → Authentication → (Providers/Email) → Test OTPs → ajouter la paire email/code.*
-- **(repli)** Le reviewer s'inscrit avec **sa propre** adresse (onboarding complet) et ouvre un
-  **lien d'invitation live** collé dans les Review Notes (généré depuis PhoneA juste avant soumission).
-
-Le reste du kit suppose l'option recommandée (Test OTP `424242`).
+→ **Chemin reviewer = « Sign in with Apple »** (déjà présent, `sign-in.tsx:39`) : **zéro config**, un
+compte frais est créé instantanément — parfaitement acceptable pour une **beta review**. Le reviewer
+verra l'état vide + les fonctionnalités solo (profil, lieux, invitation) ; le cœur reveal nécessite
+deux personnes connectées, ce qui est **attendu** et expliqué dans les Review Notes.
 
 ---
 
@@ -57,87 +55,46 @@ mpksam@gmail.com
 ### Sign-In Information
 ```
 Sign-In required: YES
-User Name: mpksam+baobab.review@gmail.com
-Password:  OTP-see-notes
+User Name: (N/A — use Sign in with Apple, see Review Notes)
+Password:  (N/A — passwordless)
 ```
-*(Baobab n'a pas de mot de passe — le champ Password est un marqueur ; le vrai code est dans les Review Notes ci-dessous.)*
+*(Baobab est sans mot de passe. Le reviewer se connecte via « Sign in with Apple » — aucun identifiant à fournir.)*
 
-### Review Notes (bilingue FR / EN — coller tel quel)
+### Review Notes (coller tel quel)
 ```
-FR —
-Baobab utilise une connexion SANS mot de passe (code par email), pas de mot de passe classique.
-
-Pour vous connecter au compte de test :
-1. Ouvrez l'app, « Continue with email ».
-2. Email : mpksam+baobab.review@gmail.com
-3. « Send code », puis saisissez le code : 424242
-   (code de test fixe configuré pour la review — pas besoin d'accéder à une boîte mail)
-Ce compte est déjà configuré (profil @baobab.review, une relation révélée, des lieux, un lieu partagé) — vous avez tout de suite du contenu réel à explorer.
-
-Alternative : « Continue with email » avec VOTRE propre adresse crée un compte vierge (démo de l'inscription libre). « Continue with Apple » fonctionne aussi mais démarre vide.
-Note : le cœur de l'app (reveal mutuel) nécessite deux personnes ; le compte de test contient déjà une relation complétée pour que vous puissiez l'ouvrir immédiatement.
-
-EN —
-Baobab uses PASSWORDLESS sign-in (email code) — there is no traditional password.
-
-To sign in to the test account:
-1. Open the app, tap "Continue with email".
-2. Email: mpksam+baobab.review@gmail.com
-3. Tap "Send code", then enter code: 424242
-   (fixed test code configured for review — no mailbox access needed)
-This account is pre-set (profile @baobab.review, one revealed relationship, saved places, a shared place) — real content is available immediately.
-
-Alternative: "Continue with email" with YOUR OWN address creates a fresh empty account (shows the free sign-up). "Continue with Apple" also works but starts empty.
-Note: the core feature (mutual reveal) requires two people; the test account already contains a completed relationship so you can open it right away.
+Sign-in: please use Sign in with Apple - creates an account instantly, no credentials needed. Alternative: email one-time code (open sign-up, any email works). The invitation/reveal flow requires two connected users - a fresh reviewer account will see the empty state plus profile, places, and invitation features, which is expected.
 ```
 
 ---
 
-## 3. CHECKLIST DEVICE — créer le compte review avec une connexion active
+## 3. CHECKLIST DEVICE (OPTIONNELLE — non nécessaire pour la beta review)
 
-**Chemin le plus rapide : deux iPhones physiques sur le build 31 TestFlight.**
+> **Non requis pour la beta review.** Le reviewer se connecte via Sign in with Apple sur un compte
+> frais et voit l'état vide + les fonctionnalités solo, ce qui suffit. Cette section n'est utile que si
+> tu veux, en plus, montrer un compte déjà peuplé (démo perso) — elle ne conditionne pas la soumission.
+
+**Chemin le plus rapide (si tu le fais quand même) : deux iPhones physiques sur le build 31 TestFlight.**
 - **PhoneA** = ton iPhone habituel (déjà peuplé) → émet l'invitation.
-- **Compte review** = le second iPhone (iPhoneBB), déconnecté puis reconnecté sur l'alias review.
+- **Second compte** = le second iPhone (iPhoneBB), connecté via Sign in with Apple (ou email code).
 
-Faire le seed sur le **vrai build 31** (même binaire + même backend prod que le reviewer) est plus fidèle
-qu'un simulateur. *(Alternative simulateur : `eas build --profile development-simulator` puis l'installer —
-plus lent, et Apple Sign In n'y fonctionne pas ; à éviter sauf si pas de 2ᵉ device.)*
+Faire le seed sur le vrai build 31 (même binaire + backend prod que le reviewer) est plus fidèle qu'un
+simulateur. *(Alternative simulateur : `eas build --profile development-simulator` — plus lent, et Apple
+Sign In n'y fonctionne pas.)*
 
-### Prérequis (Samo, dashboard — une fois)
-0. Supabase → Authentication → Email → **Test OTPs** : ajouter
-   `mpksam+baobab.review@gmail.com` → `424242`. (Sans ça, le reviewer ne pourra pas se connecter.)
-
-### Seed du compte review (ordre exact)
-1. **iPhoneBB** : ouvrir Baobab (build 31) → Réglages → **Se déconnecter** (si un compte est actif).
-2. **S'inscrire en review** : « Continue with email » → `mpksam+baobab.review@gmail.com` → « Send code »
-   → saisir `424242` (Test OTP) → connecté.
-3. **Setup profil** : nom « Baobab Review », handle suggéré **`@baobab.review`** → enregistrer.
-   Vérifier l'affichage `@baobab.review·xxxxxx` (suffixe B16).
-4. **PhoneA** : créer/ouvrir une relation → **générer le lien d'invitation** (ou afficher le QR).
-5. **Ouvrir le lien sur iPhoneBB** (compte review) → « Continue and read » → **claim** → faire la
-   **lecture privée** (répondre à l'évaluation) → save. La relation passe en attente de l'autre côté.
-6. **PhoneA** : ouvrir la même relation → compléter **sa** lecture privée. Dès que les deux côtés sont
-   « in », le **reveal mutuel** devient ouvrable des deux côtés.
-7. **iPhoneBB** : ouvrir le reveal (cinématique + nom + tier) → confirme que le compte review a une
-   relation **révélée** réelle.
-8. **Lieux + pass** (pour couvrir la description) : sur PhoneA, garder un lieu (kept) puis **le partager**
-   (« Who came to mind? » → Baobab Review). Sur iPhoneBB, le lieu **reçu** apparaît → le garder.
-   Optionnel : iPhoneBB garde aussi un lieu à lui.
-9. **Vérif finale iPhoneBB** : Garden montre la relation révélée avec nom réel ; barre de navigation
-   permanente (Garden/Places/Reveals/You) ; au moins un lieu ; un reveal ouvrable/ouvert.
-10. **Laisser iPhoneBB connecté** sur l'alias — le reviewer rejoindra le **même compte** via le Test OTP.
-
-### Au moment de soumettre
-- Générer un **lien d'invitation frais** depuis PhoneA et le coller dans les Review Notes **uniquement**
-  si tu choisis le repli (self-signup) au lieu du Test OTP. Avec le Test OTP, inutile.
-- Vérifier build 31 en « Ready to Submit », remplir §2, cocher les capacités de chiffrement/export
-  (usage standard), soumettre.
+Ordre :
+1. **iPhoneBB** : ouvrir Baobab → Réglages → **Se déconnecter** si besoin → « Sign in with Apple ».
+2. **Setup profil** : nom + handle (ex. `@demo`) → enregistrer (vérifier le suffixe B16).
+3. **PhoneA** : ouvrir/créer une relation → **générer le lien d'invitation** (ou QR).
+4. **iPhoneBB** : ouvrir le lien → **claim** → **lecture privée** → save.
+5. **PhoneA** : compléter **sa** lecture privée → le **reveal mutuel** devient ouvrable des deux côtés.
+6. **iPhoneBB** : ouvrir le reveal (nom + tier réels).
+7. **Lieux + pass** : PhoneA garde un lieu (kept) → « Who came to mind? » → le partager au second compte
+   → iPhoneBB voit le lieu reçu et le garde.
 
 ---
 
 ## Récapitulatif à cocher avant envoi
-- [ ] Test OTP `mpksam+baobab.review@gmail.com` → `424242` configuré (Supabase)
-- [ ] Compte review seedé (profil @baobab.review + relation révélée + lieux + pass)
-- [ ] iPhoneBB laissé connecté sur l'alias
-- [ ] §2 collé dans App Store Connect (Description, Feedback Email, Sign-In Info, Review Notes bilingues)
+- [ ] §2 collé dans App Store Connect (Description, Feedback Email, Sign-In Info, Review Notes)
 - [ ] Build 31 sélectionné pour la review externe
+- [ ] « Sign in with Apple » testé une fois sur un compte frais (build 31) — fonctionne
+- [ ] (optionnel) compte démo peuplé si souhaité — pas requis
