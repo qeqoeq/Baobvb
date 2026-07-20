@@ -17,12 +17,14 @@ GO auditeur reçu, arbitrages tranchés, les trois exécutés dans l'ordre.
 |---|---|---|---|
 | **B26** | ✅ Corrigé (OTA) | `b71a5e2` | `resyncSharedRelations()` (throttle 45s + in-flight, **sans** réconciliation — arbitrage A), AppState 'active' + RefreshControl (garden, reveals) + useFocusEffect (fiche). tsc 0, vitest +8. |
 | **B25** | ✅ Corrigé (OTA) | `85b6696` | Résolution `id \|\| canonicalRelationId` (fiche + `getRelationSnapshotById`) + machine 3 états (resolving→found/unavailable, grâce 8s, force-resync B26). tsc 0, vitest +13. |
-| **B27-app** | ✅ Corrigé (OTA) | `acbea07` | Traduction FR directe du parcours critique (arbitrage C, sans lib i18n). Enum `Tier` intact → `lib/tier-display.ts` (mots de marque **en attente Samo**, fallback EN). tsc 0, vitest 1127/1127. |
+| **B27-app** | ✅ Corrigé (OTA) | `acbea07` + `bb20f64` | Traduction FR directe du parcours critique (arbitrage C, sans lib i18n). Enum `Tier` intact → `lib/tier-display.ts`. Mots de marque validés + remplis (`bb20f64`, micro-OTA). tsc 0, vitest 1127/1127. |
 | **B27-notifs** | 🟠 Code prêt, **déploiement STOP** | `a191151` | Fallbacks FR `notification-dispatch-runner:37-38`. Sous-tâche serveur (arbitrage B) — **pas OTA**, deploy en attente validation Samo (cf. `verify_jwt`). |
 
-**OTA publié** (branch `production`, runtime `1.0.0`, iOS) — Update group `ca43dd0b-2fd0-429b-9e67-61111ef50179`, iOS update `019f81ad-773d-7841-87e4-20ea2fd2df19`, commit `acbea07`.
+**OTA publiés** (branch `production`, runtime `1.0.0`, iOS) :
+- Fixes B25/B26/B27-app — group `ca43dd0b-2fd0-429b-9e67-61111ef50179`, iOS update `019f81ad-773d-7841-87e4-20ea2fd2df19`, commit `acbea07`.
+- Complétion mots de tiers FR — group `ca5238ca-3969-4b21-97ea-5b27b5c4e7e5`, iOS update `019f81b4-d374-7822-87ea-ede00ab56663`, commit `bb20f64`.
 
-Reste en attente Samo : (1) 7 mots de marque des tiers pour compléter `TIER_DISPLAY_FR` (micro-OTA de suivi) ; (2) validation de la commande `supabase functions deploy` pour B27-notifs.
+Reste en attente Samo : validation de la commande `supabase functions deploy` pour B27-notifs (cf. `verify_jwt`). Mots de tiers : **faits**.
 
 ---
 

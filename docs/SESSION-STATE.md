@@ -23,9 +23,10 @@ Première session testeuse externe réelle (Sou, @sounj, 20/07) : serveur 100 % 
 - **B** — B27-notifs = **sous-tâche serveur séparée** avec STOP (pas parkée) ; le texte push vit dans l'Edge Function, hors bundle OTA.
 - **C** — traduction FR **directe, sans lib i18n**. Noms de tiers = enum load-bearing → couche d'affichage FR (`getTierDisplayLabel`), **mots de marque fournis par Samo** (non devinés).
 
-**En attente Samo** :
-1. Les 7 mots de marque des tiers (Rooted/Anchor/Steady/Active/Forming/Distant + Legend côté serveur) → remplir `TIER_DISPLAY_FR` dans `lib/tier-display.ts` (fallback EN en attendant) → **micro-OTA de suivi**.
-2. Validation de la commande `supabase functions deploy notification-dispatch-runner` pour B27-notifs — **attention `verify_jwt`** : la fonction est appelée par le cron via `x-dispatch-secret` (pas de JWT), redéployer sans préserver ce réglage la casserait (organe réparé 2×).
+**Complété 2026-07-21** — mots de marque des tiers validés (Samo + auditeur) et remplis dans `TIER_DISPLAY_FR` : Rooted→Enraciné, Anchor→Pilier, Steady→Stable, Active→Vivant, Forming→Naissant, Distant→Distant, Legend→Légende (`bb20f64`). Surfaces de rendu de tier vérifiées exhaustives (carte reveal + lexique seules ; EgoGraph=géométrie, garden=readingStatus/micro-signaux ; `badgeLabel`/`getVisibleTierLabel` non consommés). **Micro-OTA** : group `ca5238ca-3969-4b21-97ea-5b27b5c4e7e5` / iOS update `019f81b4-d374-7822-87ea-ede00ab56663`.
+
+**Reste en attente Samo** :
+1. Validation de la commande `supabase functions deploy notification-dispatch-runner` pour B27-notifs — **attention `verify_jwt`** : la fonction est appelée par le cron via `x-dispatch-secret` (pas de JWT), redéployer sans préserver ce réglage la casserait (organe réparé 2×).
 
 **PARKING ajouté** : « Invite claimable par n'importe quel porteur du lien (pas de vérification d'identité au claim) — écran de confirmation d'identité, décision produit post-retours testeurs (constat Sou 20/07). »
 Note : latence notification 1–4 min = cron minute, **normale, ne pas fixer**.
