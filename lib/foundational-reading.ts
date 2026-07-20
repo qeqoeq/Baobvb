@@ -34,20 +34,20 @@ const PILLAR_ORDER: PillarKey[] = [
 ];
 
 const PILLAR_LABELS: Record<PillarKey, string> = {
-  trust: 'Trust',
+  trust: 'Confiance',
   interactions: 'Interactions',
-  affinity: 'Affinity',
-  support: 'Support',
-  sharedNetwork: 'Shared network',
+  affinity: 'Affinité',
+  support: 'Soutien',
+  sharedNetwork: 'Réseau commun',
 };
 
 const TIER_NARRATIVES: Record<Tier, string> = {
-  Rooted: 'This link feels rooted, shaped by time, trust, and repeated evidence.',
-  Anchor: 'This link feels like a stable point of trust, with presence that can be counted on.',
-  Steady: 'This link feels steady today, with enough presence to create a clearer shared direction.',
-  Active: 'This link has active movement today. Its shape is becoming easier to read.',
-  Forming: 'This link is still finding its form. More shared moments could make its direction clearer.',
-  Distant: 'This link feels distant today, and could be rebuilt through gentle attention.',
+  Rooted: 'Ce lien est enraciné, façonné par le temps, la confiance et des preuves répétées.',
+  Anchor: 'Ce lien est un point d’ancrage stable, avec une présence sur laquelle compter.',
+  Steady: 'Ce lien est stable aujourd’hui, avec assez de présence pour dessiner une direction commune plus claire.',
+  Active: 'Ce lien est en mouvement aujourd’hui. Sa forme devient plus facile à lire.',
+  Forming: 'Ce lien cherche encore sa forme. Plus de moments partagés rendraient sa direction plus claire.',
+  Distant: 'Ce lien est distant aujourd’hui, et pourrait se reconstruire avec une attention douce.',
 };
 
 // Fallback narratives used when the link is balanced enough that no single
@@ -66,11 +66,11 @@ const TIER_NARRATIVES_NO_PILLAR: Record<Tier, string> = {
 };
 
 const GROWTH_SUGGESTIONS: Record<PillarKey, string> = {
-  trust: 'Create one small act of reliable follow-through this week.',
-  interactions: 'Create more regular touchpoints around this link.',
-  affinity: 'Make space for one more natural, unforced conversation.',
-  support: 'Find one concrete way to show up for this person.',
-  sharedNetwork: 'Introduce more shared context around this link.',
+  trust: 'Pose un petit geste fiable, tenu jusqu’au bout, cette semaine.',
+  interactions: 'Crée des points de contact plus réguliers autour de ce lien.',
+  affinity: 'Laisse de la place à une conversation de plus, naturelle et sans forcer.',
+  support: 'Trouve une façon concrète d’être là pour cette personne.',
+  sharedNetwork: 'Fais grandir le contexte partagé autour de ce lien.',
 };
 
 function getLatestEvaluationByRelation(evaluations: Evaluation[]): Map<string, Evaluation> {
@@ -169,7 +169,9 @@ function buildDerived(
   const toNurture =
     hasFoundationalReading && foundationalScore !== null && foundationalScore < NURTURE_THRESHOLD;
   const recentDate = latestEvaluation?.createdAt ?? relation.createdAt;
-  const badgeLabel = linkTier ?? 'Unread';
+  // linkTier is a canonical Tier enum value (mapped to FR at render via
+  // getTierDisplayLabel); the fallback is a display string, translated directly.
+  const badgeLabel = linkTier ?? 'Non lu';
   const pillarDots = getPillarDots(latestEvaluation);
   const { strongestPillar, weakestPillar } = getStrongestAndWeakestPillars(latestEvaluation);
 
@@ -214,14 +216,14 @@ export function getTierNarrative(
   tier: Tier | null,
   weakestPillar: PillarKey | null,
 ): string {
-  if (!tier) return 'No foundational reading yet.';
+  if (!tier) return 'Pas encore de lecture fondatrice.';
   const base = TIER_NARRATIVES[tier];
   // Runtime guard (Sprint V.4). A `tier` that is truthy but absent from
   // TIER_NARRATIVES indicates either a legacy persisted label that escaped
   // Sprint V.3 normalization, or an unknown value injected from a backend/
   // bundle mismatch. In all cases we treat it as an absence of trustworthy
   // reading rather than fabricate a relational verdict.
-  if (!base) return 'No foundational reading yet.';
+  if (!base) return 'Pas encore de lecture fondatrice.';
   if (!base.includes('%s')) return base;
   // When no pillar is honestly weakest, swap to a balanced fallback narrative
   // instead of substituting the placeholder "-" (which used to leak through).
@@ -235,8 +237,8 @@ export function getGrowthSuggestion(
 ): string {
   if (!weakestPillar) {
     return tier === 'Rooted'
-      ? 'Keep this link warm with one intentional touchpoint this week.'
-      : 'Keep nurturing this link through one intentional touchpoint this week.';
+      ? 'Garde ce lien au chaud avec un point de contact intentionnel cette semaine.'
+      : 'Continue à nourrir ce lien avec un point de contact intentionnel cette semaine.';
   }
   return GROWTH_SUGGESTIONS[weakestPillar];
 }
@@ -245,22 +247,22 @@ export function getGardenMicroSignal(
   reading: FoundationalReadingDerived,
 ): GardenMicroSignal {
   if (!reading.hasFoundationalReading) {
-    return { text: 'Unread', tone: 'unread' };
+    return { text: 'Non lu', tone: 'unread' };
   }
 
   if (reading.toNurture) {
-    return { text: 'To nurture', tone: 'nurture' };
+    return { text: 'À nourrir', tone: 'nurture' };
   }
 
   if (reading.strongestPillar === 'trust') {
-    return { text: 'Strong trust', tone: 'stable' };
+    return { text: 'Confiance forte', tone: 'stable' };
   }
   if (reading.weakestPillar === 'sharedNetwork') {
-    return { text: 'Watch shared network', tone: 'stable' };
+    return { text: 'Réseau commun à surveiller', tone: 'stable' };
   }
   if (reading.weakestPillar === 'interactions') {
-    return { text: 'Watch interactions', tone: 'stable' };
+    return { text: 'Interactions à surveiller', tone: 'stable' };
   }
 
-  return { text: 'Steady link', tone: 'stable' };
+  return { text: 'Lien stable', tone: 'stable' };
 }

@@ -55,39 +55,39 @@ export type ProgressiveUnlocks = Record<PillarKey, ProgressiveUnlock>;
 // invitation-shaped questions, no rating/reputation/ranking vocabulary.
 
 const TRUST_CRITERIA: ReadonlyArray<ProgressiveCriterion> = [
-  { key: 'reliability', pillar: 'trust', label: 'Reliability', hint: 'Do they keep their word when it matters?' },
-  { key: 'discretion', pillar: 'trust', label: 'Discretion', hint: 'Can private things stay private with them?' },
-  { key: 'boundaryRespect', pillar: 'trust', label: 'Boundary respect', hint: 'Do they respect your limits without pressure?' },
-  { key: 'repairCapacity', pillar: 'trust', label: 'Repair capacity', hint: 'Can the link recover after tension?' },
-  { key: 'consistency', pillar: 'trust', label: 'Consistency', hint: 'Does trust hold over time?' },
+  { key: 'reliability', pillar: 'trust', label: 'Fiabilité', hint: 'Tient-elle parole quand ça compte ?' },
+  { key: 'discretion', pillar: 'trust', label: 'Discrétion', hint: 'Ce qui est privé peut-il le rester avec elle ?' },
+  { key: 'boundaryRespect', pillar: 'trust', label: 'Respect des limites', hint: 'Respecte-t-elle tes limites sans forcer ?' },
+  { key: 'repairCapacity', pillar: 'trust', label: 'Capacité à réparer', hint: 'Le lien peut-il se remettre après une tension ?' },
+  { key: 'consistency', pillar: 'trust', label: 'Constance', hint: 'La confiance tient-elle dans le temps ?' },
 ];
 
 const INTERACTIONS_CRITERIA: ReadonlyArray<ProgressiveCriterion> = [
-  { key: 'exchangeQuality', pillar: 'interactions', label: 'Quality of exchange', hint: 'Do your exchanges feel clear and meaningful?' },
-  { key: 'initiativeBalance', pillar: 'interactions', label: 'Initiative balance', hint: 'Do both sides naturally make effort?' },
-  { key: 'attention', pillar: 'interactions', label: 'Shared attention', hint: 'Do they feel present when you connect?' },
-  { key: 'conversationDepth', pillar: 'interactions', label: 'Conversation depth', hint: 'Can conversations go beyond the surface?' },
+  { key: 'exchangeQuality', pillar: 'interactions', label: 'Qualité des échanges', hint: 'Tes échanges sont-ils clairs et pleins de sens ?' },
+  { key: 'initiativeBalance', pillar: 'interactions', label: 'Équilibre des initiatives', hint: 'Les deux côtés font-ils naturellement l’effort ?' },
+  { key: 'attention', pillar: 'interactions', label: 'Attention partagée', hint: 'Est-elle vraiment présente quand vous échangez ?' },
+  { key: 'conversationDepth', pillar: 'interactions', label: 'Profondeur des conversations', hint: 'Les conversations vont-elles au-delà de la surface ?' },
 ];
 
 const AFFINITY_CRITERIA: ReadonlyArray<ProgressiveCriterion> = [
-  { key: 'ease', pillar: 'affinity', label: 'Ease', hint: 'Does being together feel natural?' },
-  { key: 'humor', pillar: 'affinity', label: 'Humor', hint: 'Do you laugh or lighten each other naturally?' },
-  { key: 'sharedRhythm', pillar: 'affinity', label: 'Shared rhythm', hint: 'Does the connection have an easy rhythm?' },
-  { key: 'emotionalComfort', pillar: 'affinity', label: 'Emotional comfort', hint: 'Do you feel emotionally relaxed around them?' },
+  { key: 'ease', pillar: 'affinity', label: 'Aisance', hint: 'Être ensemble semble-t-il naturel ?' },
+  { key: 'humor', pillar: 'affinity', label: 'Humour', hint: 'Riez-vous ou vous allégez-vous naturellement ?' },
+  { key: 'sharedRhythm', pillar: 'affinity', label: 'Rythme partagé', hint: 'La connexion a-t-elle un rythme facile ?' },
+  { key: 'emotionalComfort', pillar: 'affinity', label: 'Confort émotionnel', hint: 'Te sens-tu émotionnellement détendu·e avec elle ?' },
 ];
 
 const SUPPORT_CRITERIA: ReadonlyArray<ProgressiveCriterion> = [
-  { key: 'availability', pillar: 'support', label: 'Availability', hint: 'Are they present when support matters?' },
-  { key: 'emotionalPresence', pillar: 'support', label: 'Emotional presence', hint: 'Do they make space for what you feel?' },
-  { key: 'practicalHelp', pillar: 'support', label: 'Practical help', hint: 'Can they help concretely when needed?' },
-  { key: 'encouragement', pillar: 'support', label: 'Encouragement', hint: 'Do they help you feel stronger, not smaller?' },
+  { key: 'availability', pillar: 'support', label: 'Disponibilité', hint: 'Est-elle présente quand le soutien compte ?' },
+  { key: 'emotionalPresence', pillar: 'support', label: 'Présence émotionnelle', hint: 'Fait-elle de la place à ce que tu ressens ?' },
+  { key: 'practicalHelp', pillar: 'support', label: 'Aide concrète', hint: 'Peut-elle aider concrètement au besoin ?' },
+  { key: 'encouragement', pillar: 'support', label: 'Encouragement', hint: 'Te fait-elle sentir plus fort·e, pas plus petit·e ?' },
 ];
 
 const SHARED_NETWORK_CRITERIA: ReadonlyArray<ProgressiveCriterion> = [
-  { key: 'mutualCircles', pillar: 'sharedNetwork', label: 'Mutual circles', hint: 'Do you share trusted people or contexts?' },
-  { key: 'introductionSafety', pillar: 'sharedNetwork', label: 'Introduction safety', hint: 'Would an introduction through this link feel safe?' },
-  { key: 'contextReliability', pillar: 'sharedNetwork', label: 'Context reliability', hint: 'Is this link reliable in shared settings?' },
-  { key: 'trustedPathStrength', pillar: 'sharedNetwork', label: 'Trusted path strength', hint: 'Does this link make paths feel safer?' },
+  { key: 'mutualCircles', pillar: 'sharedNetwork', label: 'Cercles communs', hint: 'Partagez-vous des personnes ou des contextes de confiance ?' },
+  { key: 'introductionSafety', pillar: 'sharedNetwork', label: 'Sécurité des présentations', hint: 'Une présentation via ce lien semblerait-elle sûre ?' },
+  { key: 'contextReliability', pillar: 'sharedNetwork', label: 'Fiabilité en contexte', hint: 'Ce lien est-il fiable dans les cadres partagés ?' },
+  { key: 'trustedPathStrength', pillar: 'sharedNetwork', label: 'Force du chemin de confiance', hint: 'Ce lien rend-il les chemins plus sûrs ?' },
 ];
 
 const DEEP_BY_PILLAR: Record<PillarKey, ReadonlyArray<ProgressiveCriterion>> = {

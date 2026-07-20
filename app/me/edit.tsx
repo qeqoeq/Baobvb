@@ -33,7 +33,7 @@ export default function EditMyCardScreen() {
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Photos needed', 'Allow photo access in Settings to set a profile photo.');
+      Alert.alert('Accès aux photos requis', 'Autorise l’accès aux photos dans les Réglages pour ajouter une photo de profil.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -61,11 +61,11 @@ export default function EditMyCardScreen() {
     const cleanAvatarSeed = deriveAvatarSeed(cleanDisplayName);
 
     if (!cleanDisplayName) {
-      setError('Display name cannot be empty.');
+      setError('Le nom ne peut pas être vide.');
       return;
     }
     if (!cleanHandle) {
-      setError('Handle is invalid. Use letters, numbers, dots, dashes or underscores.');
+      setError('Identifiant invalide. Utilise des lettres, chiffres, points, tirets ou underscores.');
       return;
     }
 
@@ -78,12 +78,12 @@ export default function EditMyCardScreen() {
     try {
       const result = await upsertUserHandle(cleanHandle, cleanDisplayName);
       if (result.taken) {
-        setError('This handle is already taken. Choose another.');
+        setError('Cet identifiant est déjà pris. Choisis-en un autre.');
         setIsSaving(false);
         return;
       }
     } catch {
-      setError('Could not secure this handle. Try again.');
+      setError('Impossible de réserver cet identifiant. Réessaie.');
       setIsSaving(false);
       return;
     }
@@ -94,7 +94,7 @@ export default function EditMyCardScreen() {
       avatarSeed: cleanAvatarSeed,
     });
     if (!ok) {
-      setError('Could not save your card. Please check your fields.');
+      setError('Impossible d’enregistrer ta carte. Vérifie tes champs.');
       setIsSaving(false);
       return;
     }
@@ -128,12 +128,12 @@ export default function EditMyCardScreen() {
       >
       <View style={styles.card}>
         <Text style={styles.title}>
-          {isSetupMode ? 'Create your card' : 'Edit your card'}
+          {isSetupMode ? 'Crée ta carte' : 'Modifie ta carte'}
         </Text>
         <Text style={styles.subtitle}>
           {isSetupMode
-            ? 'Pick a name and username for your card.'
-            : 'Shown on your card and QR.'}
+            ? 'Choisis un nom et un identifiant pour ta carte.'
+            : 'Affiché sur ta carte et ton QR.'}
         </Text>
 
         <Pressable style={styles.previewAvatar} onPress={() => void handlePickPhoto()}>
@@ -147,19 +147,19 @@ export default function EditMyCardScreen() {
         </Pressable>
         <Pressable onPress={() => void handlePickPhoto()} style={styles.photoBtn}>
           <Text style={styles.photoBtnText}>
-            {localPhotoUri ? 'Change photo' : 'Add photo'}
+            {localPhotoUri ? 'Changer la photo' : 'Ajouter une photo'}
           </Text>
         </Pressable>
 
         <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>{'Name'}</Text>
+          <Text style={styles.fieldLabel}>{'Nom'}</Text>
           <TextInput
             value={displayName}
             onChangeText={(value) => {
               setDisplayName(value);
               if (error) setError(null);
             }}
-            placeholder="Your name"
+            placeholder="Ton nom"
             placeholderTextColor={colors.text.muted}
             style={styles.input}
             returnKeyType="next"
@@ -169,7 +169,7 @@ export default function EditMyCardScreen() {
         </View>
 
         <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>{'Username'}</Text>
+          <Text style={styles.fieldLabel}>{'Identifiant'}</Text>
           {handleLocked ? (
             <View style={[styles.input, styles.inputSecondary, styles.inputReadOnly]}>
               <Text style={styles.inputReadOnlyText}>
@@ -184,7 +184,7 @@ export default function EditMyCardScreen() {
                 setHandle(value);
                 if (error) setError(null);
               }}
-              placeholder="@your.handle"
+              placeholder="@ton.identifiant"
               placeholderTextColor={colors.text.muted}
               style={[styles.input, styles.inputSecondary]}
               autoCapitalize="none"
@@ -194,7 +194,7 @@ export default function EditMyCardScreen() {
             />
           )}
           {handleLocked ? (
-            <Text style={styles.helperText}>Your username is set and can't be changed.</Text>
+            <Text style={styles.helperText}>Ton identifiant est fixé et ne peut plus être changé.</Text>
           ) : null}
         </View>
 
@@ -206,7 +206,7 @@ export default function EditMyCardScreen() {
           style={[styles.primaryButton, isSaving && styles.primaryButtonDisabled]}
         >
           <Text style={styles.primaryButtonText}>
-            {isSaving ? 'Saving…' : isSetupMode ? 'Start' : 'Save my card'}
+            {isSaving ? 'Enregistrement…' : isSetupMode ? 'Commencer' : 'Enregistrer ma carte'}
           </Text>
         </Pressable>
         <Pressable
@@ -220,7 +220,7 @@ export default function EditMyCardScreen() {
           style={styles.secondaryButton}
         >
           <Text style={styles.secondaryButtonText}>
-            {isSetupMode ? 'Back to sign-in' : 'Cancel'}
+            {isSetupMode ? 'Retour à la connexion' : 'Annuler'}
           </Text>
         </Pressable>
       </View>

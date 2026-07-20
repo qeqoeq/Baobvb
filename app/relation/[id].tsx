@@ -8,6 +8,7 @@ import { devLogLinking, maskIdForLog } from '../../lib/dev-linking-log';
 import { isLocalDraftId, newCanonicalRelationId } from '../../lib/identity';
 import { radius, spacing } from '../../constants/spacing';
 import { getTierAccent, type PillarKey } from '../../lib/evaluation';
+import { getTierDisplayLabel } from '../../lib/tier-display';
 import {
   getFoundationalReadingForRelation,
   getPillarLabel,
@@ -361,8 +362,8 @@ export default function RelationDetailScreen() {
         <View style={styles.screen}>
           <View style={styles.unavailableWrap}>
             <ActivityIndicator color={colors.accent.deepTeal} />
-            <Text style={styles.unavailableTitle}>Opening…</Text>
-            <Text style={styles.unavailableBody}>Bringing this relationship in.</Text>
+            <Text style={styles.unavailableTitle}>Ouverture…</Text>
+            <Text style={styles.unavailableBody}>On amène cette relation.</Text>
           </View>
         </View>
       );
@@ -370,10 +371,10 @@ export default function RelationDetailScreen() {
     return (
       <View style={styles.screen}>
         <View style={styles.unavailableWrap}>
-          <Text style={styles.unavailableTitle}>Relationship unavailable</Text>
-          <Text style={styles.unavailableBody}>This relationship could not be opened.</Text>
+          <Text style={styles.unavailableTitle}>Relation indisponible</Text>
+          <Text style={styles.unavailableBody}>Cette relation n’a pas pu être ouverte.</Text>
           <Pressable onPress={navigateAway} style={styles.unavailableCTA}>
-            <Text style={styles.unavailableCTAText}>Back to network</Text>
+            <Text style={styles.unavailableCTAText}>Retour au réseau</Text>
           </Pressable>
         </View>
       </View>
@@ -420,8 +421,8 @@ export default function RelationDetailScreen() {
   const relationIdentity = getRelationSheetIdentity({
     relation,
   });
-  const isSharedIdentity = relationIdentity.titleEyebrow === 'Shared identity';
-  const isScannedIdentity = relationIdentity.titleEyebrow === 'Scanned contact';
+  const isSharedIdentity = relationIdentity.titleEyebrow === 'Identité partagée';
+  const isScannedIdentity = relationIdentity.titleEyebrow === 'Contact scanné';
   const deliveryChannelOpened = Boolean(relation.inviteDeliveryOpenedAt);
   const nextAction = getRelationNextAction({
     relation,
@@ -430,7 +431,7 @@ export default function RelationDetailScreen() {
     nameRevealed,
     deliveryChannelOpened,
   });
-  const readingSectionLabel = nameRevealed ? 'Shared reading' : 'Private reading';
+  const readingSectionLabel = nameRevealed ? 'Lecture partagée' : 'Lecture privée';
   // visibleScore is the revealed source of truth: mutual when available, private as fallback.
   const visibleScore = revealedScore;
   const sharedRevealDisplay = getSharedRevealDisplayState({ nameRevealed, visibleScore, revealedTier });
@@ -574,11 +575,11 @@ export default function RelationDetailScreen() {
     setIsRevealing(false);
 
     if (revealError) {
-      Alert.alert('Reveal unavailable', 'Shared reveal is not available right now.');
+      Alert.alert('Révélation indisponible', 'La révélation partagée n’est pas disponible pour le moment.');
       return;
     }
     if (notReady) {
-      Alert.alert('Reveal not ready', 'Baobab is still preparing this reveal.');
+      Alert.alert('Révélation pas prête', 'Baobab prépare encore cette révélation.');
       return;
     }
     // Stamp firstViewedAt on every success path (server or local) so the B5 gate opens.
@@ -691,10 +692,10 @@ export default function RelationDetailScreen() {
     } catch (error) {
       const description = error instanceof Error ? error.message : '';
       if (description.includes('Authentication required')) {
-        Alert.alert('Sign in required', 'Sign in with Apple to invite someone to reveal.');
+        Alert.alert('Connexion requise', 'Connecte-toi avec Apple pour inviter quelqu’un à révéler.');
         return;
       }
-      Alert.alert('Invite to reveal', 'Sharing is not available right now.');
+      Alert.alert('Inviter à révéler', 'Le partage n’est pas disponible pour le moment.');
     } finally {
       isInviteFlowActiveRef.current = false;
     }
@@ -719,12 +720,12 @@ export default function RelationDetailScreen() {
 
   const handleArchive = () => {
     Alert.alert(
-      'Archive relationship',
-      'Removes this from your active network.',
+      'Archiver la relation',
+      'La retire de ton réseau actif.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Annuler', style: 'cancel' },
         {
-          text: 'Archive',
+          text: 'Archiver',
           style: 'destructive',
           onPress: () => {
             archiveRelation(relation.id);
@@ -745,7 +746,7 @@ export default function RelationDetailScreen() {
     />
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Pressable onPress={navigateAway} style={styles.backRow} hitSlop={8}>
-        <Text style={styles.backRowText}>‹ Back</Text>
+        <Text style={styles.backRowText}>‹ Retour</Text>
       </Pressable>
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: headerAccent + '14', borderColor: headerAccent + '44' }]}>
@@ -793,7 +794,7 @@ export default function RelationDetailScreen() {
               <Text style={styles.statusChipText}>{relationIdentity.stateLabel}</Text>
             </View>
             <Pressable onPress={() => router.push(`./edit/${relation.id}`)} style={styles.editLink}>
-              <Text style={styles.editLinkText}>Edit relation</Text>
+              <Text style={styles.editLinkText}>Modifier la relation</Text>
             </Pressable>
           </View>
 
@@ -810,7 +811,7 @@ export default function RelationDetailScreen() {
               )}
 
               <View style={styles.depthRow}>
-                <Text style={styles.depthLabel}>Depth</Text>
+                <Text style={styles.depthLabel}>Profondeur</Text>
                 <Text style={styles.depthValue}>{relationIdentity.relationDepthLabel}</Text>
               </View>
             </>
@@ -827,7 +828,7 @@ export default function RelationDetailScreen() {
           {nextAction.ctaKind === 'resend' ? (
             <Text style={styles.pendingKicker}>Baobab</Text>
           ) : (
-            <Text style={styles.primaryActionEyebrow}>Next</Text>
+            <Text style={styles.primaryActionEyebrow}>À suivre</Text>
           )}
           <Text style={styles.primaryActionTitle}>{nextAction.title}</Text>
           <Text style={styles.primaryActionBody}>{nextAction.body}</Text>
@@ -841,11 +842,11 @@ export default function RelationDetailScreen() {
                 </View>
                 <View style={styles.baoTrunk} />
               </View>
-              <Text style={styles.resendTreeLabel}>Send again</Text>
+              <Text style={styles.resendTreeLabel}>Renvoyer</Text>
             </Pressable>
           ) : nextAction.ctaLabel ? (
             <Pressable onPress={handlePrimaryAction} style={styles.ctaButton} disabled={isRevealing || revealAwaitingLoad}>
-              <Text style={styles.ctaButtonText}>{revealAwaitingLoad ? 'Preparing reveal…' : nextAction.ctaLabel}</Text>
+              <Text style={styles.ctaButtonText}>{revealAwaitingLoad ? 'Préparation de la révélation…' : nextAction.ctaLabel}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -868,10 +869,10 @@ export default function RelationDetailScreen() {
                     {/* B18: the counterpart's name dominates the reveal card;
                         the tier is demoted to a subtitle under it. */}
                     <View style={styles.revealNameHeader}>
-                      <Text style={styles.readingCardKicker}>{'BAOBAB · SHARED READING'}</Text>
+                      <Text style={styles.readingCardKicker}>{'BAOBAB · LECTURE PARTAGÉE'}</Text>
                       <Text style={styles.revealName}>{relationIdentity.primaryTitle}</Text>
                       <Text style={[styles.revealTierSubtitle, { color: readingAccent }]}>
-                        {sharedRevealDisplay.tier}
+                        {revealedTier ? getTierDisplayLabel(revealedTier) : sharedRevealDisplay.tier}
                       </Text>
                     </View>
                     <View style={styles.tierHeader}>
@@ -886,12 +887,12 @@ export default function RelationDetailScreen() {
                           <>
                             {reading?.strongestPillar ? (
                               <Text style={styles.narrativeLine}>
-                                <Text style={styles.narrativeKey}>Where it's strong:</Text> {strongestLabel}
+                                <Text style={styles.narrativeKey}>Là où c’est fort :</Text> {strongestLabel}
                               </Text>
                             ) : null}
                             {reading?.weakestPillar ? (
                               <Text style={styles.narrativeLine}>
-                                <Text style={styles.narrativeKey}>Where it can grow:</Text> {weakestLabel}
+                                <Text style={styles.narrativeKey}>Là où ça peut grandir :</Text> {weakestLabel}
                               </Text>
                             ) : null}
                           </>
@@ -910,7 +911,7 @@ export default function RelationDetailScreen() {
                     ) : null}
                     {evaluation ? (
                       <View style={styles.pillarsSection}>
-                        <Text style={styles.signalsEyebrow}>Your read</Text>
+                        <Text style={styles.signalsEyebrow}>Ta lecture</Text>
                         {PILLAR_ORDER.map((key) => {
                           const dots = reading?.pillarDots?.[key] ?? [];
                           return (
@@ -936,45 +937,45 @@ export default function RelationDetailScreen() {
                     ) : null}
                     {deeperSignal ? (
                       <View style={styles.deeperSignalBlock}>
-                        <Text style={styles.deeperSignalEyebrow}>A deeper read</Text>
+                        <Text style={styles.deeperSignalEyebrow}>Une lecture plus profonde</Text>
                         {deeperSignal.lines.map((line, idx) => (
                           <Text key={idx} style={styles.deeperSignalLine}>{line}</Text>
                         ))}
-                        <Text style={styles.deeperSignalAttribution}>Based on your private read.</Text>
+                        <Text style={styles.deeperSignalAttribution}>D’après ta lecture privée.</Text>
                       </View>
                     ) : null}
                   </>
                 ) : (
                   <View style={styles.privateStateCard}>
-                    <Text style={styles.privateStateTitle}>Bringing your shared reading in…</Text>
-                    <Text style={styles.privateStateText}>Just a moment.</Text>
+                    <Text style={styles.privateStateTitle}>On amène ta lecture partagée…</Text>
+                    <Text style={styles.privateStateText}>Un instant.</Text>
                   </View>
                 )
               ) : readingVariant === 'reveal_ready' ? (
                 <View style={styles.revealReadyCard}>
                   <Text style={styles.privateStateDate}>
-                    Saved on {evaluation?.createdAt ? new Date(evaluation.createdAt).toLocaleDateString() : null}
+                    Enregistrée le {evaluation?.createdAt ? new Date(evaluation.createdAt).toLocaleDateString() : null}
                   </Text>
-                  <Text style={styles.revealReadyTitle}>Shared reading ready</Text>
+                  <Text style={styles.revealReadyTitle}>Lecture partagée prête</Text>
                   <Text style={styles.privateStateText}>
-                    Open it above.
+                    Ouvre-la au-dessus.
                   </Text>
                 </View>
               ) : (
                 <View style={styles.privateStateCard}>
                   <Text style={styles.privateStateDate}>
-                    Saved on {evaluation?.createdAt ? new Date(evaluation.createdAt).toLocaleDateString() : null}
+                    Enregistrée le {evaluation?.createdAt ? new Date(evaluation.createdAt).toLocaleDateString() : null}
                   </Text>
                   {readingVariant === 'waiting_other_side' ? (
                     <>
-                      <Text style={styles.privateStateTitle}>Private reading saved</Text>
-                      <Text style={styles.privateStateText}>Waiting on their side.</Text>
+                      <Text style={styles.privateStateTitle}>Lecture privée enregistrée</Text>
+                      <Text style={styles.privateStateText}>En attente de son côté.</Text>
                     </>
                   ) : readingVariant === 'cooking' ? (
                     cookingRemainingSeconds !== null && cookingRemainingSeconds > 0 ? (
                       <>
                         <Text style={styles.privateStateTitle}>
-                          {cookingRemainingSeconds <= 5 ? 'Almost open' : 'Opening your link…'}
+                          {cookingRemainingSeconds <= 5 ? 'Presque ouvert' : 'Ouverture de ton lien…'}
                         </Text>
                         <Text style={styles.cookingCountdown}>
                           {cookingRemainingSeconds}s
@@ -982,9 +983,9 @@ export default function RelationDetailScreen() {
                       </>
                     ) : (
                       <>
-                        <Text style={styles.privateStateTitle}>Private reading saved</Text>
+                        <Text style={styles.privateStateTitle}>Lecture privée enregistrée</Text>
                         <Text style={styles.privateStateText}>
-                          Locked until the reveal opens.
+                          Verrouillée jusqu’à l’ouverture de la révélation.
                         </Text>
                       </>
                     )
@@ -996,7 +997,7 @@ export default function RelationDetailScreen() {
                   )}
                   {evaluation && reading?.pillarDots ? (
                     <View style={styles.privateReadbackBlock}>
-                      <Text style={styles.privateReadbackEyebrow}>Your reading</Text>
+                      <Text style={styles.privateReadbackEyebrow}>Ta lecture</Text>
                       {PILLAR_ORDER.map((key) => {
                         const dots = reading.pillarDots?.[key] ?? [];
                         return (
@@ -1024,20 +1025,20 @@ export default function RelationDetailScreen() {
 
             {nextAction.ctaKind === 'invite' && evaluation ? (
               <View style={styles.mutualRevealMomentBlock}>
-                <Text style={styles.mutualRevealMomentEyebrow}>Mutual reveal</Text>
+                <Text style={styles.mutualRevealMomentEyebrow}>Révélation mutuelle</Text>
                 <Text style={styles.mutualRevealMomentTitle}>
-                  Ready to understand this relationship together?
+                  Prêt·e à comprendre cette relation ensemble ?
                 </Text>
                 <Text style={styles.mutualRevealMomentBody}>
-                  Your reading stays private. Invite them only when you want a mutual reveal.
+                  Ta lecture reste privée. Invite-la seulement quand tu veux une révélation mutuelle.
                 </Text>
               </View>
             ) : null}
 
             {privateLayerSections.length > 0 ? (
               <View style={styles.privateLayerBlock}>
-                <Text style={styles.privateLayerEyebrow}>Private layer</Text>
-                <Text style={styles.privateLayerSubtitle}>Only on this device. Not shared.</Text>
+                <Text style={styles.privateLayerEyebrow}>Couche privée</Text>
+                <Text style={styles.privateLayerSubtitle}>Seulement sur cet appareil. Non partagé.</Text>
                 {privateLayerSections.map((section) => (
                   <View key={section.pillar} style={styles.privateLayerSection}>
                     <Text style={styles.privateLayerPillarLabel}>{section.pillarLabel}</Text>
@@ -1077,9 +1078,9 @@ export default function RelationDetailScreen() {
               <View style={styles.sectionLine} />
             </View>
             <View style={styles.unreadCard}>
-              <Text style={styles.unreadTitle}>No reading yet</Text>
+              <Text style={styles.unreadTitle}>Pas encore de lecture</Text>
               <Text style={styles.unreadText}>
-                Stays private until both sides are in.
+                Reste privée jusqu’à ce que les deux côtés y soient.
               </Text>
             </View>
           </View>
@@ -1088,45 +1089,45 @@ export default function RelationDetailScreen() {
 
       {assistedSuggestion ? (
         <View style={styles.reconciliationCard}>
-          <Text style={styles.reconciliationTitle}>Possible local draft found</Text>
+          <Text style={styles.reconciliationTitle}>Brouillon local possible trouvé</Text>
           <Text style={styles.reconciliationBody}>
-            You also have a local draft tied to this same public profile. Review it before deciding what to keep.
+            Tu as aussi un brouillon local lié à ce même profil public. Regarde-le avant de décider quoi garder.
           </Text>
           <Pressable
             onPress={() => router.push(`/relation/${assistedSuggestion.draftRelationId}`)}
             style={styles.reconciliationCTA}
           >
-            <Text style={styles.reconciliationCTAText}>Open local draft</Text>
+            <Text style={styles.reconciliationCTAText}>Ouvrir le brouillon local</Text>
           </Pressable>
         </View>
       ) : null}
 
       {draftResolutionSuggestion ? (
         <View style={styles.reconciliationCard}>
-          <Text style={styles.reconciliationTitle}>Possible shared relation found</Text>
+          <Text style={styles.reconciliationTitle}>Relation partagée possible trouvée</Text>
           <Text style={styles.reconciliationBody}>
-            This draft appears tied to a public profile already present in a shared-backed relation. If you no longer need this local draft, you can archive it.
+            Ce brouillon semble lié à un profil public déjà présent dans une relation partagée. Si tu n’as plus besoin de ce brouillon local, tu peux l’archiver.
           </Text>
           <Pressable
             onPress={() => router.push(`/relation/${draftResolutionSuggestion.sharedRelationId}`)}
             style={styles.reconciliationCTA}
           >
-            <Text style={styles.reconciliationCTAText}>Open shared relation</Text>
+            <Text style={styles.reconciliationCTAText}>Ouvrir la relation partagée</Text>
           </Pressable>
           <Pressable
             onPress={() => { archiveRelation(draftResolutionSuggestion.draftRelationId); router.replace('/(tabs)'); }}
             style={styles.draftResolutionArchive}
           >
-            <Text style={styles.draftResolutionArchiveText}>Archive this draft</Text>
+            <Text style={styles.draftResolutionArchiveText}>Archiver ce brouillon</Text>
           </Pressable>
         </View>
       ) : null}
 
       {canUseOpenWorlds && (
         <View style={styles.openWorldsBlock}>
-          <Text style={styles.openWorldsEyebrow}>{'PRIVATE WORLDS'}</Text>
+          <Text style={styles.openWorldsEyebrow}>{'MONDES PRIVÉS'}</Text>
           <Text style={styles.openWorldsCaption}>
-            {'Only on this device — up to 3.'}
+            {'Seulement sur cet appareil — jusqu’à 3.'}
           </Text>
           <View style={styles.openWorldsChipRow}>
             {RELATION_OPEN_WORLD_OPTIONS.map((world) => {
@@ -1168,7 +1169,7 @@ export default function RelationDetailScreen() {
       {!relation.archived && nextAction.ctaKind !== 'resend' && (
         <View style={styles.managementZone}>
           <Pressable onPress={handleArchive} style={styles.archiveAction}>
-            <Text style={styles.archiveActionText}>Archive relationship</Text>
+            <Text style={styles.archiveActionText}>Archiver la relation</Text>
           </Pressable>
         </View>
       )}
@@ -1211,15 +1212,15 @@ export default function RelationDetailScreen() {
           <View style={styles.sharedReadingMomentSeal}>
             <View style={styles.sharedReadingMomentSeed} />
           </View>
-          <Text style={styles.sharedReadingMomentEyebrow}>Shared reading</Text>
-          <Text style={styles.sharedReadingMomentTitle}>Link opened</Text>
-          <Text style={styles.sharedReadingMomentSubtitle}>A direction, not a verdict.</Text>
+          <Text style={styles.sharedReadingMomentEyebrow}>Lecture partagée</Text>
+          <Text style={styles.sharedReadingMomentTitle}>Lien ouvert</Text>
+          <Text style={styles.sharedReadingMomentSubtitle}>Une direction, pas un verdict.</Text>
           <Pressable
             onPress={() => setShowSharedReadingMoment(false)}
             style={styles.sharedReadingMomentContinue}
             accessibilityRole="button"
           >
-            <Text style={styles.sharedReadingMomentContinueText}>Continue</Text>
+            <Text style={styles.sharedReadingMomentContinueText}>Continuer</Text>
           </Pressable>
         </View>
       </View>

@@ -174,8 +174,8 @@ export default function CircleScreen() {
     } else if (member.gatewayAccessState === 'locked') {
       if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
       Alert.alert(
-        'Not open yet',
-        `Complete your reveal with ${member.name} to access their world.`,
+        'Pas encore ouvert',
+        `Termine ta révélation avec ${member.name} pour accéder à son monde.`,
       );
     } else {
       if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -283,7 +283,7 @@ export default function CircleScreen() {
                 >
                   <View style={styles.formingDot} />
                   <Text style={styles.worldCardHintText}>
-                    {`${formingCount} forming`}
+                    {`${formingCount} en formation`}
                   </Text>
                 </Pressable>
               )}
@@ -291,7 +291,7 @@ export default function CircleScreen() {
           )}
           {trustedWorlds.length > 0 && (
             <View style={styles.worldsStrip}>
-              <Text style={styles.worldsStripEyebrow}>{'OPEN WORLDS'}</Text>
+              <Text style={styles.worldsStripEyebrow}>{'MONDES OUVERTS'}</Text>
               <View style={styles.worldsStripWorldsRow}>
                 {trustedWorlds.map((world, index) => (
                   <Fragment key={world}>
@@ -308,7 +308,7 @@ export default function CircleScreen() {
                 ))}
               </View>
               <Text style={styles.worldsStripCaption}>
-                {'Private signals from your Bao.'}
+                {'Signaux privés de ton Bao.'}
               </Text>
               <Pressable
                 onPress={() => {
@@ -316,16 +316,16 @@ export default function CircleScreen() {
                   router.push('../place');
                 }}
               >
-                <Text style={styles.worldsStripPlacesLink}>{'View your places →'}</Text>
+                <Text style={styles.worldsStripPlacesLink}>{'Voir tes lieux →'}</Text>
               </Pressable>
               {receivedConfirm !== null ? (
                 <Text style={styles.receivedConfirmText}>
-                  {receivedConfirm.status === 'kept' ? 'Kept.' : 'Not for me.'}
+                  {receivedConfirm.status === 'kept' ? 'Gardé.' : 'Pas pour moi.'}
                 </Text>
               ) : pendingReceived !== null ? (
                 <Pressable onPress={handleOpenReceived}>
                   <Text style={styles.receivedPrompt} numberOfLines={1}>
-                    {`${pendingFromName ?? 'Someone'} thought of you · ${pendingReceived.nameSnapshot} →`}
+                    {`${pendingFromName ?? 'Quelqu’un'} a pensé à toi · ${pendingReceived.nameSnapshot} →`}
                   </Text>
                 </Pressable>
               ) : null}

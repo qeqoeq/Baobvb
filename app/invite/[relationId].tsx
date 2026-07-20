@@ -76,45 +76,45 @@ function getClaimErrorCopy(kind: ClaimErrorKind): ClaimErrorCopy {
   switch (kind) {
     case 'self_claim':
       return {
-        title: 'You opened your own invite',
-        body: 'Share this link with the other person — Baobab needs both sides to be different.',
-        primaryLabel: 'Done',
+        title: 'Tu as ouvert ta propre invitation',
+        body: 'Partage ce lien avec l’autre personne — Baobab a besoin que les deux côtés soient différents.',
+        primaryLabel: 'OK',
         showRetry: false,
       };
     case 'expired':
       return {
-        title: 'This invitation expired',
-        body: 'Ask your partner to share a fresh invite.',
-        primaryLabel: 'Done',
+        title: 'Cette invitation a expiré',
+        body: 'Demande à ton contact de partager une nouvelle invitation.',
+        primaryLabel: 'OK',
         showRetry: true,
       };
     case 'already_claimed':
       return {
-        title: 'This invitation has already been used',
-        body: 'Each invite link works once. Ask your partner to share a new one.',
-        primaryLabel: 'Done',
+        title: 'Cette invitation a déjà été utilisée',
+        body: 'Chaque lien d’invitation ne marche qu’une fois. Demande à ton contact d’en partager un nouveau.',
+        primaryLabel: 'OK',
         showRetry: false,
       };
     case 'invalid':
       return {
-        title: 'This invite link is invalid',
-        body: 'The token is not recognized. Ask your partner to share a fresh invite.',
-        primaryLabel: 'Done',
+        title: 'Ce lien d’invitation est invalide',
+        body: 'Le jeton n’est pas reconnu. Demande à ton contact de partager une nouvelle invitation.',
+        primaryLabel: 'OK',
         showRetry: true,
       };
     case 'auth_required':
       return {
-        title: 'Sign in required',
-        body: 'Sign in with Apple to claim this invitation.',
-        primaryLabel: 'Continue',
+        title: 'Connexion requise',
+        body: 'Connecte-toi avec Apple pour accepter cette invitation.',
+        primaryLabel: 'Continuer',
         showRetry: true,
       };
     case 'unknown':
     default:
       return {
-        title: "Couldn't claim this invitation",
-        body: 'Something went wrong while opening this private link. Try again or ask for a fresh invite.',
-        primaryLabel: 'Done',
+        title: 'Impossible d’accepter cette invitation',
+        body: 'Un souci est survenu à l’ouverture de ce lien privé. Réessaie ou demande une nouvelle invitation.',
+        primaryLabel: 'OK',
         showRetry: true,
       };
   }
@@ -353,9 +353,9 @@ export default function InviteArrivalScreen() {
       <View style={styles.screen}>
         <View style={styles.stage}>
           <View style={styles.textZone}>
-            <Text style={styles.title}>{'Invalid invite link'}</Text>
+            <Text style={styles.title}>{'Lien d’invitation invalide'}</Text>
             <Text style={styles.body}>
-              {'This link does not include a relationship id. Ask your partner to share the invite again.'}
+              {'Ce lien ne contient pas d’identifiant de relation. Demande à ton contact de repartager l’invitation.'}
             </Text>
             {__DEV__ ? (
               <Text style={styles.devHint}>
@@ -366,7 +366,7 @@ export default function InviteArrivalScreen() {
         </View>
         <View style={styles.actionZone}>
           <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>{'Go back'}</Text>
+            <Text style={styles.primaryButtonText}>{'Retour'}</Text>
           </Pressable>
         </View>
       </View>
@@ -404,16 +404,16 @@ export default function InviteArrivalScreen() {
         <View style={styles.textZone}>
           <View style={styles.brandBlock}>
             <Text style={styles.kicker}>{'BAOBAB'}</Text>
-            <Text style={styles.kickerSubtitle}>{'Private reading'}</Text>
+            <Text style={styles.kickerSubtitle}>{'Lecture privée'}</Text>
           </View>
           <Text style={styles.title}>
             {preview?.inviter_display_name?.trim()
-              ? `${preview.inviter_display_name.trim()} opened\na link with you`
-              : 'Your private link\nis waiting'}
+              ? `${preview.inviter_display_name.trim()} a ouvert\nun lien avec toi`
+              : 'Ton lien privé\nt’attend'}
           </Text>
           <Text style={styles.body}>
             {formatInviterPrompt(preview)}
-            {"\nYour side stays private. Reveal it together when you're both ready."}
+            {'\nTon côté reste privé. Révélez-le ensemble quand vous êtes prêts tous les deux.'}
           </Text>
         </View>
       </View>
@@ -422,12 +422,12 @@ export default function InviteArrivalScreen() {
       <View style={styles.actionZone}>
         {brokenLink ? (
           <>
-            <Text style={styles.stateTitle}>{'This invite link is incomplete'}</Text>
+            <Text style={styles.stateTitle}>{'Ce lien d’invitation est incomplet'}</Text>
             <Text style={styles.stateBody}>
-              {'The link is missing information needed to continue. Ask for a fresh invite link.'}
+              {'Il manque des informations pour continuer. Demande un nouveau lien d’invitation.'}
             </Text>
             <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>{'Done'}</Text>
+              <Text style={styles.primaryButtonText}>{'OK'}</Text>
             </Pressable>
           </>
         ) : claimError ? (
@@ -446,7 +446,7 @@ export default function InviteArrivalScreen() {
                 </Pressable>
                 {claimErrorCopy.showRetry ? (
                   <Pressable onPress={() => setClaimError(null)} style={styles.secondaryButton}>
-                    <Text style={styles.secondaryButtonText}>{'Try again'}</Text>
+                    <Text style={styles.secondaryButtonText}>{'Réessayer'}</Text>
                   </Pressable>
                 ) : null}
               </>
@@ -454,12 +454,12 @@ export default function InviteArrivalScreen() {
           })()
         ) : showUnresolvedContinuation ? (
           <>
-            <Text style={styles.stateTitle}>{"You've joined this invite"}</Text>
+            <Text style={styles.stateTitle}>{'Tu as rejoint cette invitation'}</Text>
             <Text style={styles.stateBody}>
-              {'Your participation has been recorded. This relationship is not available in your Garden yet.'}
+              {'Ta participation a été enregistrée. Cette relation n’est pas encore disponible dans ton Jardin.'}
             </Text>
             <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>{'Done'}</Text>
+              <Text style={styles.primaryButtonText}>{'OK'}</Text>
             </Pressable>
           </>
         ) : (
@@ -469,11 +469,11 @@ export default function InviteArrivalScreen() {
               style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
             >
               <Text style={styles.primaryButtonText}>
-                {isSubmitting ? 'Continuing…' : 'Start your side'}
+                {isSubmitting ? 'Un instant…' : 'Commencer ton côté'}
               </Text>
             </Pressable>
             <Pressable onPress={exitInviteFlow} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>{'Maybe later'}</Text>
+              <Text style={styles.secondaryButtonText}>{'Plus tard'}</Text>
             </Pressable>
           </>
         )}

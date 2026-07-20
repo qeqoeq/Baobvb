@@ -11,33 +11,33 @@ export type RelationshipLexiconEntry = {
 const RELATIONSHIP_LEXICON: Record<Tier, RelationshipLexiconEntry> = {
   Rooted: {
     canonicalName: 'Rooted',
-    colorLabel: 'Warm amber',
-    definition: 'A deep relationship with lasting presence, strong trust, and shared history.',
+    colorLabel: 'Ambre chaud',
+    definition: 'Une relation profonde, avec une présence durable, une confiance forte et une histoire partagée.',
   },
   Anchor: {
     canonicalName: 'Anchor',
-    colorLabel: 'Deep teal',
-    definition: 'A relationship with strong reliability, safety, and meaningful presence.',
+    colorLabel: 'Bleu-vert profond',
+    definition: 'Une relation fiable et sûre, avec une présence qui compte.',
   },
   Steady: {
     canonicalName: 'Steady',
-    colorLabel: 'Muted sage',
-    definition: 'A relationship with consistent presence, reliable signal, and a stable rhythm.',
+    colorLabel: 'Sauge doux',
+    definition: 'Une relation à la présence constante, au signal fiable et au rythme stable.',
   },
   Active: {
     canonicalName: 'Active',
-    colorLabel: 'Dusty rose',
-    definition: 'A relationship with present movement, visible exchanges, and growing mutual signal.',
+    colorLabel: 'Rose poudré',
+    definition: 'Une relation en mouvement, avec des échanges visibles et un signal mutuel qui grandit.',
   },
   Forming: {
     canonicalName: 'Forming',
-    colorLabel: 'Soft gold',
-    definition: 'A relationship still taking shape, with early signals but limited shared evidence.',
+    colorLabel: 'Or doux',
+    definition: 'Une relation encore en train de prendre forme : premiers signaux, mais peu de preuves partagées.',
   },
   Distant: {
     canonicalName: 'Distant',
-    colorLabel: 'Mist gray',
-    definition: 'A relationship with limited current signal and little active presence.',
+    colorLabel: 'Gris brume',
+    definition: 'Une relation au signal faible en ce moment, avec peu de présence active.',
   },
 };
 

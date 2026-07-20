@@ -19,7 +19,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: null,
       source: 'manual',
     });
-    expect(result?.title).toBe('Archived');
+    expect(result?.title).toBe('Archivé');
   });
 
   it('returns shared-backed when canonicalRelationId is set', () => {
@@ -28,7 +28,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: 'some-uuid',
       source: 'manual',
     });
-    expect(result?.title).toBe('Shared connection');
+    expect(result?.title).toBe('Connexion partagée');
   });
 
   it('returns shared-backed when source is bootstrap', () => {
@@ -37,7 +37,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: null,
       source: 'bootstrap',
     });
-    expect(result?.title).toBe('Shared connection');
+    expect(result?.title).toBe('Connexion partagée');
   });
 
   it('returns shared-backed when source is claim', () => {
@@ -46,7 +46,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: null,
       source: 'claim',
     });
-    expect(result?.title).toBe('Shared connection');
+    expect(result?.title).toBe('Connexion partagée');
   });
 
   it('returns scan draft when source is scan', () => {
@@ -55,7 +55,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: null,
       source: 'scan',
     });
-    expect(result?.title).toBe('Added from scan');
+    expect(result?.title).toBe('Ajouté par scan');
   });
 
   it('returns local draft when source is manual', () => {
@@ -64,7 +64,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: null,
       source: 'manual',
     });
-    expect(result?.title).toBe('Private draft');
+    expect(result?.title).toBe('Brouillon privé');
   });
 
   it('archived takes priority over shared-backed source', () => {
@@ -73,7 +73,7 @@ describe('getRelationContextCard', () => {
       canonicalRelationId: 'some-uuid',
       source: 'bootstrap',
     });
-    expect(result?.title).toBe('Archived');
+    expect(result?.title).toBe('Archivé');
   });
 });
 
@@ -85,12 +85,12 @@ describe('getVisibleTierLabel', () => {
   });
 
   it('returns "Private reading" when not revealed but has evaluation', () => {
-    expect(getVisibleTierLabel(false, true, 'Anchor')).toBe('Private reading');
+    expect(getVisibleTierLabel(false, true, 'Anchor')).toBe('Lecture privée');
   });
 
   it('returns "Unread" when no evaluation regardless of reveal', () => {
-    expect(getVisibleTierLabel(false, false, 'Anchor')).toBe('Unread');
-    expect(getVisibleTierLabel(true, false, 'Anchor')).toBe('Unread');
+    expect(getVisibleTierLabel(false, false, 'Anchor')).toBe('Non lu');
+    expect(getVisibleTierLabel(true, false, 'Anchor')).toBe('Non lu');
   });
 });
 
@@ -99,32 +99,32 @@ describe('getVisibleTierLabel', () => {
 describe('getReadingNoteText', () => {
   it('returns revealed note when nameRevealed is true', () => {
     expect(getReadingNoteText(true, 'revealed')).toBe(
-      'A shared reading is a direction, not a verdict.',
+      'Une lecture partagée est une direction, pas un verdict.',
     );
   });
 
   it('returns one-time action note when reveal_ready and not yet revealed', () => {
     expect(getReadingNoteText(false, 'reveal_ready')).toBe(
-      'The reveal is a one-time action.',
+      'La révélation est une action unique.',
     );
   });
 
   it('returns private note for waiting_other_side', () => {
     expect(getReadingNoteText(false, 'waiting_other_side')).toBe(
-      'Your reading stays private until both sides share.',
+      'Ta lecture reste privée jusqu’à ce que les deux côtés partagent.',
     );
   });
 
   it('returns private note for cooking_reveal', () => {
     expect(getReadingNoteText(false, 'cooking_reveal')).toBe(
-      'Your reading stays private until both sides share.',
+      'Ta lecture reste privée jusqu’à ce que les deux côtés partagent.',
     );
   });
 
   it('nameRevealed takes priority over reveal_ready status', () => {
     // Status is reveal_ready but name is already revealed → revealed note wins
     expect(getReadingNoteText(true, 'reveal_ready')).toBe(
-      'A shared reading is a direction, not a verdict.',
+      'Une lecture partagée est une direction, pas un verdict.',
     );
   });
 });
@@ -202,8 +202,8 @@ describe('getRelationNextAction', () => {
       nameRevealed: false,
       deliveryChannelOpened: false,
     });
-    expect(result.title).toBe('Both sides are in');
-    expect(result.body).toBe('The reveal is being prepared.');
+    expect(result.title).toBe('Les deux côtés y sont');
+    expect(result.body).toBe('La révélation se prépare.');
   });
 
   it('claim + waiting_other_side shows accurate waiting copy', () => {
@@ -214,8 +214,8 @@ describe('getRelationNextAction', () => {
       nameRevealed: false,
       deliveryChannelOpened: false,
     });
-    expect(result.title).toBe('Your side is in');
-    expect(result.body).toBe('Private reading saved. The reveal waits for both sides.');
+    expect(result.title).toBe('Ton côté est prêt');
+    expect(result.body).toBe('Lecture privée enregistrée. La révélation attend les deux côtés.');
   });
 
   it('reveal_ready without local evaluation shows Open reveal (bootstrap / claim relations)', () => {
@@ -227,7 +227,7 @@ describe('getRelationNextAction', () => {
       deliveryChannelOpened: false,
     });
     expect(result.ctaKind).toBe('reveal');
-    expect(result.ctaLabel).toBe('Open reveal');
+    expect(result.ctaLabel).toBe('Ouvrir la révélation');
   });
 
   it('nameRevealed shows the shared view unlocked message with no CTA', () => {
@@ -238,8 +238,8 @@ describe('getRelationNextAction', () => {
       nameRevealed: true,
       deliveryChannelOpened: false,
     });
-    expect(result.title).toBe('Shared view unlocked');
-    expect(result.body).toBe('You can now read this connection together.');
+    expect(result.title).toBe('Vue partagée débloquée');
+    expect(result.body).toBe('Vous pouvez maintenant lire cette connexion ensemble.');
     expect(result.ctaKind).toBeNull();
     expect(result.ctaLabel).toBeNull();
   });
@@ -253,8 +253,8 @@ describe('getRelationNextAction', () => {
       deliveryChannelOpened: true,
     });
     expect(result.ctaKind).toBe('resend');
-    expect(result.title).toBe('Invite sent');
-    expect(result.ctaLabel).toBe('Send again');
+    expect(result.title).toBe('Invitation envoyée');
+    expect(result.ctaLabel).toBe('Renvoyer');
   });
 
   it('scan + waiting_other_side + deliveryChannelOpened transitions to resend', () => {
@@ -266,8 +266,8 @@ describe('getRelationNextAction', () => {
       deliveryChannelOpened: true,
     });
     expect(result.ctaKind).toBe('resend');
-    expect(result.title).toBe('Invite sent');
-    expect(result.ctaLabel).toBe('Send again');
+    expect(result.title).toBe('Invitation envoyée');
+    expect(result.ctaLabel).toBe('Renvoyer');
   });
 
   it('B5 gate: revealStatus=revealed + nameRevealed=false → Open reveal CTA', () => {
@@ -280,7 +280,7 @@ describe('getRelationNextAction', () => {
       deliveryChannelOpened: false,
     });
     expect(result.ctaKind).toBe('reveal');
-    expect(result.ctaLabel).toBe('Open reveal');
+    expect(result.ctaLabel).toBe('Ouvrir la révélation');
   });
 
   it('B5 gate: revealStatus=revealed + nameRevealed=false + no eval → Open reveal CTA', () => {
@@ -316,7 +316,7 @@ describe('getSharedRevealDisplayState', () => {
     const result = getSharedRevealDisplayState({ nameRevealed: true, visibleScore: 65, revealedTier: null });
     expect(result.kind).toBe('score');
     if (result.kind === 'score') {
-      expect(result.tier).toBe('Shared reading');
+      expect(result.tier).toBe('Lecture partagée');
     }
   });
 
@@ -331,7 +331,7 @@ describe('getSharedRevealDisplayState', () => {
     expect(result.kind).toBe('score');
     if (result.kind === 'score') {
       expect(result.score).toBe(45);
-      expect(result.tier).toBe('Shared reading');
+      expect(result.tier).toBe('Lecture partagée');
     }
   });
 
@@ -350,27 +350,27 @@ describe('getDeeperSignal', () => {
   it('high trust + high affinity → safe_and_natural', () => {
     const result = getDeeperSignal({ trust: 5, affinity: 5 });
     expect(result.kind).toBe('safe_and_natural');
-    expect(result.lines[0]).toBe('This connection feels both safe and natural.');
+    expect(result.lines[0]).toBe('Cette connexion est à la fois sûre et naturelle.');
     expect(result.lines.length).toBe(2);
   });
 
   it('high trust + low affinity → safer_than_intimate', () => {
     const result = getDeeperSignal({ trust: 5, affinity: 2 });
     expect(result.kind).toBe('safer_than_intimate');
-    expect(result.lines[1]).toBe('It may be safer than it is intimate.');
+    expect(result.lines[1]).toBe('Il est peut-être plus sûr qu’intime.');
   });
 
   it('low trust + high affinity → resonance_without_trust', () => {
     const result = getDeeperSignal({ trust: 2, affinity: 5 });
     expect(result.kind).toBe('resonance_without_trust');
-    expect(result.lines[0]).toBe('There is resonance here, but trust is still proving itself.');
-    expect(result.lines[1]).toBe('Baobab would keep this connection private for now.');
+    expect(result.lines[0]).toBe('Il y a de la résonance ici, mais la confiance fait encore ses preuves.');
+    expect(result.lines[1]).toBe('Baobab garderait cette connexion privée pour l’instant.');
   });
 
   it('high trust + medium affinity → trust_as_anchor', () => {
     const result = getDeeperSignal({ trust: 5, affinity: 3 });
     expect(result.kind).toBe('trust_as_anchor');
-    expect(result.lines[0]).toBe('Trust is the strongest layer here.');
+    expect(result.lines[0]).toBe('La confiance est la couche la plus forte ici.');
   });
 
   it('medium trust + high affinity → ease_without_proof', () => {
@@ -381,7 +381,7 @@ describe('getDeeperSignal', () => {
   it('medium trust + medium affinity falls back to still_finding_shape', () => {
     const result = getDeeperSignal({ trust: 3, affinity: 3 });
     expect(result.kind).toBe('still_finding_shape');
-    expect(result.lines[1]).toBe('Baobab needs more shared evidence before opening deeper signals.');
+    expect(result.lines[1]).toBe('Baobab a besoin de plus de preuves partagées avant d’ouvrir des signaux plus profonds.');
   });
 
   it('low trust + low affinity falls back to still_finding_shape', () => {
@@ -470,21 +470,21 @@ describe('getSharedRevealDisplayState pre-reveal safety', () => {
 
 describe('getVisibleTierLabel pre-reveal safety', () => {
   it('nameRevealed=false + hasEvaluation=true + badgeLabel=Anchor → "Private reading"', () => {
-    expect(getVisibleTierLabel(false, true, 'Anchor')).toBe('Private reading');
+    expect(getVisibleTierLabel(false, true, 'Anchor')).toBe('Lecture privée');
   });
 
   it('nameRevealed=false + hasEvaluation=true + badgeLabel=Rooted → "Private reading"', () => {
-    expect(getVisibleTierLabel(false, true, 'Rooted')).toBe('Private reading');
+    expect(getVisibleTierLabel(false, true, 'Rooted')).toBe('Lecture privée');
   });
 
   it('nameRevealed=false + hasEvaluation=true + every tier name → "Private reading"', () => {
     for (const tierName of ['Distant', 'Forming', 'Active', 'Steady', 'Anchor', 'Rooted']) {
-      expect(getVisibleTierLabel(false, true, tierName)).toBe('Private reading');
+      expect(getVisibleTierLabel(false, true, tierName)).toBe('Lecture privée');
     }
   });
 
   it('nameRevealed=false + hasEvaluation=false → "Unread" regardless of badgeLabel', () => {
-    expect(getVisibleTierLabel(false, false, 'Anchor')).toBe('Unread');
-    expect(getVisibleTierLabel(false, false, 'Rooted')).toBe('Unread');
+    expect(getVisibleTierLabel(false, false, 'Anchor')).toBe('Non lu');
+    expect(getVisibleTierLabel(false, false, 'Rooted')).toBe('Non lu');
   });
 });

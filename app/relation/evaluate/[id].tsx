@@ -32,11 +32,11 @@ import type { RelationshipSideKey } from '../../../store/useRelationsStore';
 import { useRelationsStore } from '../../../store/useRelationsStore';
 
 const PILLARS: { key: PillarKey; label: string; hint: string }[] = [
-  { key: 'trust', label: 'Trust', hint: 'Think of the last time you told them something that mattered.' },
-  { key: 'interactions', label: 'Interactions', hint: 'Picture your last few exchanges — their texture, not just their frequency.' },
-  { key: 'affinity', label: 'Affinity', hint: 'Is there ease between you, or do you always have to work at it?' },
-  { key: 'support', label: 'Support', hint: 'When something goes wrong for you, do they come to mind?' },
-  { key: 'sharedNetwork', label: 'Shared Network', hint: 'How much of your world do they already know?' },
+  { key: 'trust', label: 'Confiance', hint: 'Repense à la dernière fois où tu lui as confié quelque chose qui comptait.' },
+  { key: 'interactions', label: 'Interactions', hint: 'Revois tes derniers échanges — leur texture, pas seulement leur fréquence.' },
+  { key: 'affinity', label: 'Affinité', hint: 'Y a-t-il de l’aisance entre vous, ou faut-il toujours forcer un peu ?' },
+  { key: 'support', label: 'Soutien', hint: 'Quand quelque chose va mal pour toi, penses-tu à cette personne ?' },
+  { key: 'sharedNetwork', label: 'Réseau commun', hint: 'Quelle part de ton monde connaît-elle déjà ?' },
 ];
 
 const RATING_OPTIONS: PillarRating[] = [1, 2, 3, 4, 5];
@@ -167,30 +167,30 @@ export default function EvaluateScreen() {
   const privateSignalsBlockingMessage = useMemo(() => {
     if (pillarsRequiringPrivateSignals.length === 0) return null;
     if (pillarsRequiringPrivateSignals.length === 1) {
-      return `One more detail for ${pillarsRequiringPrivateSignals[0].pillarLabel} to save.`;
+      return `Encore un détail pour ${pillarsRequiringPrivateSignals[0].pillarLabel} avant d’enregistrer.`;
     }
     const labels = pillarsRequiringPrivateSignals.map((p) => p.pillarLabel);
     const last = labels[labels.length - 1];
     const head = labels.slice(0, -1).join(', ');
-    return `A few more details for ${head} and ${last} to save.`;
+    return `Encore quelques détails pour ${head} et ${last} avant d’enregistrer.`;
   }, [pillarsRequiringPrivateSignals]);
   const progressLabel = useMemo(() => {
     const remaining = PILLARS.length - completedCount;
-    if (remaining > 0) return `${remaining} more to go`;
-    if (!allPrivateSignalsRated) return 'Add details to save';
-    return 'Ready to save';
+    if (remaining > 0) return `Encore ${remaining}`;
+    if (!allPrivateSignalsRated) return 'Ajoute des détails pour enregistrer';
+    return 'Prêt à enregistrer';
   }, [completedCount, allPrivateSignalsRated]);
   const isInviteNumberRelation = relation?.source === 'invite_number';
   const sourceLabel =
     relation?.source === 'scan'
-      ? 'Added by scan'
+      ? 'Ajouté par scan'
       : relation?.source === 'invite_number'
-        ? 'Invited by number'
+        ? 'Invité par numéro'
       : relation?.source === 'claim'
-        ? 'Joined by invite'
-        : 'Added manually';
+        ? 'Rejoint par invitation'
+        : 'Ajouté manuellement';
   const sourceSubtext = relation?.source === 'scan' && relation.sourceHandle
-    ? `Scanned from ${relation.sourceHandle}`
+    ? `Scanné depuis ${relation.sourceHandle}`
     : null;
 
   const setRating = useCallback((key: PillarKey, value: PillarRating) => {
@@ -220,7 +220,7 @@ export default function EvaluateScreen() {
     hasSavedReadingRef.current = true;
     const saved = attachPrivateReadingToRelationshipSide(evaluation, targetSide);
     if (!saved) {
-      Alert.alert('Could not save reading', 'This side is not ready for a private reading yet.');
+      Alert.alert('Impossible d’enregistrer la lecture', 'Ce côté n’est pas encore prêt pour une lecture privée.');
       hasSavedReadingRef.current = false;
       setIsSubmitting(false);
       return;
@@ -307,8 +307,8 @@ export default function EvaluateScreen() {
         message,
       });
       Alert.alert(
-        'Reading saved locally',
-        'Shared sync did not complete. Mutual reveal stays locked until the server confirms your side.',
+        'Lecture enregistrée en local',
+        'La synchro partagée n’a pas abouti. La révélation mutuelle reste verrouillée jusqu’à ce que le serveur confirme ton côté.',
       );
     }
 
@@ -319,7 +319,7 @@ export default function EvaluateScreen() {
     return (
       <View style={styles.screen}>
         <View style={styles.fallbackWrap}>
-          <Text style={styles.fallbackText}>Opening relationship...</Text>
+          <Text style={styles.fallbackText}>Ouverture de la relation…</Text>
         </View>
       </View>
     );
@@ -328,7 +328,7 @@ export default function EvaluateScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.kicker}>Read this link</Text>
+        <Text style={styles.kicker}>Lire ce lien</Text>
         <View style={styles.identityRow}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
@@ -345,11 +345,11 @@ export default function EvaluateScreen() {
           </View>
         </View>
         <Text style={styles.subtitle}>
-          How does this connection feel today?
+          Comment ressens-tu cette connexion aujourd’hui ?
         </Text>
         <View style={styles.progressWrap}>
           <View style={styles.progressHead}>
-            <Text style={styles.progressLabel}>Progress</Text>
+            <Text style={styles.progressLabel}>Progression</Text>
             <Text style={styles.progressValue}>{progressLabel}</Text>
           </View>
           <View style={styles.progressTrack}>
@@ -390,8 +390,8 @@ export default function EvaluateScreen() {
                 })}
               </View>
               <View style={styles.ratingLegendRow}>
-                <Text style={styles.ratingLegendText}>1 low</Text>
-                <Text style={styles.ratingLegendText}>5 high</Text>
+                <Text style={styles.ratingLegendText}>1 faible</Text>
+                <Text style={styles.ratingLegendText}>5 fort</Text>
               </View>
               {(() => {
                 const unlock = progressiveUnlocks[key];
@@ -400,12 +400,12 @@ export default function EvaluateScreen() {
                 return (
                   <View style={styles.unlockBlock}>
                     <Text style={styles.unlockTitle}>
-                      {isDeep ? 'This layer can go deeper' : 'A few private signals are available'}
+                      {isDeep ? 'Cette couche peut aller plus loin' : 'Quelques signaux privés sont disponibles'}
                     </Text>
                     <Text style={styles.unlockBody}>
                       {isDeep
-                        ? 'Optional private signals are available.'
-                        : 'You can lightly refine this layer.'}
+                        ? 'Des signaux privés optionnels sont disponibles.'
+                        : 'Tu peux affiner légèrement cette couche.'}
                     </Text>
                     <View style={styles.unlockDetailsList}>
                       {unlock.criteria.map((c, idx) => {
@@ -453,7 +453,7 @@ export default function EvaluateScreen() {
                         );
                       })}
                     </View>
-                    <Text style={styles.unlockFooter}>Only for your private reading.</Text>
+                    <Text style={styles.unlockFooter}>Seulement pour ta lecture privée.</Text>
                   </View>
                 );
               })()}
@@ -473,10 +473,10 @@ export default function EvaluateScreen() {
         >
           <Text style={styles.submitButtonText}>
             {isSubmitting
-              ? 'Saving...'
+              ? 'Enregistrement…'
               : allRated
-                ? (isInviteNumberRelation ? 'Save and send' : 'Save my reading')
-                : `${PILLARS.length - completedCount} more to go`}
+                ? (isInviteNumberRelation ? 'Enregistrer et envoyer' : 'Enregistrer ma lecture')
+                : `Encore ${PILLARS.length - completedCount}`}
           </Text>
         </Pressable>
         {allRated && privateSignalsBlockingMessage ? (

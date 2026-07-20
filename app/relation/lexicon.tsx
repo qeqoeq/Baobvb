@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { type Tier } from '../../lib/evaluation';
+import { getTierDisplayLabel } from '../../lib/tier-display';
 import { getRelationshipLexiconEntry } from '../../lib/relationship-lexicon';
 import { isLexiconDiscoverable } from '../../lib/relation-visibility';
 import { useRelationsStore } from '../../store/useRelationsStore';
@@ -29,17 +30,17 @@ export default function RelationshipLexiconScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.title}>Your relationship lexicon</Text>
+        <Text style={styles.title}>Ton lexique des relations</Text>
         <Text style={styles.subtitle}>
-          Only discovered relationship names appear here.
+          Seuls les noms de relation déjà découverts apparaissent ici.
         </Text>
       </View>
 
       {discoveredTiers.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No relationship names discovered yet</Text>
+          <Text style={styles.emptyTitle}>Aucun nom de relation découvert pour l’instant</Text>
           <Text style={styles.emptyText}>
-            Complete your first foundational reading to reveal a first name.
+            Termine ta première lecture fondatrice pour révéler un premier nom.
           </Text>
         </View>
       ) : (
@@ -48,7 +49,7 @@ export default function RelationshipLexiconScreen() {
             const entry = getRelationshipLexiconEntry(tier);
             return (
               <View key={tier} style={styles.card}>
-                <Text style={styles.name}>{entry.canonicalName}</Text>
+                <Text style={styles.name}>{getTierDisplayLabel(entry.canonicalName)}</Text>
                 <Text style={styles.colorLabel}>{entry.colorLabel}</Text>
                 <Text style={styles.definition}>{entry.definition}</Text>
               </View>

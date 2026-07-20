@@ -126,7 +126,7 @@ export default function RevealLinksScreen() {
       <View style={styles.header}>
         <View style={styles.headerTitleBlock}>
           <Text style={styles.headerKicker}>BAOBAB</Text>
-          <Text style={styles.headerTitle}>Reveal</Text>
+          <Text style={styles.headerTitle}>Révélations</Text>
         </View>
         <Pressable
           onPress={() => {
@@ -135,7 +135,7 @@ export default function RevealLinksScreen() {
           }}
           style={styles.headerBack}
         >
-          <Text style={styles.headerBackText}>Garden</Text>
+          <Text style={styles.headerBackText}>Jardin</Text>
         </Pressable>
       </View>
 
@@ -143,7 +143,7 @@ export default function RevealLinksScreen() {
       <View style={styles.heroCard}>
         <View style={styles.heroCountRow}>
           <Text style={styles.heroCount}>{readyEntries.length}</Text>
-          <Text style={styles.heroConcept}>READY</Text>
+          <Text style={styles.heroConcept}>PRÊT</Text>
         </View>
         <View style={styles.heroField}>
           {/* Warm-embers orb constellation — solid, no blur. */}
@@ -165,19 +165,19 @@ export default function RevealLinksScreen() {
       {/* ── List / Empty ───────────────────────────────────────────────────── */}
       {readyEntries.length === 0 && waitingEntries.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>All clear</Text>
+          <Text style={styles.emptyTitle}>Rien en attente</Text>
           <Text style={styles.emptyBody}>
-            When both sides are in, a link appears here.
+            Quand les deux côtés y sont, un lien apparaît ici.
           </Text>
           <Pressable onPress={() => router.replace('/(tabs)/garden')} style={styles.emptyCTA}>
-            <Text style={styles.emptyCTAText}>Garden</Text>
+            <Text style={styles.emptyCTAText}>Jardin</Text>
           </Pressable>
         </View>
       ) : (
         <>
           {readyEntries.length > 0 ? (
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Ready</Text>
+              <Text style={styles.sectionLabel}>Prêts</Text>
               <View style={styles.momentList}>
                 {readyEntries.map((entry) => {
                   const identity    = getRelationSheetIdentity({ relation: entry.relation });
@@ -203,15 +203,15 @@ export default function RevealLinksScreen() {
 
           {waitingEntries.length > 0 ? (
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Waiting</Text>
+              <Text style={styles.sectionLabel}>En attente</Text>
               <View style={styles.momentList}>
                 {waitingEntries.map((entry) => {
                   const identity    = getRelationSheetIdentity({ relation: entry.relation });
                   const avatarColor = getAvatarRevealColor(identity.primaryTitle);
                   const initial     = (entry.relation.avatarSeed || identity.primaryTitle.charAt(0) || '?').toUpperCase();
                   const status      = entry.relation.localState.revealSnapshot.status === 'cooking_reveal'
-                    ? 'Reveal in progress'
-                    : 'Waiting for them';
+                    ? 'Révélation en cours'
+                    : 'En attente de sa réponse';
                   return (
                     <Pressable
                       key={entry.relation.id}

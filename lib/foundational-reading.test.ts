@@ -35,48 +35,48 @@ function micro(opts: {
 
 describe('getTierNarrative', () => {
   it('null tier → no-reading fallback', () => {
-    expect(getTierNarrative(null, 'trust')).toBe('No foundational reading yet.');
+    expect(getTierNarrative(null, 'trust')).toBe('Pas encore de lecture fondatrice.');
   });
 
   it('Rooted → canonical narrative, no substitution', () => {
     expect(getTierNarrative('Rooted', null)).toBe(
-      'This link feels rooted, shaped by time, trust, and repeated evidence.',
+      'Ce lien est enraciné, façonné par le temps, la confiance et des preuves répétées.',
     );
   });
 
   it('Anchor → canonical narrative, no substitution', () => {
     expect(getTierNarrative('Anchor', null)).toBe(
-      'This link feels like a stable point of trust, with presence that can be counted on.',
+      'Ce lien est un point d’ancrage stable, avec une présence sur laquelle compter.',
     );
   });
 
   it('Steady + known pillar → canonical narrative (no substitution)', () => {
     expect(getTierNarrative('Steady', 'trust')).toBe(
-      'This link feels steady today, with enough presence to create a clearer shared direction.',
+      'Ce lien est stable aujourd’hui, avec assez de présence pour dessiner une direction commune plus claire.',
     );
   });
 
   it('Steady + null pillar → canonical narrative', () => {
     expect(getTierNarrative('Steady', null)).toBe(
-      'This link feels steady today, with enough presence to create a clearer shared direction.',
+      'Ce lien est stable aujourd’hui, avec assez de présence pour dessiner une direction commune plus claire.',
     );
   });
 
   it('Active + null pillar → canonical narrative', () => {
     expect(getTierNarrative('Active', null)).toBe(
-      'This link has active movement today. Its shape is becoming easier to read.',
+      'Ce lien est en mouvement aujourd’hui. Sa forme devient plus facile à lire.',
     );
   });
 
   it('Forming + null pillar → canonical narrative', () => {
     expect(getTierNarrative('Forming', null)).toBe(
-      'This link is still finding its form. More shared moments could make its direction clearer.',
+      'Ce lien cherche encore sa forme. Plus de moments partagés rendraient sa direction plus claire.',
     );
   });
 
   it('Distant + null pillar → canonical narrative', () => {
     expect(getTierNarrative('Distant', null)).toBe(
-      'This link feels distant today, and could be rebuilt through gentle attention.',
+      'Ce lien est distant aujourd’hui, et pourrait se reconstruire avec une attention douce.',
     );
   });
 
@@ -96,42 +96,42 @@ describe('getTierNarrative', () => {
   // hydration normalization through a runtime mutation path, or an unknown
   // value injected from a backend / bundle mismatch. These tests reproduce
   // the crash and lock the defensive contract: any unrecognized tier must
-  // fall back to 'No foundational reading yet.', never crash, never expose
+  // fall back to 'Pas encore de lecture fondatrice.', never crash, never expose
   // the legacy label, never fabricate a relational verdict.
 
-  it('legacy "Ghost" tier (Sprint-pre-V.1 leak) → "No foundational reading yet." (no crash)', () => {
+  it('legacy "Ghost" tier (Sprint-pre-V.1 leak) → "Pas encore de lecture fondatrice." (no crash)', () => {
     expect(getTierNarrative('Ghost' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'No foundational reading yet.',
+      'Pas encore de lecture fondatrice.',
     );
   });
 
-  it('legacy "Spark" tier → "No foundational reading yet." (no crash)', () => {
+  it('legacy "Spark" tier → "Pas encore de lecture fondatrice." (no crash)', () => {
     expect(getTierNarrative('Spark' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'No foundational reading yet.',
+      'Pas encore de lecture fondatrice.',
     );
   });
 
-  it('legacy "Thrill" tier → "No foundational reading yet." (no crash)', () => {
+  it('legacy "Thrill" tier → "Pas encore de lecture fondatrice." (no crash)', () => {
     expect(getTierNarrative('Thrill' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'No foundational reading yet.',
+      'Pas encore de lecture fondatrice.',
     );
   });
 
-  it('legacy "Vibrant" tier → "No foundational reading yet." (no crash)', () => {
+  it('legacy "Vibrant" tier → "Pas encore de lecture fondatrice." (no crash)', () => {
     expect(getTierNarrative('Vibrant' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'No foundational reading yet.',
+      'Pas encore de lecture fondatrice.',
     );
   });
 
-  it('legacy "Legend" tier → "No foundational reading yet." (no crash)', () => {
+  it('legacy "Legend" tier → "Pas encore de lecture fondatrice." (no crash)', () => {
     expect(getTierNarrative('Legend' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'No foundational reading yet.',
+      'Pas encore de lecture fondatrice.',
     );
   });
 
   it('arbitrary unknown tier (defensive: any future / backend / bundle mismatch) → fallback', () => {
     expect(getTierNarrative('Unknown' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'No foundational reading yet.',
+      'Pas encore de lecture fondatrice.',
     );
   });
 
@@ -139,34 +139,34 @@ describe('getTierNarrative', () => {
     // Verifies the guard fires before the weakestPillar / substitution paths
     // could touch an undefined `base`.
     expect(getTierNarrative('Ghost' as unknown as Parameters<typeof getTierNarrative>[0], 'trust')).toBe(
-      'No foundational reading yet.',
+      'Pas encore de lecture fondatrice.',
     );
   });
 
   it('valid current tier still returns its canonical narrative (regression: guard does not block valid tiers)', () => {
     expect(getTierNarrative('Distant', null)).toBe(
-      'This link feels distant today, and could be rebuilt through gentle attention.',
+      'Ce lien est distant aujourd’hui, et pourrait se reconstruire avec une attention douce.',
     );
     expect(getTierNarrative('Rooted', null)).toBe(
-      'This link feels rooted, shaped by time, trust, and repeated evidence.',
+      'Ce lien est enraciné, façonné par le temps, la confiance et des preuves répétées.',
     );
   });
 
   it('Active + known pillar → canonical narrative (no substitution)', () => {
     expect(getTierNarrative('Active', 'interactions')).toBe(
-      'This link has active movement today. Its shape is becoming easier to read.',
+      'Ce lien est en mouvement aujourd’hui. Sa forme devient plus facile à lire.',
     );
   });
 
   it('Forming + known pillar → canonical narrative (no substitution)', () => {
     expect(getTierNarrative('Forming', 'sharedNetwork')).toBe(
-      'This link is still finding its form. More shared moments could make its direction clearer.',
+      'Ce lien cherche encore sa forme. Plus de moments partagés rendraient sa direction plus claire.',
     );
   });
 
   it('Distant + known pillar → canonical narrative (no substitution)', () => {
     expect(getTierNarrative('Distant', 'support')).toBe(
-      'This link feels distant today, and could be rebuilt through gentle attention.',
+      'Ce lien est distant aujourd’hui, et pourrait se reconstruire avec une attention douce.',
     );
   });
 });
@@ -178,31 +178,31 @@ describe('getTierNarrative', () => {
 describe('getGrowthSuggestion', () => {
   it('known pillar → returns that pillar suggestion', () => {
     expect(getGrowthSuggestion('trust', 'Anchor')).toBe(
-      'Create one small act of reliable follow-through this week.',
+      'Pose un petit geste fiable, tenu jusqu’au bout, cette semaine.',
     );
   });
 
   it('known pillar (interactions) → returns interactions suggestion', () => {
     expect(getGrowthSuggestion('interactions', 'Distant')).toBe(
-      'Create more regular touchpoints around this link.',
+      'Crée des points de contact plus réguliers autour de ce lien.',
     );
   });
 
   it('null pillar + Rooted → "Keep this link warm" variant', () => {
     expect(getGrowthSuggestion(null, 'Rooted')).toBe(
-      'Keep this link warm with one intentional touchpoint this week.',
+      'Garde ce lien au chaud avec un point de contact intentionnel cette semaine.',
     );
   });
 
   it('null pillar + non-Rooted → "Keep nurturing" variant', () => {
     expect(getGrowthSuggestion(null, 'Forming')).toBe(
-      'Keep nurturing this link through one intentional touchpoint this week.',
+      'Continue à nourrir ce lien avec un point de contact intentionnel cette semaine.',
     );
   });
 
   it('null pillar + null tier → "Keep nurturing" variant', () => {
     expect(getGrowthSuggestion(null, null)).toBe(
-      'Keep nurturing this link through one intentional touchpoint this week.',
+      'Continue à nourrir ce lien avec un point de contact intentionnel cette semaine.',
     );
   });
 });
@@ -214,21 +214,21 @@ describe('getGrowthSuggestion', () => {
 describe('getGardenMicroSignal', () => {
   it('no reading → unread signal', () => {
     expect(getGardenMicroSignal(micro({ hasFoundationalReading: false }))).toEqual({
-      text: 'Unread',
+      text: 'Non lu',
       tone: 'unread',
     });
   });
 
   it('toNurture=true → nurture signal', () => {
     expect(getGardenMicroSignal(micro({ toNurture: true }))).toEqual({
-      text: 'To nurture',
+      text: 'À nourrir',
       tone: 'nurture',
     });
   });
 
   it('strongestPillar=trust, not nurture → strong trust signal', () => {
     expect(getGardenMicroSignal(micro({ strongestPillar: 'trust' }))).toEqual({
-      text: 'Strong trust',
+      text: 'Confiance forte',
       tone: 'stable',
     });
   });
@@ -236,25 +236,25 @@ describe('getGardenMicroSignal', () => {
   it('weakestPillar=sharedNetwork, strongest≠trust → watch shared network', () => {
     expect(
       getGardenMicroSignal(micro({ strongestPillar: 'affinity', weakestPillar: 'sharedNetwork' })),
-    ).toEqual({ text: 'Watch shared network', tone: 'stable' });
+    ).toEqual({ text: 'Réseau commun à surveiller', tone: 'stable' });
   });
 
   it('weakestPillar=interactions, strongest≠trust → watch interactions', () => {
     expect(
       getGardenMicroSignal(micro({ strongestPillar: 'affinity', weakestPillar: 'interactions' })),
-    ).toEqual({ text: 'Watch interactions', tone: 'stable' });
+    ).toEqual({ text: 'Interactions à surveiller', tone: 'stable' });
   });
 
   it('no special pillar condition → steady link fallback', () => {
     expect(
       getGardenMicroSignal(micro({ strongestPillar: 'affinity', weakestPillar: 'support' })),
-    ).toEqual({ text: 'Steady link', tone: 'stable' });
+    ).toEqual({ text: 'Lien stable', tone: 'stable' });
   });
 
   it('priority: toNurture=true beats strongestPillar=trust', () => {
     expect(
       getGardenMicroSignal(micro({ toNurture: true, strongestPillar: 'trust' })),
-    ).toEqual({ text: 'To nurture', tone: 'nurture' });
+    ).toEqual({ text: 'À nourrir', tone: 'nurture' });
   });
 });
 

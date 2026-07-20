@@ -38,7 +38,7 @@ export default function AuthSignInScreen() {
     try {
       await signInWithApple();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not sign in right now. Please try again.');
+      setError(err instanceof Error ? err.message : 'Connexion impossible pour le moment. Réessaie.');
     } finally {
       setIsApple(false);
     }
@@ -56,7 +56,7 @@ export default function AuthSignInScreen() {
       setCode('');
       setState('code_sent');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send code. Please try again.');
+      setError(err instanceof Error ? err.message : 'Envoi du code impossible. Réessaie.');
     } finally {
       setIsSending(false);
       sendingRef.current = false;
@@ -74,7 +74,7 @@ export default function AuthSignInScreen() {
       await verifyEmailOtp(email, code);
       // onAuthStateChange in _layout.tsx drives navigation.
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid code. Please try again.');
+      setError(err instanceof Error ? err.message : 'Code invalide. Réessaie.');
       setState('code_sent');
     } finally {
       setIsVerify(false);
@@ -107,11 +107,11 @@ export default function AuthSignInScreen() {
 
         {/* Title + sub-text */}
         <View style={styles.copyZone}>
-          <Text style={styles.title}>{'Sign in to Baobab'}</Text>
+          <Text style={styles.title}>{'Se connecter à Baobab'}</Text>
           <Text style={styles.body}>
             {inviteRelationId
-              ? 'Sign in to accept this invitation and add your side of the relationship.'
-              : 'Your connections, mapped privately.'}
+              ? 'Connecte-toi pour accepter cette invitation et ajouter ton côté de la relation.'
+              : 'Tes connexions, cartographiées en privé.'}
           </Text>
         </View>
 
@@ -125,7 +125,7 @@ export default function AuthSignInScreen() {
               onPress={() => { setError(null); setState('email_entry'); }}
               style={styles.primaryButton}
             >
-              <Text style={styles.primaryButtonText}>{'Continue with email'}</Text>
+              <Text style={styles.primaryButtonText}>{'Continuer avec l’e-mail'}</Text>
             </Pressable>
 
             <Pressable
@@ -134,7 +134,7 @@ export default function AuthSignInScreen() {
               style={[styles.secondaryButton, isApple && styles.buttonDisabled]}
             >
               <Text style={styles.secondaryButtonText}>
-                {isApple ? 'Signing in…' : 'Continue with Apple'}
+                {isApple ? 'Connexion…' : 'Continuer avec Apple'}
               </Text>
             </Pressable>
           </>
@@ -146,7 +146,7 @@ export default function AuthSignInScreen() {
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="Email address"
+              placeholder="Adresse e-mail"
               placeholderTextColor={colors.text.muted}
               style={styles.input}
               keyboardType="email-address"
@@ -164,7 +164,7 @@ export default function AuthSignInScreen() {
               style={[styles.primaryButton, (isSending || !email.trim()) && styles.buttonDisabled]}
             >
               <Text style={styles.primaryButtonText}>
-                {isSending ? 'Sending…' : 'Send code'}
+                {isSending ? 'Envoi…' : 'Envoyer le code'}
               </Text>
             </Pressable>
 
@@ -174,12 +174,12 @@ export default function AuthSignInScreen() {
               style={[styles.secondaryButton, (isApple || isSending) && styles.buttonDisabled]}
             >
               <Text style={styles.secondaryButtonText}>
-                {isApple ? 'Signing in…' : 'Continue with Apple'}
+                {isApple ? 'Connexion…' : 'Continuer avec Apple'}
               </Text>
             </Pressable>
 
             <Pressable onPress={goBack} disabled={busy} style={styles.ghostButton}>
-              <Text style={styles.ghostButtonText}>{'Back'}</Text>
+              <Text style={styles.ghostButtonText}>{'Retour'}</Text>
             </Pressable>
           </>
         )}
@@ -188,13 +188,13 @@ export default function AuthSignInScreen() {
         {(state === 'code_sent' || state === 'verifying') && (
           <>
             <Text style={styles.codeSentHint}>
-              {'Check your email — we sent a private sign-in code.'}
+              {'Regarde tes e-mails — on t’a envoyé un code de connexion privé.'}
             </Text>
 
             <TextInput
               value={code}
               onChangeText={setCode}
-              placeholder="6-digit code"
+              placeholder="Code à 6 chiffres"
               placeholderTextColor={colors.text.muted}
               style={styles.input}
               keyboardType="number-pad"
@@ -216,17 +216,17 @@ export default function AuthSignInScreen() {
               ]}
             >
               <Text style={styles.primaryButtonText}>
-                {isVerify ? 'Confirming…' : 'Confirm'}
+                {isVerify ? 'Confirmation…' : 'Confirmer'}
               </Text>
             </Pressable>
 
             <View style={styles.secondaryActions}>
               <Pressable onPress={useAnotherEmail} disabled={isVerify}>
-                <Text style={styles.secondaryActionText}>{'Use another email'}</Text>
+                <Text style={styles.secondaryActionText}>{'Utiliser une autre adresse'}</Text>
               </Pressable>
               <Pressable onPress={() => void handleSendCode()} disabled={isSending || isVerify}>
                 <Text style={styles.secondaryActionText}>
-                  {isSending ? 'Sending…' : 'Resend code'}
+                  {isSending ? 'Envoi…' : 'Renvoyer le code'}
                 </Text>
               </Pressable>
             </View>

@@ -33,13 +33,13 @@ export default function InviteIdentityScreen() {
   const handleContinue = () => {
     const cleanName = displayName.trim();
     if (!cleanName) {
-      setError('Your name is required.');
+      setError('Ton nom est requis.');
       return;
     }
 
     const cleanHandle = normalizeHandleInput(cleanName);
     if (!cleanHandle) {
-      setError('Add at least one letter or number to continue.');
+      setError('Ajoute au moins une lettre ou un chiffre pour continuer.');
       return;
     }
 
@@ -50,7 +50,7 @@ export default function InviteIdentityScreen() {
     });
 
     if (!saved) {
-      setError('Could not save your card. Please try again.');
+      setError('Impossible d’enregistrer ta carte. Réessaie.');
       return;
     }
 
@@ -70,10 +70,10 @@ export default function InviteIdentityScreen() {
     return (
       <View style={styles.screen}>
         <View style={styles.card}>
-          <Text style={styles.title}>Invalid link</Text>
-          <Text style={styles.body}>This screen needs a relationship id in the URL.</Text>
+          <Text style={styles.title}>Lien invalide</Text>
+          <Text style={styles.body}>Cet écran a besoin d’un identifiant de relation dans l’URL.</Text>
           <Pressable onPress={() => router.back()} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Go back</Text>
+            <Text style={styles.primaryButtonText}>Retour</Text>
           </Pressable>
         </View>
       </View>
@@ -87,18 +87,18 @@ export default function InviteIdentityScreen() {
         style={styles.kav}
       >
       <View style={styles.card}>
-        <Text style={styles.title}>What should we call you?</Text>
-        <Text style={styles.body}>A first name is enough to open this link.</Text>
+        <Text style={styles.title}>Comment on t’appelle ?</Text>
+        <Text style={styles.body}>Un prénom suffit pour ouvrir ce lien.</Text>
 
         <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Your name</Text>
+          <Text style={styles.fieldLabel}>Ton nom</Text>
           <TextInput
             value={displayName}
             onChangeText={(value) => {
               setDisplayName(value);
               if (error) setError(null);
             }}
-            placeholder="Your name"
+            placeholder="Ton nom"
             placeholderTextColor={colors.text.muted}
             style={styles.input}
             autoFocus
@@ -108,11 +108,11 @@ export default function InviteIdentityScreen() {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Pressable onPress={handleContinue} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Continue</Text>
+          <Text style={styles.primaryButtonText}>Continuer</Text>
         </Pressable>
 
         <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Not now</Text>
+          <Text style={styles.secondaryButtonText}>Pas maintenant</Text>
         </Pressable>
       </View>
       </KeyboardAvoidingView>

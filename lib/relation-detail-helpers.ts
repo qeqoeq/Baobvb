@@ -52,8 +52,8 @@ function isSharedBackedRelation(
 function maskPhoneAnchor(anchorValue?: string | null): string | null {
   if (!anchorValue) return null;
   const digits = anchorValue.replace(/\D/g, '');
-  if (digits.length >= 4) return `Ends in ${digits.slice(-4)}`;
-  if (digits.length > 0) return 'Number saved on this device';
+  if (digits.length >= 4) return `Se termine par ${digits.slice(-4)}`;
+  if (digits.length > 0) return 'Numéro enregistré sur cet appareil';
   return null;
 }
 
@@ -65,10 +65,10 @@ export function getRelationIdentityAnnotation(
   relation: Pick<Relation, 'identityStatus' | 'sourceHandle'>,
 ): RelationIdentityAnnotation {
   const label =
-    relation.identityStatus === 'verified' ? 'Verified by scan' : 'Added manually';
+    relation.identityStatus === 'verified' ? 'Vérifié par scan' : 'Ajouté manuellement';
   const subtext =
     relation.identityStatus === 'verified' && relation.sourceHandle
-      ? `Scanned from ${relation.sourceHandle}`
+      ? `Scanné depuis ${relation.sourceHandle}`
       : null;
   return { label, subtext };
 }
@@ -83,15 +83,15 @@ export function getRelationContextCard(
 ): RelationContextCard | null {
   if (relation.archived) {
     return {
-      title: 'Archived',
-      body: 'No longer in your active network.',
+      title: 'Archivé',
+      body: 'N’est plus dans ton réseau actif.',
     };
   }
 
   if (relation.source === 'invite_number') {
     return {
-      title: 'Invite sent',
-      body: 'Waiting for them to join.',
+      title: 'Invitation envoyée',
+      body: 'En attente de sa réponse.',
     };
   }
 
@@ -99,22 +99,22 @@ export function getRelationContextCard(
 
   if (isSharedBacked) {
     return {
-      title: 'Shared connection',
-      body: 'Both sides are connected.',
+      title: 'Connexion partagée',
+      body: 'Les deux côtés sont connectés.',
     };
   }
 
   if (relation.source === 'scan') {
     return {
-      title: 'Added from scan',
-      body: 'Not yet a shared relationship.',
+      title: 'Ajouté par scan',
+      body: 'Pas encore une relation partagée.',
     };
   }
 
   if (relation.source === 'manual') {
     return {
-      title: 'Private draft',
-      body: 'Only on this device — not shared yet.',
+      title: 'Brouillon privé',
+      body: 'Seulement sur cet appareil — pas encore partagé.',
     };
   }
 
@@ -134,8 +134,8 @@ export function getVisibleTierLabel(
   badgeLabel: string,
 ): string {
   if (nameRevealed && hasEvaluation) return badgeLabel;
-  if (hasEvaluation) return 'Private reading';
-  return 'Unread';
+  if (hasEvaluation) return 'Lecture privée';
+  return 'Non lu';
 }
 
 /**
@@ -147,9 +147,9 @@ export function getReadingNoteText(nameRevealed: boolean, revealStatus: RevealSt
   // a verdict. Doctrine: Baobab is a private GPS for relationships, not a
   // social rating system. The reading helps orient how to read the link,
   // without reducing it to a score, label, or definitive judgement.
-  if (nameRevealed) return 'A shared reading is a direction, not a verdict.';
-  if (revealStatus === 'reveal_ready') return 'The reveal is a one-time action.';
-  return 'Your reading stays private until both sides share.';
+  if (nameRevealed) return 'Une lecture partagée est une direction, pas un verdict.';
+  if (revealStatus === 'reveal_ready') return 'La révélation est une action unique.';
+  return 'Ta lecture reste privée jusqu’à ce que les deux côtés partagent.';
 }
 
 export function getTemporaryRelationDepth(input: {
@@ -178,10 +178,10 @@ export function getRelationSheetIdentity(input: {
   const relationDepth = relation.relationDepth ?? getTemporaryRelationDepth({ relation });
   const relationDepthLabel =
     relationDepth === 'encounter'
-      ? 'Encounter'
+      ? 'Rencontre'
       : relationDepth === 'known'
-        ? 'Known'
-        : 'Deep';
+        ? 'Connu'
+        : 'Profond';
   const privateLabel = getNormalizedPrivateLabel(relation);
   const anchorMode = deriveRelationAnchorMode(relation);
 
@@ -190,13 +190,13 @@ export function getRelationSheetIdentity(input: {
     return {
       privateLabel,
       primaryTitle: privateLabel,
-      titleEyebrow: isRevealed ? 'Shared connection' : 'Added by phone',
+      titleEyebrow: isRevealed ? 'Connexion partagée' : 'Ajouté par téléphone',
       supportingText: null,
-      stateLabel: relation.archived ? 'Archived' : (isRevealed ? 'Shared connection' : 'Private'),
+      stateLabel: relation.archived ? 'Archivé' : (isRevealed ? 'Connexion partagée' : 'Privé'),
       relationDepth,
       relationDepthLabel,
-      anchorLabel: 'Anchored by',
-      anchorValue: 'Phone number',
+      anchorLabel: 'Ancré par',
+      anchorValue: 'Numéro de téléphone',
       anchorHint: maskPhoneAnchor(relation.anchorValue) ?? null,
     };
   }
@@ -213,14 +213,14 @@ export function getRelationSheetIdentity(input: {
     return {
       privateLabel,
       primaryTitle: privateLabel,
-      titleEyebrow: 'Shared identity',
+      titleEyebrow: 'Identité partagée',
       supportingText,
-      stateLabel: relation.archived ? 'Archived' : 'Shared connection',
+      stateLabel: relation.archived ? 'Archivé' : 'Connexion partagée',
       relationDepth,
       relationDepthLabel,
-      anchorLabel: 'Anchored by',
-      anchorValue: handleDisplay ?? 'Shared Baobab connection',
-      anchorHint: 'Active on Baobab.',
+      anchorLabel: 'Ancré par',
+      anchorValue: handleDisplay ?? 'Connexion Baobab partagée',
+      anchorHint: 'Actif sur Baobab.',
     };
   }
 
@@ -228,12 +228,12 @@ export function getRelationSheetIdentity(input: {
     return {
       privateLabel,
       primaryTitle: privateLabel,
-      titleEyebrow: 'Scanned contact',
-      supportingText: relation.sourceHandle ? `From ${relation.sourceHandle}` : null,
-      stateLabel: relation.archived ? 'Archived' : 'Scanned',
+      titleEyebrow: 'Contact scanné',
+      supportingText: relation.sourceHandle ? `Depuis ${relation.sourceHandle}` : null,
+      stateLabel: relation.archived ? 'Archivé' : 'Scanné',
       relationDepth,
       relationDepthLabel,
-      anchorLabel: 'Anchored by',
+      anchorLabel: 'Ancré par',
       anchorValue: 'Scan',
       anchorHint: null,
     };
@@ -242,13 +242,13 @@ export function getRelationSheetIdentity(input: {
   return {
     privateLabel,
     primaryTitle: privateLabel,
-    titleEyebrow: 'Private label',
+    titleEyebrow: 'Étiquette privée',
     supportingText: null,
-    stateLabel: relation.archived ? 'Archived' : 'Private',
+    stateLabel: relation.archived ? 'Archivé' : 'Privé',
     relationDepth,
     relationDepthLabel,
-    anchorLabel: 'Anchored by',
-    anchorValue: 'Local label',
+    anchorLabel: 'Ancré par',
+    anchorValue: 'Étiquette locale',
     anchorHint: null,
   };
 }
@@ -262,8 +262,8 @@ export function getRelationNextAction(input: {
 }): RelationNextAction {
   if (input.relation.archived) {
     return {
-      title: 'Archived',
-      body: 'Not in your active network.',
+      title: 'Archivé',
+      body: 'Pas dans ton réseau actif.',
       ctaLabel: null,
       ctaKind: null,
     };
@@ -271,8 +271,8 @@ export function getRelationNextAction(input: {
 
   if (input.nameRevealed) {
     return {
-      title: 'Shared view unlocked',
-      body: 'You can now read this connection together.',
+      title: 'Vue partagée débloquée',
+      body: 'Vous pouvez maintenant lire cette connexion ensemble.',
       ctaLabel: null,
       ctaKind: null,
     };
@@ -283,9 +283,9 @@ export function getRelationNextAction(input: {
   // cinematic plays on first view — same UX as reveal_ready, no score info exposed.
   if (input.revealStatus === 'revealed') {
     return {
-      title: "You're both in",
-      body: 'Open what Baobab found.',
-      ctaLabel: 'Open reveal',
+      title: 'Vous y êtes tous les deux',
+      body: 'Ouvre ce que Baobab a trouvé.',
+      ctaLabel: 'Ouvrir la révélation',
       ctaKind: 'reveal',
     };
   }
@@ -294,26 +294,26 @@ export function getRelationNextAction(input: {
   // readings, even when no local evaluation exists (bootstrap / claim relations).
   if (input.revealStatus === 'reveal_ready') {
     return {
-      title: 'You\'re both in',
-      body: 'Open what Baobab found.',
-      ctaLabel: 'Open reveal',
+      title: 'Vous y êtes tous les deux',
+      body: 'Ouvre ce que Baobab a trouvé.',
+      ctaLabel: 'Ouvrir la révélation',
       ctaKind: 'reveal',
     };
   }
 
   if (!input.hasEvaluation) {
     return {
-      title: 'Start with a private reading',
-      body: 'Stays private until both sides are in.',
-      ctaLabel: 'Read this relationship',
+      title: 'Commence par une lecture privée',
+      body: 'Reste privée jusqu’à ce que les deux côtés y soient.',
+      ctaLabel: 'Lire cette relation',
       ctaKind: 'evaluate',
     };
   }
 
   if (input.revealStatus === 'cooking_reveal') {
     return {
-      title: 'Both sides are in',
-      body: 'The reveal is being prepared.',
+      title: 'Les deux côtés y sont',
+      body: 'La révélation se prépare.',
       ctaLabel: null,
       ctaKind: null,
     };
@@ -324,35 +324,35 @@ export function getRelationNextAction(input: {
 
     if (input.deliveryChannelOpened) {
       return {
-        title: 'Invite sent',
-        body: 'Waiting for them.',
-        ctaLabel: 'Send again',
+        title: 'Invitation envoyée',
+        body: 'En attente de sa réponse.',
+        ctaLabel: 'Renvoyer',
         ctaKind: 'resend',
       };
     }
 
     if (input.relation.source === 'claim') {
       return {
-        title: 'Your side is in',
-        body: 'Private reading saved. The reveal waits for both sides.',
+        title: 'Ton côté est prêt',
+        body: 'Lecture privée enregistrée. La révélation attend les deux côtés.',
         ctaLabel: null,
         ctaKind: null,
       };
     }
 
     return {
-      title: 'Your side is in',
+      title: 'Ton côté est prêt',
       body: isInviteNumber
-        ? 'Send the invite to open it together.'
-        : 'Private reading saved. The reveal waits for both sides.',
-      ctaLabel: isInviteNumber ? 'Send invite' : 'Invite them',
+        ? 'Envoie l’invitation pour l’ouvrir ensemble.'
+        : 'Lecture privée enregistrée. La révélation attend les deux côtés.',
+      ctaLabel: isInviteNumber ? 'Envoyer l’invitation' : 'Inviter',
       ctaKind: 'invite',
     };
   }
 
   return {
-    title: 'Private reading saved',
-    body: 'No shared step yet.',
+    title: 'Lecture privée enregistrée',
+    body: 'Pas encore d’étape partagée.',
     ctaLabel: null,
     ctaKind: null,
   };
@@ -427,7 +427,7 @@ export function getSharedRevealDisplayState(input: {
 }): SharedRevealDisplayState {
   if (!input.nameRevealed) return { kind: 'hidden' };
   if (input.visibleScore !== null) {
-    return { kind: 'score', score: input.visibleScore, tier: input.revealedTier ?? 'Shared reading' };
+    return { kind: 'score', score: input.visibleScore, tier: input.revealedTier ?? 'Lecture partagée' };
   }
   return { kind: 'pending' };
 }
@@ -483,8 +483,8 @@ export function getDeeperSignal(input: {
     return {
       kind: 'safe_and_natural',
       lines: [
-        'This connection feels both safe and natural.',
-        'Trust holds, and being together does not ask for much translation.',
+        'Cette connexion est à la fois sûre et naturelle.',
+        'La confiance tient, et être ensemble ne demande presque aucune traduction.',
       ],
     };
   }
@@ -493,8 +493,8 @@ export function getDeeperSignal(input: {
     return {
       kind: 'safer_than_intimate',
       lines: [
-        'This link is reliable, even if it does not feel especially close.',
-        'It may be safer than it is intimate.',
+        'Ce lien est fiable, même s’il ne semble pas particulièrement proche.',
+        'Il est peut-être plus sûr qu’intime.',
       ],
     };
   }
@@ -503,8 +503,8 @@ export function getDeeperSignal(input: {
     return {
       kind: 'resonance_without_trust',
       lines: [
-        'There is resonance here, but trust is still proving itself.',
-        'Baobab would keep this connection private for now.',
+        'Il y a de la résonance ici, mais la confiance fait encore ses preuves.',
+        'Baobab garderait cette connexion privée pour l’instant.',
       ],
     };
   }
@@ -513,8 +513,8 @@ export function getDeeperSignal(input: {
     return {
       kind: 'trust_as_anchor',
       lines: [
-        'Trust is the strongest layer here.',
-        'The connection may deepen with more shared rhythm.',
+        'La confiance est la couche la plus forte ici.',
+        'La connexion pourrait s’approfondir avec plus de rythme partagé.',
       ],
     };
   }
@@ -523,8 +523,8 @@ export function getDeeperSignal(input: {
     return {
       kind: 'ease_without_proof',
       lines: [
-        'There is ease here, but the deeper layer is not fully proven yet.',
-        'Trust may follow with more shared rhythm.',
+        'Il y a de l’aisance ici, mais la couche plus profonde n’est pas encore pleinement prouvée.',
+        'La confiance pourrait suivre avec plus de rythme partagé.',
       ],
     };
   }
@@ -532,8 +532,8 @@ export function getDeeperSignal(input: {
   return {
     kind: 'still_finding_shape',
     lines: [
-      'This connection is still finding its shape.',
-      'Baobab needs more shared evidence before opening deeper signals.',
+      'Cette connexion cherche encore sa forme.',
+      'Baobab a besoin de plus de preuves partagées avant d’ouvrir des signaux plus profonds.',
     ],
   };
 }
