@@ -1,12 +1,13 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Keyboard, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
 import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
+import { resyncSharedRelations } from '../../lib/resync-shared-relations';
 import type { Relation } from '../../store/useRelationsStore';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
@@ -122,6 +123,18 @@ export default function GardenScreen() {
   const [selectedFilter, setSelectedFilter] = useState<GardenFilterKey>('active');
   const [bucketSort, setBucketSort] = useState<GardenSortKey>('recent');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // B26 — pull-to-refresh: explicit user intent bypasses the throttle (force);
+  // the in-flight guard still coalesces concurrent pulls.
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await resyncSharedRelations({ force: true });
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   // Sync incoming filter param from deep-link (e.g. from World hint taps).
   // Also resets to 'active' when params.filter is cleared (tab press via listener in _layout.tsx).
@@ -519,6 +532,13 @@ export default function GardenScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       onScrollBeginDrag={Keyboard.dismiss}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.accent.warmGold}
+        />
+      }
     >
 
       {/* ── Header ─────────────────────────────────────────────────────────────── */}

@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, AppState, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
@@ -41,6 +41,7 @@ import {
   getSharedRevealDisplayState,
 } from '../../lib/relation-detail-helpers';
 import { showPhoneInviteSheet } from '../../lib/phone-invite-sheet';
+import { resyncSharedRelations } from '../../lib/resync-shared-relations';
 import {
   getProgressiveCriteriaForPillar,
   type ProgressiveCriterionKey,
@@ -144,6 +145,17 @@ export default function RelationDetailScreen() {
   useEffect(() => {
     void refreshSharedReveal();
   }, [refreshSharedReveal]);
+
+  // B26 — re-sync the shared-relations list on focus (throttled). refreshSharedReveal
+  // above only re-fetches THIS relation's reveal record; the throttled list re-sync
+  // also adopts server status advances (waiting → revealed) and counterpart name/
+  // counter changes that happened while the app was backgrounded. Safe by
+  // construction: never downgrades a local reveal, never archives.
+  useFocusEffect(
+    useCallback(() => {
+      void resyncSharedRelations();
+    }, []),
+  );
 
   const effectiveRelation = useMemo(
     () => (relation ? applyEffectiveRevealToRelation(relation, sharedReveal) : null),

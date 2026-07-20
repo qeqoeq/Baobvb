@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import * as Linking from 'expo-linking';
 import { Stack, router, useGlobalSearchParams, usePathname, type Href } from 'expo-router';
 
@@ -8,6 +9,7 @@ import { fetchMySharedRelationships } from '../lib/bootstrap-shared-relations';
 import { fetchPassDeliveries } from '../lib/pass-delivery-repo';
 import { materializePassDeliveries, reconcileOrphanedSharedRelations } from '../store/useRelationsStore';
 import { parseInviteDeepLink } from '../lib/parse-invite-deep-link';
+import { resyncSharedRelations } from '../lib/resync-shared-relations';
 import {
   addPassDeliveryNotificationResponseListener,
   addRevealReadyNotificationResponseListener,
@@ -357,6 +359,20 @@ export default function RootLayout() {
       removeRevealListener();
       removePassListener();
     };
+  }, [isAuthenticated]);
+
+  // B26 — foreground re-sync. The one-shot bootstrap above only re-runs on a full
+  // relaunch; a user who backgrounds/foregrounds (never kills) the app would keep
+  // stale statuses/names/counters. On every return to 'active' we run a throttled,
+  // reconciliation-free re-sync (see lib/resync-shared-relations.ts). Safe by
+  // construction: never downgrades a local reveal, never archives.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') return;
+      void resyncSharedRelations();
+    });
+    return () => subscription.remove();
   }, [isAuthenticated]);
 
   // Deep link router for invite URLs.

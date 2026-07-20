@@ -1,12 +1,13 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
-import { useEffect, useMemo, useRef } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
 import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
+import { resyncSharedRelations } from '../../lib/resync-shared-relations';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 // Dark-warm palette — scoped to /reveals, consistent with the Baobab dark world.
@@ -95,8 +96,30 @@ export default function RevealLinksScreen() {
     router.push(`/relation/${id}`);
   };
 
+  // B26 — pull-to-refresh: explicit user intent bypasses the throttle (force),
+  // the in-flight guard still coalesces concurrent pulls.
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await resyncSharedRelations({ force: true });
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={p.gold}
+        />
+      }
+    >
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
