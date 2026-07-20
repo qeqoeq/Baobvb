@@ -908,6 +908,35 @@ describe('materializePassDeliveries', () => {
   });
 });
 
+// ── getRelationSnapshotById — B25 canonical-id resolution ────────────────────
+//
+// A reveal-ready push deep-links by the canonical relationship UUID, which never
+// equals the local `r-…` id. The lookup must accept either key.
+describe('getRelationSnapshotById — B25 canonical resolution', () => {
+  beforeEach(() => {
+    resetDevStateToSeed();
+  });
+
+  it('B25-S1: resolves a bootstrapped relation by its canonical id', () => {
+    upsertBootstrappedSharedRelations([makeBootstrapRow('canonical-b25')]);
+    const snap = getRelationSnapshotById('canonical-b25');
+    expect(snap).toBeDefined();
+    expect(snap!.canonicalRelationId).toBe('canonical-b25');
+    // The local id is a generated `r-…`, distinct from the canonical id.
+    expect(snap!.id).not.toBe('canonical-b25');
+  });
+
+  it('B25-S2: still resolves by local id', () => {
+    upsertBootstrappedSharedRelations([makeBootstrapRow('canonical-b25b')]);
+    const byCanonical = getRelationSnapshotById('canonical-b25b')!;
+    expect(getRelationSnapshotById(byCanonical.id)?.id).toBe(byCanonical.id);
+  });
+
+  it('B25-S3: unknown id → undefined', () => {
+    expect(getRelationSnapshotById('no-such-id')).toBeUndefined();
+  });
+});
+
 // ── purgeSeedData (X.88) ─────────────────────────────────────────────────────
 //
 // Verifies that the surgical seed purge:

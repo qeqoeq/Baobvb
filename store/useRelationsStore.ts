@@ -1153,7 +1153,12 @@ export function getRelationsSnapshot() {
 }
 
 export function getRelationSnapshotById(id: string): Relation | undefined {
-  return state.relations.find((r) => r.id === id);
+  // B25: accept the local id OR the canonical relationship id. A deep link from a
+  // reveal-ready push carries the canonical UUID, which never equals the local
+  // `r-…` id. Id namespaces don't overlap, so matching both is collision-free.
+  return state.relations.find(
+    (r) => r.id === id || (r.canonicalRelationId ?? '') === id,
+  );
 }
 
 export function getMeSnapshot() {

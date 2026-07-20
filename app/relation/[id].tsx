@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, AppState, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, AppState, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { devLogLinking, maskIdForLog } from '../../lib/dev-linking-log';
@@ -43,6 +43,10 @@ import {
 import { showPhoneInviteSheet } from '../../lib/phone-invite-sheet';
 import { resyncSharedRelations } from '../../lib/resync-shared-relations';
 import {
+  findRelationByDeepLinkId,
+  resolveDeepLinkPhase,
+} from '../../lib/relation-deep-link-resolution';
+import {
   getProgressiveCriteriaForPillar,
   type ProgressiveCriterionKey,
 } from '../../lib/progressive-criteria';
@@ -63,6 +67,12 @@ function getHeaderTitle(
   if (trimmed.startsWith('(')) return '';
   return trimmed;
 }
+
+// B25: how long the screen holds a loading state (forcing a re-sync) before it
+// concludes a deep-link target is genuinely unavailable. Generous on purpose — a
+// cold-start notification tap races bootstrap; the user must never see the hard
+// error at the moment they answer the call.
+const RESOLUTION_GRACE_MS = 8000;
 
 const PILLAR_ORDER: PillarKey[] = [
   'trust',
@@ -87,6 +97,8 @@ export default function RelationDetailScreen() {
   // It must never reappear on remount and must never expose any numeric score,
   // tier, or percentage — only a qualitative doctrine cue.
   const [showSharedReadingMoment, setShowSharedReadingMoment] = useState(false);
+  // B25: true once the deep-link grace window elapsed with the target still absent.
+  const [graceExhausted, setGraceExhausted] = useState(false);
   // Live countdown during cooking_reveal. Read-only from server's unlock_at;
   // never used to fake a ready state. null when cooking countdown is unknown.
   const [cookingRemainingSeconds, setCookingRemainingSeconds] = useState<number | null>(null);
@@ -94,8 +106,11 @@ export default function RelationDetailScreen() {
   const lastCountdownHapticSecondRef = useRef<number | null>(null);
   const isAppActiveRef = useRef(true);
 
+  // B25: resolve by local id OR canonicalRelationId. A reveal-ready push deep-links
+  // by the canonical UUID, which never equals the local `r-…` id — the old
+  // `r.id === id` lookup could never match a notification target.
   const relation = useMemo(
-    () => relations.find((r) => r.id === id) ?? null,
+    () => findRelationByDeepLinkId(relations, id),
     [relations, id],
   );
 
@@ -156,6 +171,33 @@ export default function RelationDetailScreen() {
       void resyncSharedRelations();
     }, []),
   );
+
+  // B25 — deep-link resolution machine. When the target relation isn't in the store
+  // yet (notification deep-links by canonical id before bootstrap re-ran), force a
+  // re-sync and hold a loading state. Only after RESOLUTION_GRACE_MS with still no
+  // match do we conclude "unavailable" — never an immediate hard error on tap.
+  // Covers both hot-tap and cold-start (both route here via router.push).
+  useEffect(() => {
+    if (!id) return;
+    if (relation) {
+      // Found (possibly after the forced re-sync landed) — clear any pending verdict.
+      if (graceExhausted) setGraceExhausted(false);
+      return;
+    }
+    let cancelled = false;
+    setGraceExhausted(false);
+    void resyncSharedRelations({ force: true });
+    const timer = setTimeout(() => {
+      if (!cancelled) setGraceExhausted(true);
+    }, RESOLUTION_GRACE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // graceExhausted is intentionally omitted: including it would restart the timer
+    // when we clear the flag on a late resolve. Only id/relation drive this machine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, relation]);
 
   const effectiveRelation = useMemo(
     () => (relation ? applyEffectiveRevealToRelation(relation, sharedReveal) : null),
@@ -306,6 +348,25 @@ export default function RelationDetailScreen() {
   }, [effectiveRelation]);
 
   if (!relation) {
+    // B25: three-state resolution. While a target id is present and the grace
+    // window is open, show a loading state (a forced re-sync is in flight) — never
+    // the hard error at the moment the user taps the notification.
+    const phase = resolveDeepLinkPhase({
+      hasId: Boolean(id),
+      relationFound: false,
+      graceExhausted,
+    });
+    if (phase === 'resolving') {
+      return (
+        <View style={styles.screen}>
+          <View style={styles.unavailableWrap}>
+            <ActivityIndicator color={colors.accent.deepTeal} />
+            <Text style={styles.unavailableTitle}>Opening…</Text>
+            <Text style={styles.unavailableBody}>Bringing this relationship in.</Text>
+          </View>
+        </View>
+      );
+    }
     return (
       <View style={styles.screen}>
         <View style={styles.unavailableWrap}>
