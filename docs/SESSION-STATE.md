@@ -5,6 +5,33 @@
 
 ---
 
+## 0. MISE À JOUR 2026-07-21 — cycle B25→B27 (post première testeuse externe)
+
+Première session testeuse externe réelle (Sou, @sounj, 20/07) : serveur 100 % vert
+(relation `c41ab40b…`, revealed, mutual_score=90). Trois défauts client → diagnostic
+`docs/DIAG-B25-B27.md`, corrigés dans l'ordre B26→B25→B27, **tous OTA sauf B27-notifs**.
+
+- **B26** `b71a5e2` — re-sync foreground (`lib/resync-shared-relations.ts` : throttle 45s + in-flight, **sans** `reconcileOrphanedSharedRelations`), AppState 'active' + RefreshControl (garden/reveals) + useFocusEffect (fiche). L'app ne reste plus « sourde » entre deux relances.
+- **B25** `85b6696` — deep link notif résolu par `id || canonicalRelationId` (fiche + `getRelationSnapshotById`) + machine 3 états (resolving→found/unavailable, grâce 8s) : plus jamais « Relationship unavailable » sec au tap de la notif.
+- **B27-app** `acbea07` — traduction FR directe du parcours critique (sans lib i18n). Enum `Tier` intact, mappé à l'affichage via `lib/tier-display.ts`.
+- **B27-notifs** `a191151` — fallbacks push FR (`notification-dispatch-runner:37-38`). **Non déployé** (STOP).
+
+**OTA** : branch `production`, runtime `1.0.0`, iOS — update group `ca43dd0b-2fd0-429b-9e67-61111ef50179` / iOS update `019f81ad-773d-7841-87e4-20ea2fd2df19` (commit `acbea07`). tsc 0, vitest 1127/1127.
+
+**Arbitrages Samo (2026-07-20)** figés :
+- **A** — B26 re-sync foreground **sans** réconciliation d'orphelins ; l'archivage d'orphelins reste **cold-start uniquement** (un resync sur réseau instable ne doit jamais archiver).
+- **B** — B27-notifs = **sous-tâche serveur séparée** avec STOP (pas parkée) ; le texte push vit dans l'Edge Function, hors bundle OTA.
+- **C** — traduction FR **directe, sans lib i18n**. Noms de tiers = enum load-bearing → couche d'affichage FR (`getTierDisplayLabel`), **mots de marque fournis par Samo** (non devinés).
+
+**En attente Samo** :
+1. Les 7 mots de marque des tiers (Rooted/Anchor/Steady/Active/Forming/Distant + Legend côté serveur) → remplir `TIER_DISPLAY_FR` dans `lib/tier-display.ts` (fallback EN en attendant) → **micro-OTA de suivi**.
+2. Validation de la commande `supabase functions deploy notification-dispatch-runner` pour B27-notifs — **attention `verify_jwt`** : la fonction est appelée par le cron via `x-dispatch-secret` (pas de JWT), redéployer sans préserver ce réglage la casserait (organe réparé 2×).
+
+**PARKING ajouté** : « Invite claimable par n'importe quel porteur du lien (pas de vérification d'identité au claim) — écran de confirmation d'identité, décision produit post-retours testeurs (constat Sou 20/07). »
+Note : latence notification 1–4 min = cron minute, **normale, ne pas fixer**.
+
+---
+
 ## 1. BILAN — cycle B1→B24 terminé
 
 **24 bugs résolus avec preuve** (tsc 0 + suite verte à chaque commit, 1106/1106 en fin de cycle).

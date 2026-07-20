@@ -9,6 +9,23 @@
 
 ---
 
+## STATUT — RÉSOLU (2026-07-21)
+
+GO auditeur reçu, arbitrages tranchés, les trois exécutés dans l'ordre.
+
+| Bug | Statut | Commit | Preuve |
+|---|---|---|---|
+| **B26** | ✅ Corrigé (OTA) | `b71a5e2` | `resyncSharedRelations()` (throttle 45s + in-flight, **sans** réconciliation — arbitrage A), AppState 'active' + RefreshControl (garden, reveals) + useFocusEffect (fiche). tsc 0, vitest +8. |
+| **B25** | ✅ Corrigé (OTA) | `85b6696` | Résolution `id \|\| canonicalRelationId` (fiche + `getRelationSnapshotById`) + machine 3 états (resolving→found/unavailable, grâce 8s, force-resync B26). tsc 0, vitest +13. |
+| **B27-app** | ✅ Corrigé (OTA) | `acbea07` | Traduction FR directe du parcours critique (arbitrage C, sans lib i18n). Enum `Tier` intact → `lib/tier-display.ts` (mots de marque **en attente Samo**, fallback EN). tsc 0, vitest 1127/1127. |
+| **B27-notifs** | 🟠 Code prêt, **déploiement STOP** | `a191151` | Fallbacks FR `notification-dispatch-runner:37-38`. Sous-tâche serveur (arbitrage B) — **pas OTA**, deploy en attente validation Samo (cf. `verify_jwt`). |
+
+**OTA publié** (branch `production`, runtime `1.0.0`, iOS) — Update group `ca43dd0b-2fd0-429b-9e67-61111ef50179`, iOS update `019f81ad-773d-7841-87e4-20ea2fd2df19`, commit `acbea07`.
+
+Reste en attente Samo : (1) 7 mots de marque des tiers pour compléter `TIER_DISPLAY_FR` (micro-OTA de suivi) ; (2) validation de la commande `supabase functions deploy` pour B27-notifs.
+
+---
+
 ## B25 🔴 — Tap notif « Your link is ready » → « Relationship unavailable »
 
 ### Trace complète du deep link
