@@ -9,21 +9,21 @@ import type { Tier } from './evaluation';
  * translated in place. This map converts them to French for display ONLY, at the
  * render edge — the enum stays intact end to end.
  *
- * NOTE (2026-07-20 arbitration): the branded FR words are Samo's to choose, not to
- * be guessed. Until validated words are provided, this map falls back to the
- * canonical English name so nothing renders blank or wrong. Fill TIER_DISPLAY_FR
- * with the validated words to complete the French reveal surface.
+ * Branded FR words validated by Samo + auditor (2026-07-21). Enum unchanged.
  *
  * "Legend" is NOT a client Tier — it is a server-side label (getMutualTier(90)
- * returns 'Rooted' client-side). No client render path needs it.
+ * returns 'Rooted' client-side, so no client render path emits it). It is mapped
+ * here defensively so that if a legacy/server 'Legend' string ever reaches this
+ * function via a cast, it still renders 'Légende' rather than the raw word.
  */
-const TIER_DISPLAY_FR: Partial<Record<Tier, string>> = {
-  // Rooted: '…',
-  // Anchor: '…',
-  // Steady: '…',
-  // Active: '…',
-  // Forming: '…',
-  // Distant: '…',
+const TIER_DISPLAY_FR: Record<Tier | 'Legend', string> = {
+  Rooted: 'Enraciné',
+  Anchor: 'Pilier',
+  Steady: 'Stable',
+  Active: 'Vivant',
+  Forming: 'Naissant',
+  Distant: 'Distant',
+  Legend: 'Légende',
 };
 
 export function getTierDisplayLabel(tier: Tier): string {
