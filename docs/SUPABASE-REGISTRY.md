@@ -64,6 +64,22 @@ Fonctions concernées (historique) : `my_shared_relationships()`, `claim_relatio
 
 ---
 
+## Edge Functions — règles de deploy
+
+| Fonction | Invocation | Verify JWT | Commande de deploy |
+|---|---|---|---|
+| `notification-dispatch-runner` | Cron (pg_net) via en-tête `x-dispatch-secret` — **pas de JWT / pas d'`Authorization`** | **OFF (obligatoire)** | `supabase functions deploy notification-dispatch-runner --no-verify-jwt` |
+
+**RÈGLE (2026-07-21) — `--no-verify-jwt` obligatoire pour tout futur deploy de `notification-dispatch-runner`.**
+Il n'existe **aucune** section `[functions.notification-dispatch-runner]` dans `supabase/config.toml` qui
+épinglerait `verify_jwt = false`. Un deploy CLI **sans** le flag reprend le défaut `verify_jwt = true` et
+**casse tout dispatch cron en 401** (le cron n'envoie pas de JWT, seulement `x-dispatch-secret`). Organe déjà
+réparé 2× (Incidents 401 des 03/07 et 09/07). Deux garde-fous cumulés à chaque deploy :
+1. Le flag `--no-verify-jwt` sur la commande.
+2. Vérification manuelle au dashboard (Edge Functions → `notification-dispatch-runner` → Details → **Verify JWT = OFF**), avant ET après.
+
+---
+
 ## À appliquer (queue)
 
 | Fichier | Objet | Statut |
@@ -101,3 +117,4 @@ Fonctions concernées (historique) : `my_shared_relationships()`, `claim_relatio
 | 2026-07-09 | Rotation `DISPATCH_RUNNER_SECRET` + recréation cron jobid 2 | Cron runner en erreur 401 depuis le 2026-07-03. Cause : secret `DISPATCH_RUNNER_SECRET` expiré/invalide → Edge Function dispatch rejetait chaque appel pg_net avec 401. Fix out-of-session : (1) nouveau secret généré dans Supabase Vault → `DISPATCH_RUNNER_SECRET` mis à jour, (2) `SELECT cron.unschedule(2)` puis recréation du job `notification-dispatch-runner` (jobid 2) avec le nouveau secret injecté, (3) pipeline vérifiée end-to-end (dispatched:1, failed:0, push reçu). | Vérifié 2026-07-09 — 3+ exécutions cron succeeded post-rotation, pipeline push fonctionnelle |
 | 2026-07-09 | **Purge données de test** — suppression de 142 comptes `auth.users` de test (résidus des runs de mars + 4 orphelins récents dont `1eadf1cc` et `9f083ff3`) | Contexte : diagnostic B11 (Volet C) — les claims récents s'inscrivaient sous des identités auth orphelines (session AsyncStorage découplée de la MeProfile), rendant les relations invisibles dans `my_shared_relationships()` du device légitime → `"(shared)"` permanent. **Critère de légitimité retenu : `user_public_profiles.display_name IS NOT NULL`.** Purge en cascade **manuelle** (pas de FK ON DELETE CASCADE) dans l'ordre : `shared_relationship_reveals` (108 rows) → `notification_outbox` → `user_handles` → `user_public_profiles` (lignes `display_name IS NULL`) → `relationship_invites` (FK `inviter_user_id` + `claimed_by_user_id`) → `device_push_tokens` (FK `user_id`) → `auth.users`. **État final vérifié : 2 users / 2 profils / 3 reveals.** ⚠️ **Note B14** : l'orphelin `ca653272` détenait un `device_push_token` — les tokens se rattachent à la **session auth active**, pas au profil affiché ; à intégrer au diagnostic B14 (re-registration du push token sur install fraîche). | Vérifié 2026-07-09 — comptage final 2/2/3 confirmé post-purge |
 | 2026-07-10 | `docs/sql/b15_handle_freeze.sql` — gel handle post-setup | **Appliqué** — `CREATE OR REPLACE upsert_user_handle` (signature 2-args inchangée, pas de DROP) : garde `handle_frozen` insérée après le format guard / avant l'`INSERT ON CONFLICT` de `user_handles`, variable `existing_handle` dans le DECLARE principal. Idempotence préservée (re-publication à l'identique autorisée — requise par `reconcileHandleOwnership` bootstrap + `me/edit` post-setup B15). | V1 idempotence (même handle) = `{"success": true}` ✓ ; V2 gel (handle différent) = `{"success": false, "reason": "handle_frozen"}` ✓ ; V3 grants = authenticated + postgres + service_role, **aucun anon ni public** ✓ |
+| 2026-07-21 | **Deploy `notification-dispatch-runner` — fallbacks push FR (B27-notifs, commit `a191151`)** | **Déployé en prod.** Fallbacks anglais → français : « Ton lien est prêt » / « Ouvre Baobab pour le révéler » (`index.ts:37-38`, utilisés quand un row `reveal_ready` ne porte pas de `pushTitle`/`pushBody`). Deploy via `supabase functions deploy notification-dispatch-runner --no-verify-jwt`. Verify JWT confirmé **OFF** au dashboard AVANT le deploy. Voir la nouvelle section « Edge Functions — règles de deploy » (flag obligatoire, sinon 401 cron). | Verify JWT OFF (dashboard, pré-deploy) ✓ ; deploy réussi ✓ ; smoke test `curl` → `{"ok":true}` ✓ ; cron en **200 sur 3 cycles consécutifs** (18:23–18:25 UTC) ✓ |
