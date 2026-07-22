@@ -57,10 +57,10 @@ export default function EditPlaceScreen() {
     return (
       <View style={styles.missingScreen}>
         <View style={styles.missingCard}>
-          <Text style={styles.missingTitle}>Place not found</Text>
-          <Text style={styles.missingText}>This place cannot be edited right now.</Text>
+          <Text style={styles.missingTitle}>Lieu introuvable</Text>
+          <Text style={styles.missingText}>Ce lieu ne peut pas être modifié pour l’instant.</Text>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>Back</Text>
+            <Text style={styles.backButtonText}>Retour</Text>
           </Pressable>
         </View>
       </View>
@@ -79,7 +79,7 @@ export default function EditPlaceScreen() {
     });
 
     if (!ok) {
-      setError('Please provide a valid place name.');
+      setError('Indique un nom de lieu valide.');
       return;
     }
 
@@ -97,25 +97,25 @@ export default function EditPlaceScreen() {
       onScrollBeginDrag={Keyboard.dismiss}
     >
       <View style={styles.previewCard}>
-        <Text style={styles.previewLabel}>Place preview</Text>
+        <Text style={styles.previewLabel}>Aperçu du lieu</Text>
         <Text style={styles.previewName}>{name.trim() || place.name}</Text>
         <Text style={styles.previewFit}>{PLACE_PERSONAL_FIT_LABELS[personalFit]}</Text>
       </View>
 
       <View style={styles.formCard}>
-        <Text style={styles.inputLabel}>Place name</Text>
+        <Text style={styles.inputLabel}>Nom du lieu</Text>
         <TextInput
           value={name}
           onChangeText={(value) => {
             setName(value);
             if (error) setError(null);
           }}
-          placeholder="Place name"
+          placeholder="Nom du lieu"
           placeholderTextColor={colors.text.muted}
           style={styles.input}
         />
 
-        <Text style={styles.inputLabel}>Category</Text>
+        <Text style={styles.inputLabel}>Catégorie</Text>
         <View style={styles.rowWrap}>
           {CATEGORIES.map((item) => {
             const active = item.id === category;
@@ -131,15 +131,15 @@ export default function EditPlaceScreen() {
           })}
         </View>
 
-        <Text style={styles.inputLabel}>Address or link (optional)</Text>
+        <Text style={styles.inputLabel}>Adresse ou lien (facultatif)</Text>
         <TextInput
           value={identityHint}
           onChangeText={setIdentityHint}
-          placeholder="Map link, website, or address"
+          placeholder="Lien de carte, site web ou adresse"
           placeholderTextColor={colors.text.muted}
           style={styles.input}
         />
-        <Text style={styles.identityHintHint}>Only to recognize it later.</Text>
+        <Text style={styles.identityHintHint}>Uniquement pour le reconnaître plus tard.</Text>
 
         {/* "Save for later" is personal memory, not experience evidence.
             The verdict (would go back / depends / not for me) lives in the
@@ -147,7 +147,7 @@ export default function EditPlaceScreen() {
             Legacy places with personalFit 'not_for_me' still display correctly
             via PLACE_PERSONAL_FIT_LABELS in the preview above; the chip below
             simply won't show as active for them. */}
-        <Text style={styles.inputLabel}>Have you been there?</Text>
+        <Text style={styles.inputLabel}>Tu y es allé·e ?</Text>
         <View style={styles.rowWrap}>
           {PLACE_PERSONAL_FIT_CAPTURE_OPTIONS.map((item) => {
             const active = item.id === personalFit;
@@ -183,11 +183,11 @@ export default function EditPlaceScreen() {
 
         {noteVisible ? (
           <>
-            <Text style={styles.inputLabel}>Short impression (optional)</Text>
+            <Text style={styles.inputLabel}>Courte impression (facultatif)</Text>
             <TextInput
               value={impression}
               onChangeText={setImpression}
-              placeholder="One discreet line to remember."
+              placeholder="Une ligne discrète pour t’en souvenir."
               placeholderTextColor={colors.text.muted}
               style={[styles.input, styles.inputArea]}
               multiline
@@ -196,7 +196,7 @@ export default function EditPlaceScreen() {
           </>
         ) : (
           <Pressable onPress={() => setNoteVisible(true)} style={styles.addNoteLink}>
-            <Text style={styles.addNoteLinkText}>Add a note</Text>
+            <Text style={styles.addNoteLinkText}>Ajouter une note</Text>
           </Pressable>
         )}
 
@@ -205,14 +205,14 @@ export default function EditPlaceScreen() {
             onPress={() => setQuickSignalVisible(true)}
             style={styles.refineButton}
           >
-            <Text style={styles.refineButtonText}>Refine the read</Text>
+            <Text style={styles.refineButtonText}>Affiner la lecture</Text>
           </Pressable>
         ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Pressable onPress={onSave} style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Save changes</Text>
+          <Text style={styles.saveButtonText}>Enregistrer les modifications</Text>
         </Pressable>
       </View>
 

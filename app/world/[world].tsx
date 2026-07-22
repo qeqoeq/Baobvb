@@ -42,7 +42,7 @@ export default function WorldDetailScreen() {
           }}
         />
         <View style={styles.screen}>
-          <Text style={styles.invalidText}>{'Unknown world.'}</Text>
+          <Text style={styles.invalidText}>{'Monde inconnu.'}</Text>
         </View>
       </>
     );
@@ -67,10 +67,10 @@ export default function WorldDetailScreen() {
           { paddingBottom: Math.max(spacing.xl, bottomInset) },
         ]}
       >
-        <Text style={styles.caption}>{'Places you kept as this world opened.'}</Text>
+        <Text style={styles.caption}>{'Les lieux que tu as gardés à mesure que ce monde s’ouvrait.'}</Text>
 
         {keptPlaces.length === 0 ? (
-          <Text style={styles.emptyText}>{'Nothing kept in this world yet.'}</Text>
+          <Text style={styles.emptyText}>{'Rien de gardé dans ce monde pour l’instant.'}</Text>
         ) : (
           <View style={styles.placeList}>
             {keptPlaces.map((item, index) => (

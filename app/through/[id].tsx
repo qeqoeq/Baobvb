@@ -106,7 +106,7 @@ export default function ThroughScreen() {
       router.push(`../through/${member.id}`);
     } else if (member.gatewayAccessState === 'locked') {
       if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
-      Alert.alert('Not open yet', `Complete your reveal with ${member.name} to access their world.`);
+      Alert.alert('Pas encore ouvert', `Termine ta révélation avec ${member.name} pour accéder à son monde.`);
     } else {
       if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       router.push(`../relation/${member.id}`);
@@ -138,7 +138,7 @@ export default function ThroughScreen() {
         {memberCount > 0 && (
           <View style={styles.opensRow}>
             <Text style={styles.opensCount}>{memberCount}</Text>
-            <Text style={styles.opensLabel}>{memberCount === 1 ? ' relationship' : ' relationships'}</Text>
+            <Text style={styles.opensLabel}>{memberCount === 1 ? ' relation' : ' relations'}</Text>
           </View>
         )}
       </View>
@@ -157,7 +157,7 @@ export default function ThroughScreen() {
           onCenterTap={handleCenterTap}
           centerRadius={30}
           centerColor={colors.accent.warmGold}
-          emptyText={`No connections through ${gatewayTitle} yet.`}
+          emptyText={`Aucune connexion via ${gatewayTitle} pour l’instant.`}
         />
         <Text style={styles.brandWatermark}>{'BAOBAB'}</Text>
       </View>

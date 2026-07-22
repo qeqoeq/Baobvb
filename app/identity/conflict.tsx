@@ -32,18 +32,18 @@ export default function IdentityConflictScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>{'Let’s reconnect your account'}</Text>
+        <Text style={styles.title}>{'Reconnectons ton compte'}</Text>
         <Text style={styles.body}>
-          {'This device is signed in under a different account than your Baobab card '}
+          {'Cet appareil est connecté sous un compte différent de ta carte Baobab '}
           {me.handle ? (
             <Text style={styles.handle}>{me.handle}</Text>
           ) : (
-            'your Baobab card'
+            'ta carte Baobab'
           )}
-          {'. To keep your relationships in sync, sign in again with the account that owns this card.'}
+          {'. Pour garder tes relations synchronisées, reconnecte-toi avec le compte propriétaire de cette carte.'}
         </Text>
         <Text style={styles.reassure}>
-          {'Nothing on this device is deleted. Your private notes and readings stay exactly where they are.'}
+          {'Rien n’est supprimé sur cet appareil. Tes notes privées et tes lectures restent exactement où elles sont.'}
         </Text>
 
         <Pressable
@@ -52,7 +52,7 @@ export default function IdentityConflictScreen() {
           disabled={isSigningOut}
         >
           <Text style={styles.primaryButtonText}>
-            {isSigningOut ? 'Signing out…' : 'Sign in again'}
+            {isSigningOut ? 'Déconnexion…' : 'Se reconnecter'}
           </Text>
         </Pressable>
       </View>

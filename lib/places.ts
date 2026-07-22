@@ -17,37 +17,37 @@ export { PLACE_CONTEXT_FIT_OPTIONS, RESTAURANT_EXPERIENCE_DIMENSION_OPTIONS };
 export type { PlaceContextFit, RestaurantExperienceDimension };
 
 export const PLACE_CONTEXT_FIT_LABELS: Record<PlaceContextFit, string> = {
-  date: 'Date',
-  friends: 'Friends',
-  family: 'Family',
-  work_focus: 'Work / focus',
-  quick_bite: 'Quick bite',
-  deep_talk: 'Deep talk',
-  calm: 'Calm',
-  discovery: 'Discovery',
+  date: 'Rendez-vous',
+  friends: 'Amis',
+  family: 'Famille',
+  work_focus: 'Travail / concentration',
+  quick_bite: 'Sur le pouce',
+  deep_talk: 'Vraie conversation',
+  calm: 'Calme',
+  discovery: 'Découverte',
 };
 
 export const RESTAURANT_EXPERIENCE_DIMENSION_LABELS: Record<RestaurantExperienceDimension, string> = {
-  food: 'Food quality',
+  food: 'Qualité de la cuisine',
   service: 'Service',
-  atmosphere: 'Atmosphere',
-  value: 'Value for price',
-  cleanliness: 'Cleanliness',
+  atmosphere: 'Ambiance',
+  value: 'Rapport qualité-prix',
+  cleanliness: 'Propreté',
 };
 
 export const PLACE_CATEGORY_LABELS: Record<PlaceCategory, string> = {
   restaurant: 'Restaurant',
-  cafe: 'Cafe',
+  cafe: 'Café',
   bar: 'Bar',
-  spot: 'Spot',
-  other: 'Other',
+  spot: 'Coin',
+  other: 'Autre',
 };
 
 export const PLACE_PERSONAL_FIT_LABELS: Record<PlacePersonalFit, string> = {
-  saved:       'Saved',
-  tried:       'Tried',
-  kept:        'Kept',
-  not_for_me:  'Not for me',
+  saved:       'Enregistré',
+  tried:       'Essayé',
+  kept:        'Gardé',
+  not_for_me:  'Pas pour moi',
 };
 
 // "Have you been there?" only confirms a real visit happened — it is not
@@ -58,18 +58,18 @@ export const PLACE_PERSONAL_FIT_LABELS: Record<PlacePersonalFit, string> = {
 export const PLACE_PERSONAL_FIT_CAPTURE_OPTIONS: {
   id: 'kept';
   label: string;
-}[] = [{ id: 'kept', label: 'Yes, I went' }];
+}[] = [{ id: 'kept', label: 'Oui, j’y suis allé·e' }];
 
 export const PLACE_PERSONAL_FIT_SAVE_FOR_LATER_OPTION: {
   id: 'saved';
   label: string;
-} = { id: 'saved', label: 'Save for later' };
+} = { id: 'saved', label: 'Garder pour plus tard' };
 
 const PLACE_PERSONAL_FIT_FALLBACKS: Record<PlacePersonalFit, string> = {
-  saved:      'Saved for later.',
-  tried:      'Tried once.',
-  kept:       'Kept in your places.',
-  not_for_me: 'Not for me.',
+  saved:      'Enregistré pour plus tard.',
+  tried:      'Essayé une fois.',
+  kept:       'Gardé dans tes lieux.',
+  not_for_me: 'Pas pour moi.',
 };
 
 export function getPlaceCategoryLabel(category: unknown): string {

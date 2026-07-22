@@ -10,12 +10,12 @@ export default function SettingsScreen() {
 
   const handleSignOut = () => {
     Alert.alert(
-      'Sign out',
-      'You will need to sign in again to access Baobab.',
+      'Se déconnecter',
+      'Tu devras te reconnecter pour accéder à Baobab.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Annuler', style: 'cancel' },
         {
-          text: 'Sign out',
+          text: 'Se déconnecter',
           style: 'destructive',
           onPress: () => {
             void supabase.auth.signOut().catch(() => {
@@ -32,12 +32,12 @@ export default function SettingsScreen() {
 
       {/* ── Privacy ──────────────────────────────────────────────────────────── */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>{'Privacy'}</Text>
+        <Text style={styles.sectionLabel}>{'Confidentialité'}</Text>
         <View style={styles.card}>
           <View style={styles.toggleRow}>
             <View style={styles.toggleLabelBlock}>
-              <Text style={styles.toggleLabel}>{'Show Baobab code'}</Text>
-              <Text style={styles.toggleCaption}>{'Appears on your profile and QR card.'}</Text>
+              <Text style={styles.toggleLabel}>{'Afficher le code Baobab'}</Text>
+              <Text style={styles.toggleCaption}>{'Apparaît sur ton profil et ta carte QR.'}</Text>
             </View>
             <Switch
               value={me.showBaobabCode}
@@ -49,7 +49,7 @@ export default function SettingsScreen() {
           <View style={styles.divider} />
           <View style={styles.descriptionRow}>
             <Text style={styles.descriptionText}>
-              {'Your network is private by default. No connection data leaves this device without your explicit action.'}
+              {'Ton réseau est privé par défaut. Aucune donnée de connexion ne quitte cet appareil sans une action explicite de ta part.'}
             </Text>
           </View>
         </View>
@@ -57,11 +57,11 @@ export default function SettingsScreen() {
 
       {/* ── Security ─────────────────────────────────────────────────────────── */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>{'Security'}</Text>
+        <Text style={styles.sectionLabel}>{'Sécurité'}</Text>
         <View style={styles.card}>
           <View style={styles.infoRow}>
-            <Text style={styles.infoKey}>{'Authentication'}</Text>
-            <Text style={styles.infoValue}>{'Apple Sign In'}</Text>
+            <Text style={styles.infoKey}>{'Authentification'}</Text>
+            <Text style={styles.infoValue}>{'Connexion Apple'}</Text>
           </View>
         </View>
       </View>
@@ -69,7 +69,7 @@ export default function SettingsScreen() {
       {/* ── Sign out ─────────────────────────────────────────────────────────── */}
       <View style={styles.card}>
         <Pressable style={styles.signOutRow} onPress={handleSignOut}>
-          <Text style={styles.signOutLabel}>{'Sign out'}</Text>
+          <Text style={styles.signOutLabel}>{'Se déconnecter'}</Text>
         </Pressable>
       </View>
 

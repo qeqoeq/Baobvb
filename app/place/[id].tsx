@@ -29,16 +29,16 @@ import {
 } from '@/store/useRelationsStore';
 
 const DRIVER_SHORT_LABELS: Readonly<Record<string, string>> = {
-  food: 'Food',
+  food: 'Cuisine',
   service: 'Service',
-  atmosphere: 'Atmosphere',
-  value: 'Value',
-  cleanliness: 'Cleanliness',
+  atmosphere: 'Ambiance',
+  value: 'Prix',
+  cleanliness: 'Propreté',
 } as const;
 
 function formatPlaceDate(value: string): string {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Recently added';
+  if (Number.isNaN(date.getTime())) return 'Ajouté récemment';
   return date.toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -53,13 +53,13 @@ function formatReadMonth(value: string): string {
 }
 
 function getReadDisplayText(read: PlaceReadEntry | undefined): string {
-  if (!read) return 'Saved without a note.';
+  if (!read) return 'Enregistré sans note.';
   return (
     read.impression?.trim() ||
     (read.landingLevel !== undefined
       ? PLACE_LANDING_LEVEL_LABELS[read.landingLevel]
       : undefined) ||
-    'Saved without a note.'
+    'Enregistré sans note.'
   );
 }
 
@@ -162,12 +162,12 @@ export default function PlaceDetailScreen() {
         />
         <View style={styles.missingScreen}>
           <View style={styles.missingCard}>
-            <Text style={styles.missingTitle}>Place not found</Text>
+            <Text style={styles.missingTitle}>Lieu introuvable</Text>
             <Text style={styles.missingText}>
-              This place is not available anymore in your local memory.
+              Ce lieu n’est plus disponible dans ta mémoire locale.
             </Text>
             <Pressable onPress={() => router.back()} style={styles.backButton}>
-              <Text style={styles.backButtonText}>Back</Text>
+              <Text style={styles.backButtonText}>Retour</Text>
             </Pressable>
           </View>
         </View>
@@ -246,18 +246,18 @@ export default function PlaceDetailScreen() {
           <Text style={[styles.valueNumber, { color: getPrivatePlaceValueColor(privateValue.value) }]}>
             {privateValue.value}
           </Text>
-          <Text style={styles.valueLabel}>{'private read'}</Text>
+          <Text style={styles.valueLabel}>{'lecture privée'}</Text>
         </View>
 
         {hasMemoryStack ? (
           <View style={styles.sectionCard}>
             <View style={styles.memoryHeader}>
-              <Text style={styles.sectionLabel}>Memory</Text>
-              <Text style={styles.memoryCount}>{readCount} reads</Text>
+              <Text style={styles.sectionLabel}>Mémoire</Text>
+              <Text style={styles.memoryCount}>{readCount} lecture{readCount > 1 ? 's' : ''}</Text>
             </View>
             <View style={styles.memoryBlock}>
               <View style={styles.memoryMeta}>
-                <Text style={styles.memoryLabel}>First read</Text>
+                <Text style={styles.memoryLabel}>Première lecture</Text>
                 <Text style={styles.memoryDate}>{formatReadMonth(firstRead!.createdAt)}</Text>
               </View>
               <Text style={styles.readingText}>{firstReadText}</Text>
@@ -265,32 +265,32 @@ export default function PlaceDetailScreen() {
             <View style={styles.memorySeparator} />
             <View style={styles.memoryBlock}>
               <View style={styles.memoryMeta}>
-                <Text style={styles.memoryLabel}>Latest read</Text>
+                <Text style={styles.memoryLabel}>Dernière lecture</Text>
                 <Text style={styles.memoryDate}>{formatReadMonth(latestRead!.createdAt)}</Text>
               </View>
               <Text style={styles.readingText}>{latestReadText}</Text>
             </View>
             {hasConflict ? (
-              <Text style={styles.tensionText}>This place changed in your memory.</Text>
+              <Text style={styles.tensionText}>Ce lieu a changé dans ta mémoire.</Text>
             ) : null}
           </View>
         ) : hasReads ? (
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionLabel}>Latest read</Text>
+            <Text style={styles.sectionLabel}>Dernière lecture</Text>
             <Text style={styles.readingText}>{latestReadText}</Text>
           </View>
         ) : (
           <>
             {livedTraces.length > 0 && (
               <View style={styles.sectionCard}>
-                <Text style={styles.sectionLabel}>What this place carries</Text>
+                <Text style={styles.sectionLabel}>Ce que ce lieu porte</Text>
                 {livedTraces.map((trace) => (
                   <Text key={trace} style={styles.traceRow}>{trace}</Text>
                 ))}
               </View>
             )}
             <View style={styles.sectionCard}>
-              <Text style={styles.sectionLabel}>Your trace</Text>
+              <Text style={styles.sectionLabel}>Ta trace</Text>
               <Text style={styles.readingText}>{getPlaceReading(place)}</Text>
             </View>
           </>
@@ -298,7 +298,7 @@ export default function PlaceDetailScreen() {
 
         {hasReads && hasShapingSignals ? (
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionLabel}>What shaped this</Text>
+            <Text style={styles.sectionLabel}>Ce qui a façonné ça</Text>
             {latestReadDrivers.length > 0 ? (
               <Text style={styles.traceRow}>{latestReadDrivers.join(' · ')}</Text>
             ) : null}
@@ -309,45 +309,45 @@ export default function PlaceDetailScreen() {
         ) : null}
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionLabel}>Added</Text>
+          <Text style={styles.sectionLabel}>Ajouté</Text>
           <Text style={styles.metaText}>{formatPlaceDate(place.createdAt)}</Text>
         </View>
 
         {place.identityHint ? (
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionLabel}>Saved reference</Text>
+            <Text style={styles.sectionLabel}>Référence enregistrée</Text>
             <Text style={styles.metaText}>{place.identityHint}</Text>
           </View>
         ) : null}
 
         <Pressable onPress={handleOpenReadSheet} style={styles.addReadButton}>
-          <Text style={styles.addReadButtonText}>Add a read</Text>
+          <Text style={styles.addReadButtonText}>Ajouter une lecture</Text>
         </Pressable>
         {readSaved ? (
-          <Text style={styles.readSavedText}>Read saved privately.</Text>
+          <Text style={styles.readSavedText}>Lecture enregistrée en privé.</Text>
         ) : null}
 
         {passSectionState === 'cta' ? (
           <Pressable onPress={handleOpenPassSheet} style={styles.passCtaButton}>
-            <Text style={styles.passCtaText}>Who came to mind?</Text>
+            <Text style={styles.passCtaText}>À qui as-tu pensé ?</Text>
           </Pressable>
         ) : passSectionState === 'empty' ? (
           <View style={styles.passEmptyCard}>
-            <Text style={styles.passEmptyText}>Reveal a relation to start passing places.</Text>
+            <Text style={styles.passEmptyText}>Révèle une relation pour commencer à passer des lieux.</Text>
             <Pressable onPress={() => router.push('/reveals')} style={styles.passEmptyLink}>
-              <Text style={styles.passEmptyLinkText}>Go to reveals ›</Text>
+              <Text style={styles.passEmptyLinkText}>Aller aux révélations ›</Text>
             </Pressable>
           </View>
         ) : null}
         {passedToName !== null ? (
-          <Text style={styles.passedConfirmText}>Passed to {passedToName}.</Text>
+          <Text style={styles.passedConfirmText}>Passé à {passedToName}.</Text>
         ) : null}
 
         <Pressable onPress={onWentAgain} style={styles.wentAgainButton}>
-          <Text style={styles.wentAgainButtonText}>I went again</Text>
+          <Text style={styles.wentAgainButtonText}>J’y suis retourné·e</Text>
         </Pressable>
         {wentAgainConfirmed ? (
-          <Text style={styles.wentAgainConfirmedText}>Saved privately</Text>
+          <Text style={styles.wentAgainConfirmedText}>Enregistré en privé</Text>
         ) : null}
       </ScrollView>
 

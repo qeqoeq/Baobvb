@@ -24,13 +24,13 @@ const EXPERIENCE_LEVELS: readonly PlaceExperienceLevel[] = [1, 2, 3, 4, 5];
 const CATEGORIES_WITH_DIMENSIONS: readonly PlaceCategory[] = ['restaurant', 'cafe', 'bar'];
 
 const DRIVER_QUESTION_BY_LANDING_LEVEL: Record<PlaceLandingLevel, string> = {
-  1: 'What went wrong?',
-  2: "What didn't fit?",
-  3: 'What made it uneven?',
-  4: 'What made it work?',
-  5: 'What made it exceptional?',
+  1: 'Qu’est-ce qui a cloché ?',
+  2: 'Qu’est-ce qui n’allait pas ?',
+  3: 'Qu’est-ce qui était inégal ?',
+  4: 'Qu’est-ce qui a marché ?',
+  5: 'Qu’est-ce qui l’a rendu exceptionnel ?',
 };
-const DRIVER_QUESTION_DEFAULT = 'What mattered most?';
+const DRIVER_QUESTION_DEFAULT = 'Qu’est-ce qui a le plus compté ?';
 
 type PlaceQuickSignalSheetProps = {
   visible: boolean;
@@ -154,8 +154,8 @@ export function PlaceQuickSignalSheet({
       <View style={styles.sheet}>
         <View style={styles.grabber} />
 
-        <Text style={styles.title}>A quick read</Text>
-        <Text style={styles.caption}>Help Bao understand when this place fits.</Text>
+        <Text style={styles.title}>Une lecture rapide</Text>
+        <Text style={styles.caption}>Aide Bao à comprendre quand ce lieu te convient.</Text>
 
         <ScrollView
           style={styles.scroll}
@@ -163,7 +163,7 @@ export function PlaceQuickSignalSheet({
           showsVerticalScrollIndicator={false}
         >
         <View style={styles.section}>
-          <Text style={styles.question}>How did it land?</Text>
+          <Text style={styles.question}>Comment tu l’as ressenti ?</Text>
           <View style={styles.capsuleRow}>
             {PLACE_LANDING_LEVEL_OPTIONS.map((level) => {
               const active = value.landingLevel !== undefined && level <= value.landingLevel;
@@ -219,15 +219,15 @@ export function PlaceQuickSignalSheet({
 
         {/* repeatDesire and outcome are legacy-only in UI; landingLevel is the active verdict. */}
         <View style={styles.section}>
-          <Text style={styles.question}>Would you send someone here?</Text>
+          <Text style={styles.question}>Enverrais-tu quelqu’un ici ?</Text>
           <View style={styles.row}>
             <YesNoChip
-              label="Yes"
+              label="Oui"
               active={value.shareSafe === true}
               onPress={() => setShareSafe(true)}
             />
             <YesNoChip
-              label="No"
+              label="Non"
               active={value.shareSafe === false}
               onPress={() => setShareSafe(false)}
             />
@@ -235,7 +235,7 @@ export function PlaceQuickSignalSheet({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.question}>Good for…</Text>
+          <Text style={styles.question}>Bien pour…</Text>
           <View style={styles.chipRow}>
             {PLACE_CONTEXT_FIT_OPTIONS.map((option) => {
               const selected = contextFit.includes(option);
@@ -268,9 +268,9 @@ export function PlaceQuickSignalSheet({
 
         {showDimensions ? (
           <View style={styles.section}>
-            <Text style={styles.question}>A closer look</Text>
+            <Text style={styles.question}>Regarde de plus près</Text>
             <Text style={styles.dimensionsCaption}>
-              Rate what mattered in this experience.
+              Évalue ce qui a compté dans cette expérience.
             </Text>
             {driverDimensions.map((dimension) => (
               <View key={dimension} style={styles.dimensionRow}>
@@ -296,12 +296,12 @@ export function PlaceQuickSignalSheet({
         ) : null}
 
         {showAcknowledgement ? (
-          <Text style={styles.acknowledgement}>Your Bao learned this place.</Text>
+          <Text style={styles.acknowledgement}>Ton Bao a appris ce lieu.</Text>
         ) : null}
         </ScrollView>
 
         <Pressable onPress={onDismiss} style={styles.doneButton}>
-          <Text style={styles.doneButtonText}>Done</Text>
+          <Text style={styles.doneButtonText}>Terminé</Text>
         </Pressable>
       </View>
     </Modal>

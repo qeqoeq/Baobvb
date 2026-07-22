@@ -45,7 +45,7 @@ export default function MyCardQrScreen() {
       Animated.spring(cardY, { toValue: 0, useNativeDriver: false, tension: 100, friction: 18 }).start();
     });
     const { handle, baobabCode: code } = shareDataRef.current;
-    const message = `Add me on Baobab — ${handle}${code ? ` · ${code}` : ''}`;
+    const message = `Ajoute-moi sur Baobab — ${handle}${code ? ` · ${code}` : ''}`;
     void (async () => {
       try {
         await triggerSendHaptics();
@@ -146,7 +146,7 @@ export default function MyCardQrScreen() {
       <View style={styles.content}>
         <View style={styles.brandZone}>
           <Text style={styles.brandKicker}>{'BAOBAB'}</Text>
-          <Text style={styles.brandTitle}>{'My Bao'}</Text>
+          <Text style={styles.brandTitle}>{'Mon Bao'}</Text>
         </View>
 
         <Animated.View
@@ -202,17 +202,17 @@ export default function MyCardQrScreen() {
                   )}
                 </View>
               </View>
-              <Text style={styles.qrScanLabel}>{'Scan my Bao'}</Text>
+              <Text style={styles.qrScanLabel}>{'Scanne mon Bao'}</Text>
             </>
           ) : (
             <View style={[styles.qrPlaceholder, styles.qrPlaceholderLoading]}>
               <View style={styles.loadingContent}>
                 <BaoSprout />
-                <Text style={styles.loadingTitle}>{'Your Bao is forming'}</Text>
-                <Text style={styles.loadingBody}>{'We\'re aligning both readings.'}</Text>
+                <Text style={styles.loadingTitle}>{'Ton Bao se forme'}</Text>
+                <Text style={styles.loadingBody}>{'On aligne les deux lectures.'}</Text>
                 {provisionFailed ? (
                   <Pressable onPress={handleRetry} style={styles.retryAction}>
-                    <Text style={styles.retryActionText}>{'Retry'}</Text>
+                    <Text style={styles.retryActionText}>{'Réessayer'}</Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -223,11 +223,11 @@ export default function MyCardQrScreen() {
       </View>
 
       {isCardReady && (
-        <Text style={styles.swipeHint}>{'↑  Swipe up to send'}</Text>
+        <Text style={styles.swipeHint}>{'↑  Glisse vers le haut pour envoyer'}</Text>
       )}
 
       <Pressable onPress={() => router.push('../me/edit')} style={styles.editAction}>
-        <Text style={styles.editActionText}>{'Edit my Bao'}</Text>
+        <Text style={styles.editActionText}>{'Modifier mon Bao'}</Text>
       </Pressable>
     </View>
   );

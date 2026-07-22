@@ -59,7 +59,7 @@ export function PlacePassSheet({
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={styles.sheet}>
         <View style={styles.grabber} />
-        <Text style={styles.title}>Who came to mind?</Text>
+        <Text style={styles.title}>À qui as-tu pensé ?</Text>
 
         <ScrollView
           style={styles.scroll}
@@ -91,7 +91,7 @@ export function PlacePassSheet({
         <TextInput
           value={note}
           onChangeText={(text) => setNote(text.slice(0, NOTE_MAX_LENGTH))}
-          placeholder="What made you think of them?"
+          placeholder="Qu’est-ce qui t’a fait penser à cette personne ?"
           placeholderTextColor={colors.text.muted}
           style={styles.noteInput}
           maxLength={NOTE_MAX_LENGTH}

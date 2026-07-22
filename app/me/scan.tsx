@@ -27,7 +27,7 @@ export default function ScanCardScreen() {
 
       const payload = parsePersonCardPayload(rawData);
       if (!payload) {
-        setError('This code is not a valid Baobab person card.');
+        setError('Ce code n’est pas une carte de personne Baobab valide.');
         return;
       }
 
@@ -59,7 +59,7 @@ export default function ScanCardScreen() {
       if (picked.canceled || !picked.assets[0]) return;
       const barcodes = await scanFromURLAsync(picked.assets[0].uri, ['qr']);
       if (barcodes.length === 0) {
-        setError('No Bao QR found in this image.');
+        setError('Aucun QR Bao trouvé dans cette image.');
         return;
       }
       processScannedData(barcodes[0].data);
@@ -78,15 +78,15 @@ export default function ScanCardScreen() {
     return (
       <View style={styles.screen}>
         <View style={styles.card}>
-          <Text style={styles.title}>Camera access needed</Text>
+          <Text style={styles.title}>Accès à la caméra requis</Text>
           <Text style={styles.text}>
-            Baobab needs camera permission to scan person cards.
+            Baobab a besoin de la caméra pour scanner les cartes de personnes.
           </Text>
           <Pressable onPress={requestPermission} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Allow camera</Text>
+            <Text style={styles.primaryButtonText}>Autoriser la caméra</Text>
           </Pressable>
           <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Cancel</Text>
+            <Text style={styles.secondaryButtonText}>Annuler</Text>
           </Pressable>
         </View>
       </View>
@@ -96,9 +96,9 @@ export default function ScanCardScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Scan their Baobab card</Text>
+        <Text style={styles.headerTitle}>Scanne leur carte Baobab</Text>
         <Text style={styles.headerText}>
-          Point your camera at their Baobab card.
+          Pointe ta caméra vers leur carte Baobab.
         </Text>
       </View>
       <View style={styles.cameraWrap}>
@@ -109,7 +109,7 @@ export default function ScanCardScreen() {
         />
         <View style={styles.overlay}>
           <View style={styles.scanFrame} />
-          <Text style={styles.overlayText}>Align a Baobab QR card</Text>
+          <Text style={styles.overlayText}>Aligne une carte QR Baobab</Text>
         </View>
       </View>
 
@@ -117,13 +117,13 @@ export default function ScanCardScreen() {
         <View style={styles.errorCard}>
           <Text style={styles.errorText}>{error}</Text>
           <Pressable onPress={resetScan} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Try again</Text>
+            <Text style={styles.primaryButtonText}>Réessayer</Text>
           </Pressable>
         </View>
       ) : (
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Hold steady and keep the code inside the frame.
+            Reste stable et garde le code dans le cadre.
           </Text>
           <Pressable
             onPress={onPickPhoto}
@@ -131,11 +131,11 @@ export default function ScanCardScreen() {
             style={styles.secondaryButton}
           >
             <Text style={[styles.secondaryButtonText, isPickingPhoto && styles.secondaryButtonTextDim]}>
-              {isPickingPhoto ? 'Scanning…' : 'Scan from Photos'}
+              {isPickingPhoto ? 'Analyse…' : 'Scanner depuis les photos'}
             </Text>
           </Pressable>
           <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Close</Text>
+            <Text style={styles.secondaryButtonText}>Fermer</Text>
           </Pressable>
         </View>
       )}

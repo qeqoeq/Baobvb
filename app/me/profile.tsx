@@ -89,7 +89,7 @@ export default function ProfileScreen() {
         }}
         activeOpacity={0.85}
       >
-        <Text style={styles.baoCardLabel}>{'MY BAO'}</Text>
+        <Text style={styles.baoCardLabel}>{'MON BAO'}</Text>
 
         {isCardReady ? (
           <View style={styles.baoQrSurface}>
@@ -114,29 +114,29 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <View style={styles.baoQrLoading}>
-            <Text style={styles.baoQrLoadingText}>{'Preparing your Bao…'}</Text>
+            <Text style={styles.baoQrLoadingText}>{'Préparation de ton Bao…'}</Text>
           </View>
         )}
 
-        <Text style={styles.baoCardHint}>{'Show · Send'}</Text>
+        <Text style={styles.baoCardHint}>{'Montrer · Envoyer'}</Text>
       </TouchableOpacity>
 
       {/* ── Quiet links ──────────────────────────────────────────────────────── */}
       <View style={styles.quietLinks}>
         <TouchableOpacity style={styles.quietLink} onPress={handleScan} activeOpacity={0.7}>
           <Ionicons name="scan-outline" size={15} color={colors.text.muted} />
-          <Text style={styles.quietLinkLabel}>{'Scan a Bao'}</Text>
+          <Text style={styles.quietLinkLabel}>{'Scanner un Bao'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.quietLink} onPress={() => router.push('/me/invite-by-number')} activeOpacity={0.7}>
           <Ionicons name="person-add-outline" size={15} color={colors.text.muted} />
-          <Text style={styles.quietLinkLabel}>{'Add'}</Text>
+          <Text style={styles.quietLinkLabel}>{'Ajouter'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* ── Utility ──────────────────────────────────────────────────────────── */}
       <View style={styles.utilitySection}>
         <Pressable style={styles.settingsLink} onPress={() => router.push('/me/settings')}>
-          <Text style={styles.settingsLinkText}>{'Settings'}</Text>
+          <Text style={styles.settingsLinkText}>{'Réglages'}</Text>
         </Pressable>
       </View>
 

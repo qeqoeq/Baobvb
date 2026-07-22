@@ -12,8 +12,8 @@ import type { Place } from '@/store/useRelationsStore';
 export function deriveLivedPlaceTraces(place: Place): string[] {
   const traces: string[] = [];
 
-  if (place.personalFit === 'kept') traces.push('Kept');
-  if (place.wentAgainAt !== undefined) traces.push('Came back');
+  if (place.personalFit === 'kept') traces.push('Gardé');
+  if (place.wentAgainAt !== undefined) traces.push('Retour');
 
   const reads = place.reads ?? [];
   const latestRead = reads.length > 0 ? reads[reads.length - 1] : undefined;

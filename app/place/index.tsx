@@ -95,9 +95,9 @@ export default function PlacesScreen() {
           <View style={styles.baobabMark} />
           <Text style={styles.headerKicker}>{'BAOBAB'}</Text>
         </View>
-        <Text style={styles.title}>Your places</Text>
+        <Text style={styles.title}>Tes lieux</Text>
         <Text style={styles.subtitle}>
-          A private read of where your world leaves traces.
+          Une lecture privée des endroits où ton monde laisse des traces.
         </Text>
         <View style={styles.headerAccentLine} />
       </View>
@@ -105,16 +105,16 @@ export default function PlacesScreen() {
       {totalPlaceCount > 0 && (
         <View style={styles.readingCard}>
           <Text style={styles.readingTotal}>{totalPlaceCount}</Text>
-          <Text style={styles.readingTotalLabel}>places in your real world</Text>
+          <Text style={styles.readingTotalLabel}>lieux dans ton monde réel</Text>
           <Text style={styles.readingDetail}>
-            {`${keptPlaceCount} kept · ${territoryCount} territories`}
+            {`${keptPlaceCount} gardé${keptPlaceCount > 1 ? 's' : ''} · ${territoryCount} territoire${territoryCount > 1 ? 's' : ''}`}
           </Text>
         </View>
       )}
 
       {territoryCategories.length > 0 && (
         <View style={styles.territoryCard}>
-          <Text style={styles.territoryEyebrow}>{'TERRITORIES'}</Text>
+          <Text style={styles.territoryEyebrow}>{'TERRITOIRES'}</Text>
           <View style={styles.chipRow}>
             {territoryCategories.map(({ category }) => (
               <View key={category} style={styles.chip}>
@@ -123,7 +123,7 @@ export default function PlacesScreen() {
             ))}
           </View>
           <Text style={styles.territoryCaption}>
-            {'What your trusted world keeps finding.'}
+            {'Ce que ton monde de confiance retrouve.'}
           </Text>
         </View>
       )}
@@ -132,13 +132,13 @@ export default function PlacesScreen() {
         style={styles.filterRow}
         onPress={() => setFilterOpen((open) => !open)}
       >
-        <Text style={styles.filterRowText}>Filter places</Text>
+        <Text style={styles.filterRowText}>Filtrer les lieux</Text>
       </Pressable>
 
       {filterOpen && (
         <View style={styles.filterCard}>
           <Text style={styles.filterSubtitle}>
-            {'Look through places you’ve added.'}
+            {'Parcours les lieux que tu as ajoutés.'}
           </Text>
           <View style={styles.chipRow}>
             {FILTER_CATEGORIES.map((category) => {
@@ -178,16 +178,16 @@ export default function PlacesScreen() {
       <View style={styles.list}>
         {places.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>No place yet</Text>
+            <Text style={styles.emptyTitle}>Aucun lieu pour l’instant</Text>
             <Text style={styles.emptyText}>
-              Start with one place and one simple note.
+              Commence par un lieu et une simple note.
             </Text>
           </View>
         ) : filteredPlaces.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Nothing here yet.</Text>
+            <Text style={styles.emptyTitle}>Rien ici pour l’instant.</Text>
             <Text style={styles.emptyText}>
-              No places match this filter.
+              Aucun lieu ne correspond à ce filtre.
             </Text>
           </View>
         ) : (
@@ -217,7 +217,7 @@ export default function PlacesScreen() {
                       </>
                     )}
                   </View>
-                  <Text style={styles.readValueLabel}>{'private read'}</Text>
+                  <Text style={styles.readValueLabel}>{'lecture privée'}</Text>
                 </View>
                 <Text style={styles.impression}>
                   {getPlaceReading({ impression: valueInput.impression, personalFit: place.personalFit })}

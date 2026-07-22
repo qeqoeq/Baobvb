@@ -71,11 +71,11 @@ export type PlaceLandingLevel = 1 | 2 | 3 | 4 | 5;
 export const PLACE_LANDING_LEVEL_OPTIONS: readonly PlaceLandingLevel[] = [1, 2, 3, 4, 5] as const;
 
 export const PLACE_LANDING_LEVEL_LABELS: Record<PlaceLandingLevel, string> = {
-  1: 'Avoid',
-  2: 'Not for me',
-  3: 'Depends',
-  4: 'Would go back',
-  5: 'Exceptional',
+  1: 'À éviter',
+  2: 'Pas pour moi',
+  3: 'Ça dépend',
+  4: 'J’y retournerais',
+  5: 'Exceptionnel',
 };
 
 export type PlaceQuickSignal = {

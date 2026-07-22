@@ -8,8 +8,8 @@ const CATEGORY_LABELS: Record<PlaceCategory, string> = {
   restaurant: 'Restaurant',
   cafe: 'Café',
   bar: 'Bar',
-  spot: 'Spot',
-  other: 'Place',
+  spot: 'Coin',
+  other: 'Lieu',
 };
 
 type PlaceReceivedSheetProps = {
@@ -31,8 +31,8 @@ export function PlaceReceivedSheet({
 }: PlaceReceivedSheetProps) {
   if (!receivedObject) return null;
 
-  const displayName = fromRelationName ?? 'Someone';
-  const categoryLabel = CATEGORY_LABELS[receivedObject.categorySnapshot] ?? 'Place';
+  const displayName = fromRelationName ?? 'Quelqu’un';
+  const categoryLabel = CATEGORY_LABELS[receivedObject.categorySnapshot] ?? 'Lieu';
 
   return (
     <Modal
@@ -46,7 +46,7 @@ export function PlaceReceivedSheet({
         <View style={styles.grabber} />
 
         <Text style={styles.title}>
-          {`${displayName} thought of you.`}
+          {`${displayName} a pensé à toi.`}
         </Text>
 
         <View style={styles.objectRow}>
@@ -59,11 +59,11 @@ export function PlaceReceivedSheet({
         ) : null}
 
         <Pressable onPress={onKeep} style={styles.keepButton}>
-          <Text style={styles.keepButtonText}>{'Keep'}</Text>
+          <Text style={styles.keepButtonText}>{'Garder'}</Text>
         </Pressable>
 
         <Pressable onPress={onNotForMe} style={styles.notForMeButton}>
-          <Text style={styles.notForMeText}>{'Not for me'}</Text>
+          <Text style={styles.notForMeText}>{'Pas pour moi'}</Text>
         </Pressable>
       </View>
     </Modal>

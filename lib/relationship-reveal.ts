@@ -88,52 +88,52 @@ function buildSummaryFromDisplayState(
   switch (state) {
     case 'mutually_revealed':
       return {
-        stateLabel: 'Revealed together',
-        shortDescription: 'This relationship has been mutually revealed.',
+        stateLabel: 'Révélé ensemble',
+        shortDescription: 'Cette relation a été révélée mutuellement.',
       };
     case 'ready_for_mutual_reveal':
       return {
-        stateLabel: 'Ready for mutual reveal',
-        shortDescription: 'Both sides are complete and ready to reveal together.',
+        stateLabel: 'Prêt pour la révélation mutuelle',
+        shortDescription: 'Les deux côtés sont complets et prêts à se révéler ensemble.',
       };
     case 'cooking_reveal':
       return {
-        stateLabel: 'Baobab is preparing your link',
-        shortDescription: 'Your private readings are saved. Reveal will unlock soon on this device.',
+        stateLabel: 'Baobab prépare ton lien',
+        shortDescription: 'Tes lectures privées sont enregistrées. La révélation se débloquera bientôt sur cet appareil.',
       };
     case 'reveal_ready':
       return {
-        stateLabel: 'Your link is ready',
-        shortDescription: 'You can open your reveal now.',
+        stateLabel: 'Ton lien est prêt',
+        shortDescription: 'Tu peux ouvrir ta révélation maintenant.',
       };
     case 'waiting_identity_resolution':
       return {
-        stateLabel: 'Waiting identity resolution',
-        shortDescription: 'Both sides exist, but identity resolution is still pending.',
-        waitingReason: 'Identity confirmation is still pending.',
+        stateLabel: 'En attente de résolution d’identité',
+        shortDescription: 'Les deux côtés existent, mais la résolution d’identité est encore en cours.',
+        waitingReason: 'La confirmation d’identité est encore en cours.',
       };
     case 'private_reading_saved_waiting_other_side':
       return {
-        stateLabel: 'Private reading saved',
-        shortDescription: 'Your side is saved. Waiting for the other side.',
-        waitingReason: 'The other side has not completed their private reading yet.',
+        stateLabel: 'Lecture privée enregistrée',
+        shortDescription: 'Ton côté est enregistré. En attente de l’autre côté.',
+        waitingReason: 'L’autre côté n’a pas encore terminé sa lecture privée.',
       };
     case 'private_reading_pending':
       return {
-        stateLabel: 'Private reading pending',
-        shortDescription: 'A private reading is needed before any reveal can happen.',
+        stateLabel: 'Lecture privée en attente',
+        shortDescription: 'Une lecture privée est nécessaire avant toute révélation.',
       };
     case 'draft':
       return {
-        stateLabel: 'Private draft',
-        shortDescription: 'This relationship is still a private draft.',
+        stateLabel: 'Brouillon privé',
+        shortDescription: 'Cette relation est encore un brouillon privé.',
       };
     case 'unresolved_invite':
     default:
       return {
-        stateLabel: 'Unresolved invitation',
-        shortDescription: 'This invitation is ready, but relationship linking is not available yet in this version.',
-        waitingReason: 'Your invitation context is saved on this device.',
+        stateLabel: 'Invitation non résolue',
+        shortDescription: 'Cette invitation est prête, mais la liaison des relations n’est pas encore disponible dans cette version.',
+        waitingReason: 'Le contexte de ton invitation est enregistré sur cet appareil.',
       };
   }
 }

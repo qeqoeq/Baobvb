@@ -437,7 +437,7 @@ export default function RootLayout() {
     <Stack>
       <Stack.Screen
         name="auth/sign-in"
-        options={{ title: 'Sign in', presentation: 'modal', gestureEnabled: false }}
+        options={{ title: 'Connexion', presentation: 'modal', gestureEnabled: false }}
       />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
@@ -458,12 +458,12 @@ export default function RootLayout() {
       />
       <Stack.Screen
         name="me/edit"
-        options={{ title: 'Edit profile', presentation: 'modal' }}
+        options={{ title: 'Modifier le profil', presentation: 'modal' }}
       />
       <Stack.Screen
         name="me/settings"
         options={{
-          title: 'Settings',
+          title: 'Réglages',
           headerBackTitle: '',
           headerStyle: { backgroundColor: colors.background.primary },
           headerTintColor: colors.text.primary,
@@ -471,7 +471,7 @@ export default function RootLayout() {
       />
       <Stack.Screen
         name="me/invite-by-number"
-        options={{ title: 'Invite by number' }}
+        options={{ title: 'Inviter par numéro' }}
       />
       <Stack.Screen
         name="relation/add"
@@ -479,14 +479,14 @@ export default function RootLayout() {
       />
       <Stack.Screen
         name="relation/edit/[id]"
-        options={{ title: 'Edit relation', presentation: 'modal' }}
+        options={{ title: 'Modifier la relation', presentation: 'modal' }}
       />
       {/* place/add is configured as a modal so it can be opened from relation context (X.11). */}
       <Stack.Screen
         name="place/add"
         options={{
           presentation: 'modal',
-          title: 'Save a place',
+          title: 'Enregistrer un lieu',
           headerStyle: { backgroundColor: colors.background.primary },
           headerTintColor: colors.text.primary,
           headerShadowVisible: false,
@@ -520,18 +520,18 @@ export default function RootLayout() {
       <Stack.Screen name="invite/[relationId]" options={{ title: 'Baobab', headerBackTitle: '' }} />
       <Stack.Screen
         name="invite/identity/[relationId]"
-        options={{ title: 'Create your card', presentation: 'modal' }}
+        options={{ title: 'Créer ta carte', presentation: 'modal' }}
       />
-      <Stack.Screen name="relation/lexicon" options={{ title: 'Relationship lexicon' }} />
+      <Stack.Screen name="relation/lexicon" options={{ title: 'Lexique des relations' }} />
       <Stack.Screen
         name="relation/evaluate/[id]"
         options={{
-          title: 'Foundational reading',
+          title: 'Lecture fondatrice',
           headerBackTitle: '',
           headerBackButtonDisplayMode: 'minimal',
         }}
       />
-      <Stack.Screen name="relation/archived" options={{ title: 'Archived relationships' }} />
+      <Stack.Screen name="relation/archived" options={{ title: 'Relations archivées' }} />
       <Stack.Screen
         name="through/[id]"
         options={{

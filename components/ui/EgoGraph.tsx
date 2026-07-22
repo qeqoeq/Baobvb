@@ -147,7 +147,7 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
       const label = via
         ? `via ${via.viaName}`
         : getCircleNodeStatusLabel(member.status) +
-          (member.gatewayAccessState === 'open' ? ' · Open gateway' : '');
+          (member.gatewayAccessState === 'open' ? ' · Passage ouvert' : '');
       setTooltip({ name: member.name, label, cx: node.cx, cy: node.cy });
     },
     [],

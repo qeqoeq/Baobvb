@@ -16,11 +16,11 @@ export const RELATION_OPEN_WORLD_OPTIONS: readonly RelationOpenWorld[] = [
 ] as const;
 
 const RELATION_OPEN_WORLD_LABELS: Record<RelationOpenWorld, string> = {
-  local_life: 'Local life',
-  learning: 'Learning',
-  creative: 'Creative',
+  local_life: 'Vie locale',
+  learning: 'Apprentissage',
+  creative: 'Créatif',
   sport: 'Sport',
-  travel: 'Travel',
+  travel: 'Voyage',
   culture: 'Culture',
 };
 

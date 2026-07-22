@@ -25,5 +25,5 @@ export function getPassSectionState(
  * name (getNormalizedPrivateLabel), never the raw relation.name placeholder.
  */
 export function formatPassButtonLabel(name: string | null): string {
-  return name ? `Pass to ${name}` : 'Pass to…';
+  return name ? `Passer à ${name}` : 'Passer à…';
 }

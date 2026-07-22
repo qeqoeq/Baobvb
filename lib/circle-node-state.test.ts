@@ -233,7 +233,7 @@ describe('getCircleNodeStatusLabel — no tier strings', () => {
   });
 
   it('spot-check: unread → Unread', () => {
-    expect(getCircleNodeStatusLabel('unread')).toBe('Unread');
+    expect(getCircleNodeStatusLabel('unread')).toBe('Non lu');
   });
 });
 

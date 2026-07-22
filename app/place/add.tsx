@@ -27,10 +27,10 @@ import {
 
 const CATEGORIES: { id: PlaceCategory; label: string }[] = [
   { id: 'restaurant', label: 'Restaurant' },
-  { id: 'cafe', label: 'Cafe' },
+  { id: 'cafe', label: 'Café' },
   { id: 'bar', label: 'Bar' },
-  { id: 'spot', label: 'Spot' },
-  { id: 'other', label: 'Other' },
+  { id: 'spot', label: 'Coin' },
+  { id: 'other', label: 'Autre' },
 ];
 
 export default function AddPlaceScreen() {
@@ -63,7 +63,7 @@ export default function AddPlaceScreen() {
   const handleSave = () => {
     const cleanName = name.trim();
     if (!cleanName) {
-      setError('Place name is required.');
+      setError('Le nom du lieu est requis.');
       return;
     }
 
@@ -77,7 +77,7 @@ export default function AddPlaceScreen() {
       identityHint,
     });
     if (!created) {
-      setError('Unable to save this place right now.');
+      setError('Impossible d’enregistrer ce lieu pour l’instant.');
       return;
     }
 
@@ -96,27 +96,27 @@ export default function AddPlaceScreen() {
       onScrollBeginDrag={Keyboard.dismiss}
     >
       <View style={styles.header}>
-        <Text style={styles.kicker}>Places</Text>
-        <Text style={styles.title}>Save a place</Text>
+        <Text style={styles.kicker}>Lieux</Text>
+        <Text style={styles.title}>Enregistrer un lieu</Text>
         <Text style={styles.subtitle}>
-          Keep a simple, honest trace of places worth remembering.
+          Garde une trace simple et honnête des lieux qui méritent qu’on s’en souvienne.
         </Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.label}>Place name</Text>
+        <Text style={styles.label}>Nom du lieu</Text>
         <TextInput
           value={name}
           onChangeText={(value) => {
             setName(value);
             if (error) setError(null);
           }}
-          placeholder="Ex: Atelier Celine"
+          placeholder="Ex : Atelier Céline"
           placeholderTextColor={colors.text.muted}
           style={styles.input}
         />
 
-        <Text style={styles.label}>Category</Text>
+        <Text style={styles.label}>Catégorie</Text>
         <View style={styles.rowWrap}>
           {CATEGORIES.map((item) => {
             const active = item.id === category;
@@ -134,20 +134,20 @@ export default function AddPlaceScreen() {
           })}
         </View>
 
-        <Text style={styles.label}>Address or link (optional)</Text>
+        <Text style={styles.label}>Adresse ou lien (facultatif)</Text>
         <TextInput
           value={identityHint}
           onChangeText={setIdentityHint}
-          placeholder="Map link, website, or address"
+          placeholder="Lien de carte, site web ou adresse"
           placeholderTextColor={colors.text.muted}
           style={styles.input}
         />
-        <Text style={styles.identityHintHint}>Only to recognize it later.</Text>
+        <Text style={styles.identityHintHint}>Uniquement pour le reconnaître plus tard.</Text>
 
         {/* "Save for later" is personal memory, not experience evidence.
             The verdict (would go back / depends / not for me) lives in the
             Quick Read, not as an entry-level chip — see PlaceQuickSignalSheet. */}
-        <Text style={styles.label}>Have you been there?</Text>
+        <Text style={styles.label}>Tu y es allé·e ?</Text>
         <View style={styles.rowWrap}>
           {PLACE_PERSONAL_FIT_CAPTURE_OPTIONS.map((item) => {
             const active = item.id === personalFit;
@@ -183,11 +183,11 @@ export default function AddPlaceScreen() {
 
         {noteVisible ? (
           <>
-            <Text style={styles.label}>Short impression (optional)</Text>
+            <Text style={styles.label}>Courte impression (facultatif)</Text>
             <TextInput
               value={impression}
               onChangeText={setImpression}
-              placeholder="One discreet line to remember."
+              placeholder="Une ligne discrète pour t’en souvenir."
               placeholderTextColor={colors.text.muted}
               style={[styles.input, styles.inputArea]}
               multiline
@@ -196,7 +196,7 @@ export default function AddPlaceScreen() {
           </>
         ) : (
           <Pressable onPress={() => setNoteVisible(true)} style={styles.addNoteLink}>
-            <Text style={styles.addNoteLinkText}>Add a note</Text>
+            <Text style={styles.addNoteLinkText}>Ajouter une note</Text>
           </Pressable>
         )}
 
@@ -207,7 +207,7 @@ export default function AddPlaceScreen() {
           disabled={!isValid}
           style={[styles.saveButton, !isValid && styles.saveButtonDisabled]}
         >
-          <Text style={styles.saveButtonText}>Save place</Text>
+          <Text style={styles.saveButtonText}>Enregistrer le lieu</Text>
         </Pressable>
       </View>
 

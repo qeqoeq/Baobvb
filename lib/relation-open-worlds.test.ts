@@ -83,11 +83,11 @@ describe('sanitizeRelationOpenWorlds', () => {
 
 describe('getRelationOpenWorldLabel', () => {
   it('returns the correct label for each V0 world', () => {
-    expect(getRelationOpenWorldLabel('local_life')).toBe('Local life');
-    expect(getRelationOpenWorldLabel('learning')).toBe('Learning');
-    expect(getRelationOpenWorldLabel('creative')).toBe('Creative');
+    expect(getRelationOpenWorldLabel('local_life')).toBe('Vie locale');
+    expect(getRelationOpenWorldLabel('learning')).toBe('Apprentissage');
+    expect(getRelationOpenWorldLabel('creative')).toBe('Créatif');
     expect(getRelationOpenWorldLabel('sport')).toBe('Sport');
-    expect(getRelationOpenWorldLabel('travel')).toBe('Travel');
+    expect(getRelationOpenWorldLabel('travel')).toBe('Voyage');
     expect(getRelationOpenWorldLabel('culture')).toBe('Culture');
   });
 });

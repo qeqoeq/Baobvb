@@ -123,7 +123,7 @@ export default function AddRelationScreen() {
           params.scannedPublicProfileId === me.publicProfileId,
       );
     if (isOwnCard) {
-      Alert.alert('This is your own card', 'Scan another person to add a new relationship.');
+      Alert.alert('C’est ta propre carte', 'Scanne une autre personne pour ajouter une nouvelle relation.');
       return;
     }
 
@@ -131,8 +131,8 @@ export default function AddRelationScreen() {
     setName(cleanName);
     if (!isValidRelationName(cleanName)) {
       Alert.alert(
-        'Invalid name',
-        'Use a real name with letters. Allowed: letters, spaces, apostrophes, and hyphens.',
+        'Nom invalide',
+        'Utilise un vrai nom avec des lettres. Autorisés : lettres, espaces, apostrophes et traits d’union.',
       );
       return;
     }
@@ -182,9 +182,9 @@ export default function AddRelationScreen() {
           )
         : null;
       if (existingByCardMeId) {
-        Alert.alert('Person already exists', `${getNormalizedPrivateLabel(existingByCardMeId)} is already in your Garden.`, [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open relationship', onPress: () => router.replace(`/relation/${existingByCardMeId.id}`) },
+        Alert.alert('Cette personne existe déjà', `${getNormalizedPrivateLabel(existingByCardMeId)} est déjà dans ton Jardin.`, [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Ouvrir la relation', onPress: () => router.replace(`/relation/${existingByCardMeId.id}`) },
         ]);
         return;
       }
@@ -195,9 +195,9 @@ export default function AddRelationScreen() {
           )
         : null;
       if (existingByHandle) {
-        Alert.alert('Likely duplicate', `${getNormalizedPrivateLabel(existingByHandle)} already uses this scanned handle.`, [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open relationship', onPress: () => router.replace(`/relation/${existingByHandle.id}`) },
+        Alert.alert('Doublon probable', `${getNormalizedPrivateLabel(existingByHandle)} utilise déjà ce pseudo scanné.`, [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Ouvrir la relation', onPress: () => router.replace(`/relation/${existingByHandle.id}`) },
         ]);
         return;
       }
@@ -206,10 +206,10 @@ export default function AddRelationScreen() {
         (r) => getPrivateLabelValue(r).toLowerCase() === cleanName.toLowerCase(),
       );
       if (existingByName) {
-        Alert.alert('Private draft already exists', 'A private relationship with this name already exists. Names are not unique.', [
-          { text: 'Open existing relationship', onPress: () => router.replace(`/relation/${existingByName.id}`) },
+        Alert.alert('Un brouillon privé existe déjà', 'Une relation privée avec ce nom existe déjà. Les noms ne sont pas uniques.', [
+          { text: 'Ouvrir la relation existante', onPress: () => router.replace(`/relation/${existingByName.id}`) },
           {
-            text: 'Create another private draft',
+            text: 'Créer un autre brouillon privé',
             onPress: () => {
               const created = addRelation(cleanName, {
                 source: 'scan',
@@ -228,7 +228,7 @@ export default function AddRelationScreen() {
               }
             },
           },
-          { text: 'Cancel', style: 'cancel' },
+          { text: 'Annuler', style: 'cancel' },
         ]);
         return;
       }
@@ -255,8 +255,8 @@ export default function AddRelationScreen() {
       (r) => getPrivateLabelValue(r).toLowerCase() === cleanName.toLowerCase(),
     );
     if (existingByName) {
-      Alert.alert('Private draft already exists', 'A private relationship with this name already exists. Names are not unique.', [
-        { text: 'Open existing relationship', onPress: () => router.replace(`/relation/${existingByName.id}`) },
+      Alert.alert('Un brouillon privé existe déjà', 'Une relation privée avec ce nom existe déjà. Les noms ne sont pas uniques.', [
+        { text: 'Ouvrir la relation existante', onPress: () => router.replace(`/relation/${existingByName.id}`) },
         {
           text: 'Create another private draft',
           onPress: () => {
@@ -273,7 +273,7 @@ export default function AddRelationScreen() {
             }
           },
         },
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Annuler', style: 'cancel' },
       ]);
       return;
     }
@@ -297,21 +297,21 @@ export default function AddRelationScreen() {
         <View pointerEvents="none" style={styles.glowAccent} />
         <View style={styles.card}>
           <Text style={styles.hubKicker}>{'BAOBAB'}</Text>
-          <Text style={styles.title}>{'Start a private reading'}</Text>
+          <Text style={styles.title}>{'Commencer une lecture privée'}</Text>
 
           <Pressable style={styles.button} onPress={() => setMode('private')}>
-            <Text style={styles.buttonText}>{'Start a reading'}</Text>
+            <Text style={styles.buttonText}>{'Commencer une lecture'}</Text>
           </Pressable>
 
           <Pressable
             style={styles.addPrivatelyBtn}
             onPress={() => router.push('/me/invite-by-number' as never)}
           >
-            <Text style={styles.addPrivatelyText}>{'Invite by phone instead'}</Text>
+            <Text style={styles.addPrivatelyText}>{'Inviter par téléphone plutôt'}</Text>
           </Pressable>
 
           <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>{'Cancel'}</Text>
+            <Text style={styles.secondaryButtonText}>{'Annuler'}</Text>
           </Pressable>
         </View>
       </View>
@@ -333,23 +333,23 @@ export default function AddRelationScreen() {
         >
         <View style={styles.card}>
           <Text style={styles.hubKicker}>{'BAOBAB'}</Text>
-          <Text style={styles.title}>{'Add someone'}</Text>
-          <Text style={styles.subtitle}>{'Name this person for yourself.'}</Text>
+          <Text style={styles.title}>{'Ajouter quelqu’un'}</Text>
+          <Text style={styles.subtitle}>{'Donne un nom à cette personne, pour toi.'}</Text>
 
           <View style={styles.scanHintCard}>
-            <Text style={styles.scanHintTitle}>{'Bao card'}</Text>
+            <Text style={styles.scanHintTitle}>{'Carte Bao'}</Text>
             <Text style={styles.scanHintText}>
-              {params.prefillHandle ?? 'No handle on this card'}
+              {params.prefillHandle ?? 'Aucun pseudo sur cette carte'}
             </Text>
             {scanLookup.status === 'found' && (
-              <Text style={styles.scanHintVerified}>{'Confirmed on Baobab'}</Text>
+              <Text style={styles.scanHintVerified}>{'Confirmé sur Baobab'}</Text>
             )}
           </View>
 
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="Private label"
+            placeholder="Nom privé"
             placeholderTextColor={colors.text.muted}
             style={styles.input}
             autoFocus
@@ -359,7 +359,7 @@ export default function AddRelationScreen() {
           <TextInput
             value={handle}
             onChangeText={setHandle}
-            placeholder="Handle (optional)"
+            placeholder="Pseudo (facultatif)"
             placeholderTextColor={colors.text.muted}
             style={styles.input}
             autoCapitalize="none"
@@ -373,10 +373,10 @@ export default function AddRelationScreen() {
             disabled={!canSubmit}
             style={[styles.button, !canSubmit && styles.buttonDisabled]}
           >
-            <Text style={styles.buttonText}>{'Add person'}</Text>
+            <Text style={styles.buttonText}>{'Ajouter la personne'}</Text>
           </Pressable>
           <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>{'Cancel'}</Text>
+            <Text style={styles.secondaryButtonText}>{'Annuler'}</Text>
           </Pressable>
         </View>
         </ScrollView>
@@ -398,18 +398,18 @@ export default function AddRelationScreen() {
       <View style={styles.card}>
         {!fromClaim && <Text style={styles.hubKicker}>{'BAOBAB'}</Text>}
         <Text style={styles.title}>
-          {fromClaim ? 'Name this person' : 'Start a reading'}
+          {fromClaim ? 'Nomme cette personne' : 'Commencer une lecture'}
         </Text>
         <Text style={styles.subtitle}>
           {fromClaim
-            ? 'Give this person a name — it stays private.'
-            : 'Only you will see this.'}
+            ? 'Donne un nom à cette personne — il reste privé.'
+            : 'Toi seul·e le verras.'}
         </Text>
 
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="Person name"
+          placeholder="Nom de la personne"
           placeholderTextColor={colors.text.muted}
           style={styles.input}
           autoFocus
@@ -423,12 +423,12 @@ export default function AddRelationScreen() {
           style={[styles.button, !canSubmit && styles.buttonDisabled]}
         >
           <Text style={styles.buttonText}>
-            {fromClaim ? 'Save and continue' : 'Add person'}
+            {fromClaim ? 'Enregistrer et continuer' : 'Ajouter la personne'}
           </Text>
         </Pressable>
         <Pressable onPress={handleBack} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>
-            {fromClaim ? 'Cancel' : 'Back'}
+            {fromClaim ? 'Annuler' : 'Retour'}
           </Text>
         </Pressable>
       </View>

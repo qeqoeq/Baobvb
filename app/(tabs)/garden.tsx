@@ -38,6 +38,17 @@ function getLinkStrengthLabel(score: number): SharedLinkStrengthLabel {
   return 'Needs care';
 }
 
+// French display label for a link-strength bucket. The enum value stays the
+// internal key (Record keys, filter routing) — only the visible text is FR.
+function getLinkStrengthDisplayLabel(label: SharedLinkStrengthLabel): string {
+  switch (label) {
+    case 'Strong':     return 'Solide';
+    case 'Good':       return 'Bon';
+    case 'Fragile':    return 'Fragile';
+    case 'Needs care': return 'À soigner';
+  }
+}
+
 function getAvatarPersonalColor(name: string): string {
   const palette = [
     colors.accent.warmGold,
@@ -81,7 +92,7 @@ function getRevealedLinkStrength(
     // Doctrine: never embed the numeric score in a human-relation display
     // string. The score remains available on this carrier for non-display
     // consumers (sort ordering) but must not leak through formatted text.
-    line: 'Shared link',
+    line: 'Lien partagé',
   };
 }
 
@@ -369,31 +380,31 @@ export default function GardenScreen() {
       entry,
       homonymSubline:
         (titleCounts.get(titleKey) ?? 0) >= 2
-          ? `${identity.relationDepthLabel} link · ${identity.stateLabel}`
+          ? `${identity.relationDepthLabel} · ${identity.stateLabel}`
           : undefined,
     }));
   }, [searchResults]);
 
   const filterLabel = useMemo(() => {
     switch (selectedFilter) {
-      case 'recent':          return 'recent';
-      case 'read':            return 'read';
-      case 'unread':          return 'unread';
-      case 'toNurture':       return 'to nurture';
-      case 'archived':        return 'archived';
-      case 'ready':           return 'ready';
-      case 'forming':         return 'forming';
-      case 'sharedStrong':    return 'Strong';
-      case 'sharedGood':      return 'Good';
+      case 'recent':          return 'récents';
+      case 'read':            return 'lus';
+      case 'unread':          return 'non lus';
+      case 'toNurture':       return 'à cultiver';
+      case 'archived':        return 'archivées';
+      case 'ready':           return 'prêtes';
+      case 'forming':         return 'en formation';
+      case 'sharedStrong':    return 'Solide';
+      case 'sharedGood':      return 'Bon';
       case 'sharedFragile':   return 'Fragile';
-      case 'sharedNeedsCare': return 'Needs care';
-      case 'attention':       return 'links';
+      case 'sharedNeedsCare': return 'À soigner';
+      case 'attention':       return 'liens';
       case 'active':
-      default:                return 'relationships';
+      default:                return 'relations';
     }
   }, [selectedFilter]);
 
-  const worldBridgeText = `${formingCount} links`;
+  const worldBridgeText = `${formingCount} ${formingCount === 1 ? 'lien' : 'liens'}`;
   const hasAnyRelationships = entries.length > 0 || archivedEntries.length > 0;
   const isFilterSelected = (key: GardenFilterKey) => selectedFilter === key;
 
@@ -448,27 +459,27 @@ export default function GardenScreen() {
       : entry.readingStatus === 'Read'
         ? (
           revealStatus === 'cooking_reveal'
-            ? 'Reveal in progress'
+            ? 'Révélation en cours'
             : revealStatus === 'waiting_other_side'
-              ? 'Waiting for them'
-              : 'Reading saved'
+              ? 'En attente de l’autre'
+              : 'Lecture enregistrée'
         )
-        : 'No reading yet';
+        : 'Pas encore de lecture';
     const signalText = isRevealed
-      ? (sharedLink?.label ?? 'Revealed')
+      ? (sharedLink ? getLinkStrengthDisplayLabel(sharedLink.label) : 'Révélé')
       : entry.toNurture
-        ? 'To nurture'
+        ? 'À cultiver'
         : revealStatus === 'revealed'
-          ? 'Ready'
+          ? 'Prêt'
           : revealStatus === 'reveal_ready'
-            ? 'Ready'
+            ? 'Prêt'
             : revealStatus === 'cooking_reveal'
-              ? 'Preparing'
+              ? 'En préparation'
               : revealStatus === 'waiting_other_side'
-                ? 'Waiting'
+                ? 'En attente'
                 : unread
-                  ? 'Unread'
-                  : 'Reading saved';
+                  ? 'Non lu'
+                  : 'Lecture enregistrée';
     const signalStyle = isRevealed
       ? (sharedLink?.label === 'Strong'
         ? styles.mappingSignalStrengthStrong
@@ -516,7 +527,7 @@ export default function GardenScreen() {
         </View>
         {isRevealed && sharedLink ? (
           <Text style={[styles.mappingScoreValue, { color: sharedLink.accent }]}>
-            {sharedLink.label}
+            {getLinkStrengthDisplayLabel(sharedLink.label)}
           </Text>
         ) : (
           <Text style={[styles.mappingSignal, signalStyle]}>{signalText}</Text>
@@ -551,7 +562,7 @@ export default function GardenScreen() {
             </View>
             <Text style={styles.headerKicker}>BAOBAB</Text>
           </View>
-          <Text style={styles.headerTitle}>Garden</Text>
+          <Text style={styles.headerTitle}>Jardin</Text>
         </View>
       </View>
 
@@ -560,7 +571,7 @@ export default function GardenScreen() {
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Search your Garden"
+          placeholder="Rechercher dans ton Jardin"
           placeholderTextColor={colors.text.muted}
           style={styles.searchInput}
           autoCorrect={false}
@@ -578,17 +589,17 @@ export default function GardenScreen() {
       {isSearching ? (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>Results</Text>
+            <Text style={styles.sectionLabel}>Résultats</Text>
             <View style={styles.sectionLine} />
             {searchResultsView.length > 0 ? (
               <Text style={styles.sectionSupportText}>
-                {searchResultsView.length} {searchResultsView.length === 1 ? 'match' : 'matches'}
+                {searchResultsView.length} {searchResultsView.length === 1 ? 'résultat' : 'résultats'}
               </Text>
             ) : null}
           </View>
           {searchResultsView.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No link found.</Text>
+              <Text style={styles.emptyText}>Aucune relation trouvée.</Text>
             </View>
           ) : (
             <View style={styles.mappingList}>
@@ -608,10 +619,10 @@ export default function GardenScreen() {
                 <View style={styles.readyClusterTopRow}>
                   <View style={styles.readyClusterCountRow}>
                     <Text style={styles.readyClusterCount}>{pendingRevealCount}</Text>
-                    <Text style={styles.readyClusterConcept}>Reveals</Text>
+                    <Text style={styles.readyClusterConcept}>Révélations</Text>
                   </View>
                   <View style={styles.readyClusterCTA}>
-                    <Text style={styles.readyClusterCTAText}>Open</Text>
+                    <Text style={styles.readyClusterCTAText}>Ouvrir</Text>
                     <Text style={styles.readyClusterCTAChevron}>›</Text>
                   </View>
                 </View>
@@ -647,13 +658,13 @@ export default function GardenScreen() {
             style={styles.worldBridgeCard}
           >
             <View style={styles.worldBridgeLead}>
-              <Text style={styles.worldBridgeEyebrow}>Map</Text>
+              <Text style={styles.worldBridgeEyebrow}>Carte</Text>
               {formingCount > 0 ? (
                 <Text style={styles.worldBridgeDetail}>{worldBridgeText}</Text>
               ) : null}
             </View>
             <View style={styles.worldBridgeFooter}>
-              <Text style={styles.worldBridgeCTA}>Open</Text>
+              <Text style={styles.worldBridgeCTA}>Ouvrir</Text>
               <Text style={styles.worldBridgeChevron}>›</Text>
             </View>
           </Pressable>
@@ -662,7 +673,7 @@ export default function GardenScreen() {
           {hasAnyRelationships ? (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionLabel}>Health</Text>
+                <Text style={styles.sectionLabel}>Santé</Text>
                 <View style={styles.sectionLine} />
               </View>
 
@@ -692,15 +703,15 @@ export default function GardenScreen() {
                 ) : (
                   <View style={styles.emptyCard}>
                     <Text style={styles.emptyText}>
-                      Link strength will appear here when shared reveal data is available.
+                      La force des liens apparaîtra ici quand des données de révélation partagée seront disponibles.
                     </Text>
                   </View>
                 )
               ) : (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyTitle}>Shared links will appear here</Text>
+                  <Text style={styles.emptyTitle}>Les liens partagés apparaîtront ici</Text>
                   <Text style={styles.emptyText}>
-                    After a mutual reveal opens, this garden starts showing link strength.
+                    Après une révélation mutuelle, ce jardin commence à montrer la force des liens.
                   </Text>
                 </View>
               )}
@@ -711,7 +722,7 @@ export default function GardenScreen() {
           {hasOverviewSharedLinks ? (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionLabel}>Shared links</Text>
+                <Text style={styles.sectionLabel}>Liens partagés</Text>
                 <View style={styles.sectionLine} />
               </View>
               <View style={styles.bucketGrid}>
@@ -731,7 +742,7 @@ export default function GardenScreen() {
                       onPress={() => { if (count > 0) setSelectedFilter(labelToBucketFilter(label)); }}
                     >
                       <View style={[styles.bucketDot, { backgroundColor: dotColor + (count > 0 ? '88' : '33') }]} />
-                      <Text style={[styles.bucketDoorLabel, count === 0 && styles.bucketDoorLabelEmpty]}>{label}</Text>
+                      <Text style={[styles.bucketDoorLabel, count === 0 && styles.bucketDoorLabelEmpty]}>{getLinkStrengthDisplayLabel(label)}</Text>
                       {count > 0 ? <Text style={styles.bucketChevron}>›</Text> : null}
                     </Pressable>
                   );
@@ -745,10 +756,10 @@ export default function GardenScreen() {
             <Pressable onPress={() => setSelectedFilter('attention')} style={styles.attentionCard}>
               <View style={styles.attentionCardLead}>
                 <Text style={styles.attentionCardEyebrow}>Attention</Text>
-                <Text style={styles.attentionCardBody}>Links that need action</Text>
+                <Text style={styles.attentionCardBody}>Des liens qui demandent une action</Text>
               </View>
               <View style={styles.attentionCardCTA}>
-                <Text style={styles.attentionCardCTAText}>Open</Text>
+                <Text style={styles.attentionCardCTAText}>Ouvrir</Text>
                 <Text style={styles.attentionCardChevron}>›</Text>
               </View>
             </Pressable>
@@ -761,19 +772,19 @@ export default function GardenScreen() {
                 onPress={() => setSelectedFilter('recent')}
                 style={[styles.secondaryFilterChip, isFilterSelected('recent') && styles.secondaryFilterChipActive]}
               >
-                <Text style={styles.secondaryFilterText}>Recent</Text>
+                <Text style={styles.secondaryFilterText}>Récents</Text>
               </Pressable>
             </View>
           ) : null}
 
           {!hasAnyRelationships ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>No relationships yet</Text>
+              <Text style={styles.emptyTitle}>Aucune relation pour l’instant</Text>
               <Text style={styles.emptyText}>
-                Start with someone you trust.
+                Commence par quelqu’un en qui tu as confiance.
               </Text>
               <Pressable onPress={() => router.push('/relation/add')} style={styles.emptyAction}>
-                <Text style={styles.emptyActionText}>Add someone</Text>
+                <Text style={styles.emptyActionText}>Ajouter quelqu’un</Text>
               </Pressable>
             </View>
           ) : null}
@@ -781,7 +792,7 @@ export default function GardenScreen() {
           {/* ── Archived link ────────────────────────────────────────────────────── */}
           {hasAnyRelationships ? (
             <Pressable onPress={() => setSelectedFilter('archived')} style={styles.archivedLink}>
-              <Text style={styles.archivedLinkText}>Archived</Text>
+              <Text style={styles.archivedLinkText}>Archivées</Text>
             </Pressable>
           ) : null}
         </>
@@ -794,13 +805,13 @@ export default function GardenScreen() {
                   onPress={() => setSelectedFilter('active')}
                   style={styles.bucketBack}
                 >
-                  <Text style={styles.bucketBackText}>‹ Garden</Text>
+                  <Text style={styles.bucketBackText}>‹ Jardin</Text>
                 </Pressable>
                 <Text style={[styles.bucketTitle, { color: bucketLabelInfo.accent }]}>
-                  {bucketLabelInfo.label}
+                  {getLinkStrengthDisplayLabel(bucketLabelInfo.label)}
                 </Text>
                 <Text style={styles.bucketMetric}>
-                  {filteredEntries.length} shared link{filteredEntries.length === 1 ? '' : 's'}
+                  {filteredEntries.length} lien{filteredEntries.length === 1 ? '' : 's'} partagé{filteredEntries.length === 1 ? '' : 's'}
                 </Text>
               </View>
             ) : (
@@ -809,7 +820,7 @@ export default function GardenScreen() {
                   onPress={() => setSelectedFilter('active')}
                   style={styles.filterBackButton}
                 >
-                  <Text style={styles.filterBackText}>‹ Garden</Text>
+                  <Text style={styles.filterBackText}>‹ Jardin</Text>
                 </Pressable>
               </View>
             )}
@@ -819,36 +830,36 @@ export default function GardenScreen() {
                   onPress={() => setSelectedFilter('recent')}
                   style={[styles.secondaryFilterChip, isFilterSelected('recent') && styles.secondaryFilterChipActive]}
                 >
-                  <Text style={styles.secondaryFilterText}>Recent</Text>
+                  <Text style={styles.secondaryFilterText}>Récents</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setSelectedFilter('toNurture')}
                   style={[styles.secondaryFilterChip, isFilterSelected('toNurture') && styles.secondaryFilterChipActive]}
                 >
-                  <Text style={styles.secondaryFilterText}>To nurture</Text>
+                  <Text style={styles.secondaryFilterText}>À cultiver</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setSelectedFilter('archived')}
                   style={[styles.secondaryFilterChip, isFilterSelected('archived') && styles.secondaryFilterChipActive]}
                 >
-                  <Text style={styles.secondaryFilterText}>Archived</Text>
+                  <Text style={styles.secondaryFilterText}>Archivées</Text>
                 </Pressable>
               </View>
             ) : null}
             {isBucketFilter ? (
               <View style={styles.sortRow}>
-                <Text style={styles.sortLabel}>Order</Text>
+                <Text style={styles.sortLabel}>Ordre</Text>
                 <Pressable
                   onPress={() => setBucketSort('recent')}
                   style={[styles.sortChip, bucketSort === 'recent' && styles.sortChipActive]}
                 >
-                  <Text style={[styles.sortChipText, bucketSort === 'recent' && styles.sortChipTextActive]}>Recent</Text>
+                  <Text style={[styles.sortChipText, bucketSort === 'recent' && styles.sortChipTextActive]}>Récents</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setBucketSort('name')}
                   style={[styles.sortChip, bucketSort === 'name' && styles.sortChipActive]}
                 >
-                  <Text style={[styles.sortChipText, bucketSort === 'name' && styles.sortChipTextActive]}>Name</Text>
+                  <Text style={[styles.sortChipText, bucketSort === 'name' && styles.sortChipTextActive]}>Nom</Text>
                 </Pressable>
               </View>
             ) : null}
@@ -861,10 +872,10 @@ export default function GardenScreen() {
                   {selectedFilter === 'attention'
                     ? 'Attention'
                     : selectedFilter === 'archived'
-                      ? 'Archived'
+                      ? 'Archivées'
                       : selectedFilter === 'recent'
-                        ? 'Recent'
-                        : 'Nurture'}
+                        ? 'Récents'
+                        : 'À cultiver'}
                 </Text>
                 <View style={styles.sectionLine} />
                 {filteredEntries.length > 0 ? (
@@ -877,18 +888,18 @@ export default function GardenScreen() {
               <View style={styles.emptyCard}>
                 {entries.length === 0 ? (
                   <>
-                    <Text style={styles.emptyTitle}>No relationships yet</Text>
+                    <Text style={styles.emptyTitle}>Aucune relation pour l’instant</Text>
                     <Text style={styles.emptyText}>
-                      Start with someone you trust.
+                      Commence par quelqu’un en qui tu as confiance.
                     </Text>
                     <Pressable onPress={() => router.push('/relation/add')} style={styles.emptyAction}>
-                      <Text style={styles.emptyActionText}>Add someone</Text>
+                      <Text style={styles.emptyActionText}>Ajouter quelqu’un</Text>
                     </Pressable>
                   </>
                 ) : selectedFilter === 'archived' ? (
-                  <Text style={styles.emptyText}>No archived relationships.</Text>
+                  <Text style={styles.emptyText}>Aucune relation archivée.</Text>
                 ) : (
-                  <Text style={styles.emptyText}>Nothing here. Try a different view.</Text>
+                  <Text style={styles.emptyText}>Rien ici. Essaie une autre vue.</Text>
                 )}
               </View>
             ) : (

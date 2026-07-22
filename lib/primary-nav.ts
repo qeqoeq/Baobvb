@@ -18,9 +18,9 @@ export type PrimaryNavItem = {
 export function getPrimaryNavItems(counts: { pendingReveals: number }): PrimaryNavItem[] {
   const pending = Math.max(0, Math.floor(counts.pendingReveals || 0));
   return [
-    { key: 'garden', label: 'Garden', badge: null },
-    { key: 'places', label: 'Places', badge: null },
-    { key: 'reveals', label: 'Reveals', badge: pending > 0 ? pending : null },
-    { key: 'profile', label: 'You', badge: null },
+    { key: 'garden', label: 'Jardin', badge: null },
+    { key: 'places', label: 'Lieux', badge: null },
+    { key: 'reveals', label: 'Révélations', badge: pending > 0 ? pending : null },
+    { key: 'profile', label: 'Toi', badge: null },
   ];
 }

@@ -58,7 +58,7 @@ export default function InviteByNumberScreen() {
       relationDepth: 'encounter',
     });
     if (!relation) {
-      setErrorMsg('Could not create relationship. Try again.');
+      setErrorMsg('Impossible de créer la relation. Réessaie.');
       return;
     }
     // Navigate to private reading first; invite is sent from relation detail after reading.
@@ -113,12 +113,12 @@ export default function InviteByNumberScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.card}>
-          <Text style={styles.title}>{'Enter manually'}</Text>
+          <Text style={styles.title}>{'Saisir manuellement'}</Text>
           {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
           <TextInput
             value={phone}
             onChangeText={setPhone}
-            placeholder="+1 555 000 0000"
+            placeholder="+33 6 12 34 56 78"
             placeholderTextColor={colors.text.muted}
             style={styles.input}
             keyboardType="phone-pad"
@@ -131,7 +131,7 @@ export default function InviteByNumberScreen() {
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="Name (optional)"
+            placeholder="Nom (facultatif)"
             placeholderTextColor={colors.text.muted}
             style={[styles.input, styles.inputSecondary]}
             returnKeyType="done"
@@ -144,10 +144,10 @@ export default function InviteByNumberScreen() {
             disabled={!canSubmitManual}
             style={[styles.primaryButton, !canSubmitManual && styles.primaryButtonDisabled]}
           >
-            <Text style={styles.primaryButtonText}>{'Get started'}</Text>
+            <Text style={styles.primaryButtonText}>{'Commencer'}</Text>
           </Pressable>
           <Pressable onPress={() => router.back()} style={styles.ghostButton}>
-            <Text style={styles.ghostButtonText}>{'Cancel'}</Text>
+            <Text style={styles.ghostButtonText}>{'Annuler'}</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -162,15 +162,15 @@ export default function InviteByNumberScreen() {
         <View pointerEvents="none" style={styles.screenGlow} />
         <View style={styles.card}>
           <BaoOrb />
-          <Text style={styles.title}>{'No phone number'}</Text>
-          <Text style={styles.body}>{'This contact has no phone number saved.'}</Text>
+          <Text style={styles.title}>{'Aucun numéro de téléphone'}</Text>
+          <Text style={styles.body}>{'Ce contact n’a aucun numéro de téléphone enregistré.'}</Text>
           <Pressable
             onPress={() => void launchPicker()}
             disabled={isPicking}
             style={[styles.primaryButton, isPicking && styles.primaryButtonDisabled]}
           >
             <Text style={styles.primaryButtonText}>
-              {isPicking ? 'Opening contacts…' : 'Choose another contact'}
+              {isPicking ? 'Ouverture des contacts…' : 'Choisir un autre contact'}
             </Text>
           </Pressable>
           <Pressable
@@ -179,11 +179,11 @@ export default function InviteByNumberScreen() {
             style={styles.subtleButton}
           >
             <Text style={[styles.subtleButtonText, isPicking && styles.disabledText]}>
-              {'Enter number manually'}
+              {'Saisir le numéro manuellement'}
             </Text>
           </Pressable>
           <Pressable onPress={() => router.back()} style={styles.ghostButton}>
-            <Text style={styles.ghostButtonText}>{'Cancel'}</Text>
+            <Text style={styles.ghostButtonText}>{'Annuler'}</Text>
           </Pressable>
         </View>
       </View>
@@ -193,7 +193,7 @@ export default function InviteByNumberScreen() {
   // ── Ready — default state ───────────────────────────────────────────────────
   return (
     <>
-      <Stack.Screen options={{ title: 'Invite someone' }} />
+      <Stack.Screen options={{ title: 'Inviter quelqu’un' }} />
       <View style={styles.screen}>
         <View pointerEvents="none" style={styles.screenGlow} />
         <View style={styles.card}>
@@ -205,8 +205,8 @@ export default function InviteByNumberScreen() {
           </View>
 
           {/* ── Copy ── */}
-          <Text style={styles.title}>{'Send a Bao'}</Text>
-          <Text style={styles.body}>{'Choose someone you know.'}</Text>
+          <Text style={styles.title}>{'Envoyer un Bao'}</Text>
+          <Text style={styles.body}>{'Choisis quelqu’un que tu connais.'}</Text>
 
           {/* ── Error ── */}
           {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
@@ -218,7 +218,7 @@ export default function InviteByNumberScreen() {
             style={[styles.primaryButton, isPicking && styles.primaryButtonDisabled]}
           >
             <Text style={styles.primaryButtonText}>
-              {isPicking ? 'Opening contacts…' : 'Choose contact'}
+              {isPicking ? 'Ouverture des contacts…' : 'Choisir un contact'}
             </Text>
           </Pressable>
 
@@ -229,11 +229,11 @@ export default function InviteByNumberScreen() {
             style={styles.subtleButton}
           >
             <Text style={[styles.subtleButtonText, isPicking && styles.disabledText]}>
-              {'Enter number manually'}
+              {'Saisir le numéro manuellement'}
             </Text>
           </Pressable>
           <Pressable onPress={() => router.back()} style={styles.ghostButton}>
-            <Text style={styles.ghostButtonText}>{'Cancel'}</Text>
+            <Text style={styles.ghostButtonText}>{'Annuler'}</Text>
           </Pressable>
 
         </View>

@@ -33,7 +33,7 @@ export default function EditRelationScreen() {
     const cleanName = name.trim();
 
     if (!cleanName) {
-      setError('Label cannot be empty.');
+      setError('Le nom ne peut pas être vide.');
       return;
     }
 
@@ -41,7 +41,7 @@ export default function EditRelationScreen() {
       name: cleanName,
     });
     if (!ok) {
-      setError('Could not save relation.');
+      setError('Impossible d’enregistrer la relation.');
       return;
     }
 
@@ -55,20 +55,20 @@ export default function EditRelationScreen() {
         style={styles.kav}
       >
       <View style={styles.card}>
-        <Text style={styles.title}>Edit relation</Text>
+        <Text style={styles.title}>Modifier la relation</Text>
         <Text style={styles.subtitle}>
-          Your private label for this person. Only visible to you.
+          Ton nom privé pour cette personne. Visible par toi seul·e.
         </Text>
 
         <View style={styles.fieldBlock}>
-          <Text style={styles.fieldLabel}>Private label</Text>
+          <Text style={styles.fieldLabel}>Nom privé</Text>
           <TextInput
             value={name}
             onChangeText={(value) => {
               setName(value);
               if (error) setError(null);
             }}
-            placeholder="Your label for this person"
+            placeholder="Ton nom pour cette personne"
             placeholderTextColor={colors.text.muted}
             style={styles.input}
             autoFocus
@@ -78,11 +78,11 @@ export default function EditRelationScreen() {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Pressable onPress={save} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Save relation</Text>
+          <Text style={styles.primaryButtonText}>Enregistrer la relation</Text>
         </Pressable>
-        <Text style={styles.helperText}>Changes appear immediately in Garden and this relationship.</Text>
+        <Text style={styles.helperText}>Les changements apparaissent aussitôt dans le Jardin et cette relation.</Text>
         <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Cancel</Text>
+          <Text style={styles.secondaryButtonText}>Annuler</Text>
         </Pressable>
       </View>
       </KeyboardAvoidingView>

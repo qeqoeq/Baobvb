@@ -54,14 +54,14 @@ describe('getPlaceCategoryLabel', () => {
   });
 
   it('returns "Other" for unknown string', () => {
-    expect(getPlaceCategoryLabel('museum')).toBe('Other');
-    expect(getPlaceCategoryLabel('')).toBe('Other');
+    expect(getPlaceCategoryLabel('museum')).toBe('Autre');
+    expect(getPlaceCategoryLabel('')).toBe('Autre');
   });
 
   it('returns "Other" for non-string inputs', () => {
-    expect(getPlaceCategoryLabel(null)).toBe('Other');
-    expect(getPlaceCategoryLabel(undefined)).toBe('Other');
-    expect(getPlaceCategoryLabel(3)).toBe('Other');
+    expect(getPlaceCategoryLabel(null)).toBe('Autre');
+    expect(getPlaceCategoryLabel(undefined)).toBe('Autre');
+    expect(getPlaceCategoryLabel(3)).toBe('Autre');
   });
 });
 
@@ -76,14 +76,14 @@ describe('getPlaceFitLabel', () => {
   });
 
   it('returns "Saved" as fallback for unknown string', () => {
-    expect(getPlaceFitLabel('loved_it')).toBe('Saved');
-    expect(getPlaceFitLabel('')).toBe('Saved');
+    expect(getPlaceFitLabel('loved_it')).toBe('Enregistré');
+    expect(getPlaceFitLabel('')).toBe('Enregistré');
   });
 
   it('returns "Saved" for non-string inputs', () => {
-    expect(getPlaceFitLabel(null)).toBe('Saved');
-    expect(getPlaceFitLabel(undefined)).toBe('Saved');
-    expect(getPlaceFitLabel(4)).toBe('Saved');
+    expect(getPlaceFitLabel(null)).toBe('Enregistré');
+    expect(getPlaceFitLabel(undefined)).toBe('Enregistré');
+    expect(getPlaceFitLabel(4)).toBe('Enregistré');
   });
 
   it('labels contain no numeric score', () => {
@@ -107,24 +107,24 @@ describe('getPlaceReading', () => {
   });
 
   it('returns fit fallback when no impression — saved', () => {
-    expect(getPlaceReading({ personalFit: 'saved' })).toBe('Saved for later.');
+    expect(getPlaceReading({ personalFit: 'saved' })).toBe('Enregistré pour plus tard.');
   });
 
   it('returns fit fallback when no impression — tried', () => {
-    expect(getPlaceReading({ personalFit: 'tried' })).toBe('Tried once.');
+    expect(getPlaceReading({ personalFit: 'tried' })).toBe('Essayé une fois.');
   });
 
   it('returns fit fallback when no impression — kept', () => {
-    expect(getPlaceReading({ personalFit: 'kept' })).toBe('Kept in your places.');
+    expect(getPlaceReading({ personalFit: 'kept' })).toBe('Gardé dans tes lieux.');
   });
 
   it('returns fit fallback when no impression — not_for_me', () => {
-    expect(getPlaceReading({ personalFit: 'not_for_me' })).toBe('Not for me.');
+    expect(getPlaceReading({ personalFit: 'not_for_me' })).toBe('Pas pour moi.');
   });
 
   it('returns fallback when impression is empty string', () => {
     const place = { personalFit: 'tried' as const, impression: '   ' };
-    expect(getPlaceReading(place)).toBe('Tried once.');
+    expect(getPlaceReading(place)).toBe('Essayé une fois.');
   });
 
   it('fallback text contains no numeric score', () => {

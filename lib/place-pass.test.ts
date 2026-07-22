@@ -32,12 +32,12 @@ describe('getPassSectionState', () => {
 // ── formatPassButtonLabel — B24 picker shows the cascade name, not '(shared)' ──
 
 describe('formatPassButtonLabel', () => {
-  it('B1: no selection → "Pass to…"', () => {
-    expect(formatPassButtonLabel(null)).toBe('Pass to…');
+  it('B1: no selection → "Passer à…"', () => {
+    expect(formatPassButtonLabel(null)).toBe('Passer à…');
   });
 
-  it('B2: a name → "Pass to <name>"', () => {
-    expect(formatPassButtonLabel('iPhoneBB')).toBe('Pass to iPhoneBB');
+  it('B2: a name → "Passer à <name>"', () => {
+    expect(formatPassButtonLabel('iPhoneBB')).toBe('Passer à iPhoneBB');
   });
 
   it('B3: the picker resolves the cascade name for a "Private link" relation', () => {
@@ -49,6 +49,6 @@ describe('formatPassButtonLabel', () => {
     } as unknown as Relation;
     const label = getNormalizedPrivateLabel(relation);
     expect(label).toBe('iPhoneBB');
-    expect(formatPassButtonLabel(label)).toBe('Pass to iPhoneBB');
+    expect(formatPassButtonLabel(label)).toBe('Passer à iPhoneBB');
   });
 });

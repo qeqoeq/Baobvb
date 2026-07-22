@@ -31,20 +31,20 @@ const EXPERIENCE_LEVELS: readonly PlaceExperienceLevel[] = [1, 2, 3, 4, 5];
 const CATEGORIES_WITH_DIMENSIONS: readonly PlaceCategory[] = ['restaurant', 'cafe', 'bar'];
 
 const DRIVER_QUESTION_BY_LANDING_LEVEL: Record<PlaceLandingLevel, string> = {
-  1: 'What went wrong?',
-  2: "What didn't fit?",
-  3: 'What made it uneven?',
-  4: 'What made it work?',
-  5: 'What made it exceptional?',
+  1: 'Qu’est-ce qui a cloché ?',
+  2: 'Qu’est-ce qui n’allait pas ?',
+  3: 'Qu’est-ce qui était inégal ?',
+  4: 'Qu’est-ce qui a marché ?',
+  5: 'Qu’est-ce qui l’a rendu exceptionnel ?',
 };
-const DRIVER_QUESTION_DEFAULT = 'What should Baobab remember?';
+const DRIVER_QUESTION_DEFAULT = 'Que doit retenir Baobab ?';
 
 const DRIVER_SHORT_LABELS: Record<RestaurantExperienceDimension, string> = {
-  food: 'Food',
+  food: 'Cuisine',
   service: 'Service',
-  atmosphere: 'Atmosphere',
-  value: 'Value',
-  cleanliness: 'Cleanliness',
+  atmosphere: 'Ambiance',
+  value: 'Prix',
+  cleanliness: 'Propreté',
 };
 
 type PlaceNewReadSheetProps = {
@@ -144,8 +144,8 @@ export function PlaceNewReadSheet({
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={styles.sheet}>
         <View style={styles.grabber} />
-        <Text style={styles.title}>Another read</Text>
-        <Text style={styles.caption}>{"What's different this time."}</Text>
+        <Text style={styles.title}>Une autre lecture</Text>
+        <Text style={styles.caption}>{'Ce qui change cette fois.'}</Text>
 
         <ScrollView
           style={styles.scroll}
@@ -154,7 +154,7 @@ export function PlaceNewReadSheet({
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.section}>
-            <Text style={styles.question}>How did it land?</Text>
+            <Text style={styles.question}>Comment tu l’as ressenti ?</Text>
             <View style={styles.segmentRow}>
               {PLACE_LANDING_LEVEL_OPTIONS.map((level) => {
                 const active = landingLevel !== undefined && level <= landingLevel;
@@ -204,7 +204,7 @@ export function PlaceNewReadSheet({
           ) : null}
 
           <View style={styles.section}>
-            <Text style={styles.question}>Good for…</Text>
+            <Text style={styles.question}>Bien pour…</Text>
             <View style={styles.chipRow}>
               {PLACE_CONTEXT_FIT_OPTIONS.map((option) => {
                 const selected = contextFit.includes(option);
@@ -232,7 +232,7 @@ export function PlaceNewReadSheet({
 
           {showCloserLook ? (
             <View style={styles.section}>
-              <Text style={styles.question}>A closer look</Text>
+              <Text style={styles.question}>Regarde de plus près</Text>
               {driverDimensions.map((dimension) => (
                 <View key={dimension} style={styles.dimensionRow}>
                   <Text style={styles.dimensionLabel}>
@@ -257,11 +257,11 @@ export function PlaceNewReadSheet({
           ) : null}
 
           <View style={styles.section}>
-            <Text style={styles.question}>A note</Text>
+            <Text style={styles.question}>Une note</Text>
             <TextInput
               value={impression}
               onChangeText={setImpression}
-              placeholder="What changed, stayed, or surprised you?"
+              placeholder="Ce qui a changé, est resté ou t’a surpris·e ?"
               placeholderTextColor={colors.text.muted}
               style={styles.noteInput}
               multiline
@@ -275,7 +275,7 @@ export function PlaceNewReadSheet({
           disabled={!isValid}
           style={[styles.saveButton, !isValid && styles.saveButtonDisabled]}
         >
-          <Text style={styles.saveButtonText}>Save this read</Text>
+          <Text style={styles.saveButtonText}>Enregistrer cette lecture</Text>
         </Pressable>
       </View>
     </Modal>

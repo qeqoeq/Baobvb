@@ -45,11 +45,11 @@ export function getCircleNodeStatus(reading: FoundationalReadingDerived): Circle
 export function getCircleNodeStatusLabel(status: CircleNodeStatus): string {
   switch (status) {
     case 'revealed_stable':     return 'Stable';
-    case 'revealed_to_nurture': return 'To nurture';
-    case 'ready':               return 'Ready';
-    case 'cooking':             return 'Preparing';
-    case 'waiting_other_side':  return 'Waiting';
-    case 'unread':              return 'Unread';
+    case 'revealed_to_nurture': return 'À cultiver';
+    case 'ready':               return 'Prêt';
+    case 'cooking':             return 'En préparation';
+    case 'waiting_other_side':  return 'En attente';
+    case 'unread':              return 'Non lu';
   }
 }
 

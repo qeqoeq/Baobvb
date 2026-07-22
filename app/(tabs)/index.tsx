@@ -209,13 +209,13 @@ export default function CircleScreen() {
             <View style={styles.baobabMark} />
             <Text style={styles.headerKicker}>{'BAOBAB'}</Text>
           </View>
-          <Text style={styles.headerTitle}>Your Bao</Text>
+          <Text style={styles.headerTitle}>Ton Bao</Text>
         </View>
         <View style={styles.headerRight}>
           {networkCount > 0 && (
             <View style={styles.networkBadge}>
               <Text style={styles.networkCount}>{networkCount}</Text>
-              <Text style={styles.networkLabel}>{'in your Bao'}</Text>
+              <Text style={styles.networkLabel}>{'dans ton Bao'}</Text>
             </View>
           )}
           <Pressable
@@ -253,9 +253,9 @@ export default function CircleScreen() {
                   router.push('../relation/add');
                 }}
               >
-                <Text style={styles.emptyPromptHeadline}>{'Start with someone who matters.'}</Text>
-                <Text style={styles.emptyPromptSupport}>{'A private reading. Nothing opens until both sides are ready.'}</Text>
-                <Text style={styles.emptyPromptAction}>{'Begin a reading'}</Text>
+                <Text style={styles.emptyPromptHeadline}>{'Commence par quelqu’un qui compte.'}</Text>
+                <Text style={styles.emptyPromptSupport}>{'Une lecture privée. Rien ne s’ouvre tant que les deux côtés ne sont pas prêts.'}</Text>
+                <Text style={styles.emptyPromptAction}>{'Commencer une lecture'}</Text>
               </Pressable>
             )}
 
@@ -269,7 +269,7 @@ export default function CircleScreen() {
                 >
                   <View style={[styles.formingDot, styles.formingDotReady]} />
                   <Text style={[styles.worldCardHintText, styles.worldCardHintTextReady]}>
-                    {`${readyCount} ready`}
+                    {`${readyCount} ${readyCount > 1 ? 'prêtes' : 'prête'}`}
                   </Text>
                 </Pressable>
               )}
@@ -361,8 +361,8 @@ export default function CircleScreen() {
                 router.push('../relation/add');
               }}
             >
-              <Text style={styles.actionMenuRowText}>{'Start a reading'}</Text>
-              <Text style={styles.actionMenuRowSupport}>{'Understand a connection'}</Text>
+              <Text style={styles.actionMenuRowText}>{'Commencer une lecture'}</Text>
+              <Text style={styles.actionMenuRowSupport}>{'Comprendre une connexion'}</Text>
             </Pressable>
             <View style={styles.actionMenuDivider} />
             <Pressable
@@ -372,8 +372,8 @@ export default function CircleScreen() {
                 router.push('../place/add');
               }}
             >
-              <Text style={styles.actionMenuRowText}>{'Keep a place'}</Text>
-              <Text style={styles.actionMenuRowSupport}>{'Keep a real-world trace'}</Text>
+              <Text style={styles.actionMenuRowText}>{'Garder un lieu'}</Text>
+              <Text style={styles.actionMenuRowSupport}>{'Garder une trace du monde réel'}</Text>
             </Pressable>
           </Pressable>
         </Pressable>

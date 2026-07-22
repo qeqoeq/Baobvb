@@ -29,17 +29,17 @@ function read(overrides: Partial<PlaceReadEntry> = {}): PlaceReadEntry {
 describe('deriveLivedPlaceTraces — personalFit', () => {
   it('T1: kept → includes Kept', () => {
     const result = deriveLivedPlaceTraces(place({ personalFit: 'kept' }));
-    expect(result).toContain('Kept');
+    expect(result).toContain('Gardé');
   });
 
   it('T2: not_for_me → no Kept', () => {
     const result = deriveLivedPlaceTraces(place({ personalFit: 'not_for_me' }));
-    expect(result).not.toContain('Kept');
+    expect(result).not.toContain('Gardé');
   });
 
   it('T3: tried → no Kept', () => {
     const result = deriveLivedPlaceTraces(place({ personalFit: 'tried' }));
-    expect(result).not.toContain('Kept');
+    expect(result).not.toContain('Gardé');
   });
 });
 
@@ -50,12 +50,12 @@ describe('deriveLivedPlaceTraces — wentAgainAt', () => {
     const result = deriveLivedPlaceTraces(
       place({ wentAgainAt: '2026-04-01T00:00:00Z' }),
     );
-    expect(result).toContain('Came back');
+    expect(result).toContain('Retour');
   });
 
   it('T5: wentAgainAt undefined → no Came back', () => {
     const result = deriveLivedPlaceTraces(place({ wentAgainAt: undefined }));
-    expect(result).not.toContain('Came back');
+    expect(result).not.toContain('Retour');
   });
 });
 
@@ -69,14 +69,14 @@ describe('deriveLivedPlaceTraces — legacy quickSignal contextFit', () => {
         quickSignal: { contextFit: ['friends'] },
       }),
     );
-    expect(result).toContain('Friends');
+    expect(result).toContain('Amis');
   });
 
   it('T7: no reads, no quickSignal → no context trace', () => {
     const result = deriveLivedPlaceTraces(
       place({ reads: undefined, quickSignal: undefined }),
     );
-    expect(result.some((t) => t.includes('Friends') || t.includes('Date'))).toBe(false);
+    expect(result.some((t) => t.includes('Amis') || t.includes('Rendez-vous'))).toBe(false);
   });
 
   it('T8: empty reads array, quickSignal.contextFit = [calm] → Calm (legacy fallback)', () => {
@@ -86,7 +86,7 @@ describe('deriveLivedPlaceTraces — legacy quickSignal contextFit', () => {
         quickSignal: { contextFit: ['calm'] },
       }),
     );
-    expect(result).toContain('Calm');
+    expect(result).toContain('Calme');
   });
 });
 
@@ -100,7 +100,7 @@ describe('deriveLivedPlaceTraces — reads[] contextFit', () => {
         quickSignal: undefined,
       }),
     );
-    expect(result).toContain('Date');
+    expect(result).toContain('Rendez-vous');
   });
 
   it('T10: 1 read with contextFit [date], legacy quickSignal.contextFit [friends] → uses read (Date), not legacy (Friends)', () => {
@@ -110,8 +110,8 @@ describe('deriveLivedPlaceTraces — reads[] contextFit', () => {
         quickSignal: { contextFit: ['friends'] },
       }),
     );
-    expect(result).toContain('Date');
-    expect(result).not.toContain('Friends');
+    expect(result).toContain('Rendez-vous');
+    expect(result).not.toContain('Amis');
   });
 
   it('T11: 1 read with no contextFit, legacy quickSignal.contextFit [friends] → falls back to legacy', () => {
@@ -121,7 +121,7 @@ describe('deriveLivedPlaceTraces — reads[] contextFit', () => {
         quickSignal: { contextFit: ['friends'] },
       }),
     );
-    expect(result).toContain('Friends');
+    expect(result).toContain('Amis');
   });
 
   it('T12: 2 reads, latest has [calm], first has [friends] → uses latest (Calm)', () => {
@@ -134,8 +134,8 @@ describe('deriveLivedPlaceTraces — reads[] contextFit', () => {
         quickSignal: undefined,
       }),
     );
-    expect(result).toContain('Calm');
-    expect(result).not.toContain('Friends');
+    expect(result).toContain('Calme');
+    expect(result).not.toContain('Amis');
   });
 
   it('T13: multi-context on latest read → joined with ·', () => {
@@ -145,7 +145,7 @@ describe('deriveLivedPlaceTraces — reads[] contextFit', () => {
         quickSignal: undefined,
       }),
     );
-    expect(result).toContain('Friends · Deep talk');
+    expect(result).toContain('Amis · Vraie conversation');
   });
 });
 
@@ -161,9 +161,9 @@ describe('deriveLivedPlaceTraces — combined output', () => {
         quickSignal: undefined,
       }),
     );
-    expect(result).toContain('Kept');
-    expect(result).toContain('Came back');
-    expect(result).toContain('Work / focus');
+    expect(result).toContain('Gardé');
+    expect(result).toContain('Retour');
+    expect(result).toContain('Travail / concentration');
     expect(result).toHaveLength(3);
   });
 

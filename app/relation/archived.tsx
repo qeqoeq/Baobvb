@@ -12,9 +12,9 @@ export default function ArchivedRelationsScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {archivedRelations.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No archived relationships</Text>
+          <Text style={styles.emptyTitle}>Aucune relation archivée</Text>
           <Text style={styles.emptyBody}>
-            Relationships you archive will appear here.
+            Les relations que tu archives apparaîtront ici.
           </Text>
         </View>
       ) : (
@@ -26,7 +26,7 @@ export default function ArchivedRelationsScreen() {
                 onPress={() => restoreRelation(relation.id)}
                 style={styles.restoreButton}
               >
-                <Text style={styles.restoreButtonText}>Restore</Text>
+                <Text style={styles.restoreButtonText}>Restaurer</Text>
               </Pressable>
             </View>
           ))}
