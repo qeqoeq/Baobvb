@@ -150,6 +150,7 @@ export default function EditMyCardScreen() {
             {localPhotoUri ? 'Changer la photo' : 'Ajouter une photo'}
           </Text>
         </Pressable>
+        <Text style={styles.photoPrivacyNote}>{'Visible par toi uniquement'}</Text>
 
         <View style={styles.fieldBlock}>
           <Text style={styles.fieldLabel}>{'Nom'}</Text>
@@ -287,6 +288,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.accent.warmGold,
+  },
+  photoPrivacyNote: {
+    alignSelf: 'center',
+    marginTop: 2,
+    fontSize: 11,
+    color: colors.text.muted,
   },
   fieldBlock: {
     gap: spacing.xs,
