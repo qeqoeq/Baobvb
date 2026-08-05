@@ -191,6 +191,30 @@ iPhoneBB** → à exclure du funnel organique. **Dénominateur organique réel =
 
 ---
 
+## Composition du panel (05/08)
+
+**Les 8 relations bloquées sont toutes des invitations intra-familiales** :
+- **Isaiah** → sa **mère Laure**, son **père**, sa **sœur** ;
+- **Wouolha** → **2 de ses enfants**.
+
+Le **seul reveal organique complet** — **Khadra ↔ Imane** — est **non familial**.
+
+Le cas post-claim `1a375332` (Isaiah → sa mère Laure) est lui aussi **intra-familial** : il relève
+vraisemblablement de la même hypothèse ci-dessous plutôt que d'un défaut d'écran d'évaluation (cohérent avec la
+correction du verdict, §5a).
+
+**Hypothèse — à acter comme NON tranchée mais PRIORITAIRE : biais de recrutement.**
+Les relations à **certitude élevée** (liens familiaux proches) **n'offrent aucune incertitude à lever** — donc
+**aucune récompense au bout de l'évaluation** : l'invité n'a rien à « découvrir » sur un lien déjà évident, et
+n'a pas de raison saillante d'aller au bout. Le seul lien abouti (Khadra ↔ Imane) est précisément celui à
+**incertitude réelle**. Cette hypothèse est **structurelle** (elle expliquerait le mur pré-claim ET le cas
+post-claim) — mais **non prouvée** : elle demande un lot de test conçu pour la falsifier.
+
+**Critère de recrutement retenu pour le prochain lot** : **adultes**, **relations à incertitude réelle**,
+**hors famille**. (Objectif : lever le biais et tester si l'activation invité tient au type de lien, pas à la mécanique.)
+
+---
+
 ## Synthèse
 
 | Question | Réponse |
@@ -200,6 +224,7 @@ iPhoneBB** → à exclure du funnel organique. **Dénominateur organique réel =
 | `side_b NULL` = invité jamais réclamé ? | **Oui** (invité = sideB dans Baobab). Sous-cas (i) invite jamais envoyée / (ii) envoyée non réclamée / (iii) claim partiel — cf. §4b |
 | Trace avant le claim ? | **Aucune.** Seuls `created_at`→`claimed_at` ; pas d'ouverture/install/écran. Segment **aveugle** |
 | Verdict terrain (05/08) | Mur **côté invité** : 8 pré-claim + 1 post-claim (`1a375332`, **cause non tranchée** — même personne a rempli une éval le même jour). Dénominateur **organique** (hors 2 relations test mai `86aec1a5`/`34ed1c23`) = **8 relations, 1 reveal complet** |
+| Composition du panel | **8 bloquées = toutes intra-familiales** (Isaiah→mère/père/sœur ; Wouolha→2 enfants) ; seul reveal abouti (Khadra↔Imane) = **non familial**. Hypothèse **prioritaire non tranchée** : **biais de recrutement** (certitude élevée ⇒ rien à lever ⇒ pas de récompense). Prochain lot : **adultes, incertitude réelle, hors famille** |
 
 _Diagnostic seul. Aucune modification de code de production. Requêtes §4 + résultats terrain = lecture seule
 (exécutées par Samo le 05/08/2026 ; aucun SQL exécuté par l'assistant, aucun `DELETE`)._

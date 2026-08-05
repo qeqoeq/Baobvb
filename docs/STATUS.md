@@ -27,6 +27,11 @@
   `my_shared_relationships()` ? choix utilisateur ?) — **terrain requis**.
 - **Dénominateur organique** : `86aec1a5` et `34ed1c23` (mai) = appareils de test **PhoneA/iPhoneBB** → exclus.
   Réel = **8 relations organiques, 1 reveal complet**.
+- **Composition du panel (05/08)** : les **8 relations bloquées sont toutes intra-familiales** (Isaiah → mère
+  Laure / père / sœur ; Wouolha → 2 enfants) ; le seul reveal abouti (**Khadra ↔ Imane**) est **non familial**.
+  **Hypothèse prioritaire, non tranchée : biais de recrutement** — les liens à certitude élevée n'offrent aucune
+  incertitude à lever, donc **aucune récompense** au bout de l'évaluation. **Critère du prochain lot retenu :
+  adultes, relations à incertitude réelle, hors famille.**
 
 ---
 
