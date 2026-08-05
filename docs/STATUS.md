@@ -4,28 +4,26 @@
 
 ---
 
-## ⚠️ B33 — SONDE TEMPORAIRE EN PROD (à RETIRER) — 05/08
+## B33 — CLOS (05/08) — barre fantôme = artefact de rendu natif
 
-> **Instrumentation de diagnostic, PAS un correctif.** `components/ui/PrimaryNavBar.tsx` porte une sonde
-> temporaire (commit `fd48942`) : un petit texte rouge dans chaque barre affichant
-> **`#<idInstance>/<totalMonté> @<route> u:<updateId8> y<Y> h<hauteur>`**. Objectif : prouver le
-> double-montage de la barre fantôme au cold start et confirmer quel bundle s'exécute.
+> **Verdict (preuve sonde, capture device update `019fd2c3`)** : DEUX textes rouges **identiques** à l'écran,
+> tous deux **`#1/1 @/ u:019fd2c3 y883 h73`** (même instanceId, même y mesuré) → **une seule instance React
+> montée**, dont le rendu peint est **dupliqué par la couche native**. Ce n'est **PAS** un double-montage ni un
+> bug JSX : c'est un **artefact de composition natif** (copie visuelle figée d'un écran, piste react-native-
+> screens). **Non corrigeable en OTA** — d'où l'échec de B30/B32 à le changer.
 >
-> **CETTE SONDE DOIT ÊTRE RETIRÉE** une fois la capture lue (prochaine tâche : `revert(B33)` + OTA propre).
-> Elle est laide **par conception** (texte rouge visible). Ne pas la laisser en prod pour les testeurs.
+> Cosmétique, n'empêche aucun parcours. Parké (`docs/PARKING.md`) : à revérifier sur le build natif ; si
+> persistant, investiguer react-native-screens / `enableScreens`.
 
-- **OTA sonde** : branch `production`, runtime `1.0.0`, iOS, commit `fd48942`.
-  **Update group** `e9be94e2-283b-404e-a11f-e944fb44b13d` · **iOS update** `019fd2c3-b9b3-72e8-8f12-1acaba261e38`.
-- **Lecture (Samo, sans build natif)** : cold start (kill + relaunch ×2), regarder l'écran d'accueil.
-  - Le champ **`u:`** doit afficher **`019fd2c3`** → confirme que l'app exécute bien ce bundle (donc les OTA
-    postérieurs à B30, dont B32, s'appliquent). Si `u:` montre un id plus ancien → l'update ne s'applique pas.
-  - **Deux barres** marquées p.ex. `#1/2 …` et `#2/2 …` → **double-montage runtime confirmé** ; le `@route` de
-    chacune dit d'où vient le doublon ; les `y/h` expliquent le tiers-supérieur.
-  - **Une seule** barre `#1/1 …` alors que le fantôme persiste → la 2ᵉ rangée n'est pas une PrimaryNavBar vivante
-    (piste snapshot natif figé).
-- tsc 0, vitest 1127/1127. Aucun autre changement. Diagnostic : `docs/DIAG-B33.md`.
+- **Sonde retirée** : `revert(B33)` `8cd688b` → `PrimaryNavBar.tsx` **identique à `cfb6355`** (état B32), aucun
+  résidu. tsc 0, vitest 1127/1127. Diagnostic complet : `docs/DIAG-B33.md`.
+- **⚠️ La sonde est encore LIVE sur l'OTA production** (`019fd2c3`) : le revert est **commité mais pas publié**.
+  Les installs build-31 actuelles voient toujours le texte rouge **tant qu'un OTA propre n'est pas publié**.
+  → **Décision en attente Samo** : publier un OTA de revert propre (retire la sonde immédiatement des testeurs
+  actuels) **avant/en plus** du build 32. Sans GO, rien n'est publié.
 
-**Prochaine action** : Samo capture l'accueil → on lit → **revert de la sonde + OTA propre** → puis correctif ciblé.
+**Prochaine action** : build natif **32** (embarque tout B22→B33 : FR + barre de nav) — voir le plan de build
+soumis pour audit. **STOP avant lancement.**
 
 ---
 
