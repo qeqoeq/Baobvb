@@ -11,6 +11,7 @@ import { radius, spacing } from '../../constants/spacing';
 import { deriveBaobabCode } from '../../lib/identity-format';
 import { buildPersonCardPayload, encodePersonCardPayload } from '../../lib/person-card';
 import { useRelationsStore } from '../../store/useRelationsStore';
+import { PrimaryNavBar } from '../../components/ui/PrimaryNavBar';
 
 export default function ProfileScreen() {
   const { me, updateShowBaobabCode } = useRelationsStore();
@@ -32,12 +33,13 @@ export default function ProfileScreen() {
   };
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
 
       {/* ── Back ─────────────────────────────────────────────────────────────── */}
-      <Pressable style={styles.backRow} onPress={() => router.back()}>
+      <Pressable style={styles.backRow} onPress={() => router.push('/(tabs)')}>
         <Ionicons name="chevron-back" size={17} color={colors.text.muted} />
-        <Text style={styles.backLabel}>{'Bao'}</Text>
+        <Text style={styles.backLabel}>{'Jardin'}</Text>
       </Pressable>
 
       {/* ── Identity ─────────────────────────────────────────────────────────── */}
@@ -114,7 +116,7 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <View style={styles.baoQrLoading}>
-            <Text style={styles.baoQrLoadingText}>{'Préparation de ton Bao…'}</Text>
+            <Text style={styles.baoQrLoadingText}>{'Préparation de ton profil…'}</Text>
           </View>
         )}
 
@@ -146,6 +148,8 @@ export default function ProfileScreen() {
       </View>
 
     </ScrollView>
+      <PrimaryNavBar />
+    </View>
   );
 }
 

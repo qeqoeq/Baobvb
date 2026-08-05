@@ -5,15 +5,15 @@ import { getPrimaryNavItems } from './primary-nav';
 // ── getPrimaryNavItems — B23 permanent navigation invariant ───────────────────
 
 describe('getPrimaryNavItems', () => {
-  it('N1: always returns the four entries in a stable order', () => {
+  it('N1: always returns the five entries in a stable order (home first — B30)', () => {
     const keys = getPrimaryNavItems({ pendingReveals: 5 }).map((i) => i.key);
-    expect(keys).toEqual(['garden', 'places', 'reveals', 'profile']);
+    expect(keys).toEqual(['home', 'garden', 'places', 'reveals', 'profile']);
   });
 
   it('N2: entries are ALL present even when every count is zero (the B23 rule)', () => {
     const items = getPrimaryNavItems({ pendingReveals: 0 });
-    expect(items).toHaveLength(4);
-    expect(items.map((i) => i.key)).toEqual(['garden', 'places', 'reveals', 'profile']);
+    expect(items).toHaveLength(5);
+    expect(items.map((i) => i.key)).toEqual(['home', 'garden', 'places', 'reveals', 'profile']);
     // Every entry exists — none is gated by a count.
     expect(items.every((i) => i.label.length > 0)).toBe(true);
   });
@@ -22,6 +22,7 @@ describe('getPrimaryNavItems', () => {
     const items = getPrimaryNavItems({ pendingReveals: 3 });
     const byKey = Object.fromEntries(items.map((i) => [i.key, i.badge]));
     expect(byKey.reveals).toBe(3);
+    expect(byKey.home).toBeNull();
     expect(byKey.garden).toBeNull();
     expect(byKey.places).toBeNull();
     expect(byKey.profile).toBeNull();

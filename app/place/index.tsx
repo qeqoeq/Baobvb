@@ -16,6 +16,7 @@ import {
 import type { PlaceContextFit } from '@/lib/place-quick-signal';
 import { derivePrivatePlaceValue, synthesizeMultiReadInput } from '@/lib/private-place-value';
 import { useRelationsStore, type PlaceCategory } from '@/store/useRelationsStore';
+import { PrimaryNavBar } from '@/components/ui/PrimaryNavBar';
 
 // Local-only filter — no engine, no persistence. Selecting a chip filters
 // places already saved on this device; it never recommends, ranks, or
@@ -84,6 +85,7 @@ export default function PlacesScreen() {
   });
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
@@ -228,6 +230,8 @@ export default function PlacesScreen() {
         )}
       </View>
     </ScrollView>
+      <PrimaryNavBar />
+    </View>
   );
 }
 

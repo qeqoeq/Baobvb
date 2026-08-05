@@ -9,6 +9,7 @@ import { getFoundationalReadings } from '../../lib/foundational-reading';
 import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
 import { resyncSharedRelations } from '../../lib/resync-shared-relations';
 import { useRelationsStore } from '../../store/useRelationsStore';
+import { PrimaryNavBar } from '../../components/ui/PrimaryNavBar';
 
 // Dark-warm palette — scoped to /reveals, consistent with the Baobab dark world.
 const p = {
@@ -109,6 +110,7 @@ export default function RevealLinksScreen() {
   }, []);
 
   return (
+    <View style={{ flex: 1, backgroundColor: p.screenBg }}>
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
@@ -131,7 +133,7 @@ export default function RevealLinksScreen() {
         <Pressable
           onPress={() => {
             if (router.canGoBack()) router.back();
-            else router.replace('/(tabs)/garden');
+            else router.push('/(tabs)');
           }}
           style={styles.headerBack}
         >
@@ -169,7 +171,7 @@ export default function RevealLinksScreen() {
           <Text style={styles.emptyBody}>
             Quand les deux côtés y sont, un lien apparaît ici.
           </Text>
-          <Pressable onPress={() => router.replace('/(tabs)/garden')} style={styles.emptyCTA}>
+          <Pressable onPress={() => router.push('/(tabs)')} style={styles.emptyCTA}>
             <Text style={styles.emptyCTAText}>Jardin</Text>
           </Pressable>
         </View>
@@ -235,6 +237,8 @@ export default function RevealLinksScreen() {
         </>
       )}
     </ScrollView>
+      <PrimaryNavBar />
+    </View>
   );
 }
 

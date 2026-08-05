@@ -12,7 +12,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.text.muted,
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Bao' }} />
+      <Tabs.Screen name="index" options={{ title: 'Jardin' }} />
       <Tabs.Screen
         name="garden"
         options={{

@@ -8,6 +8,7 @@ import { radius, spacing } from '../../constants/spacing';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
 import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
 import { resyncSharedRelations } from '../../lib/resync-shared-relations';
+import { PrimaryNavBar } from '../../components/ui/PrimaryNavBar';
 import type { Relation } from '../../store/useRelationsStore';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
@@ -171,14 +172,6 @@ export default function GardenScreen() {
   const archivedEntries = useMemo(
     () => getFoundationalReadings(archivedRelations, evaluations),
     [archivedRelations, evaluations],
-  );
-
-  const formingCount = useMemo(
-    () => entries.filter((entry) => {
-      const s = entry.relation.localState.revealSnapshot.status;
-      return s !== 'revealed' && s !== 'reveal_ready';
-    }).length,
-    [entries],
   );
 
   const readyEntries = useMemo(
@@ -404,7 +397,6 @@ export default function GardenScreen() {
     }
   }, [selectedFilter]);
 
-  const worldBridgeText = `${formingCount} ${formingCount === 1 ? 'lien' : 'liens'}`;
   const hasAnyRelationships = entries.length > 0 || archivedEntries.length > 0;
   const isFilterSelected = (key: GardenFilterKey) => selectedFilter === key;
 
@@ -538,6 +530,7 @@ export default function GardenScreen() {
   };
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
@@ -562,7 +555,7 @@ export default function GardenScreen() {
             </View>
             <Text style={styles.headerKicker}>BAOBAB</Text>
           </View>
-          <Text style={styles.headerTitle}>Jardin</Text>
+          <Text style={styles.headerTitle}>Rechercher</Text>
         </View>
       </View>
 
@@ -651,23 +644,6 @@ export default function GardenScreen() {
               </Pressable>
             </View>
           ) : null}
-
-          {/* ── Map bridge ───────────────────────────────────────────────────────── */}
-          <Pressable
-            onPress={() => router.push('/(tabs)')}
-            style={styles.worldBridgeCard}
-          >
-            <View style={styles.worldBridgeLead}>
-              <Text style={styles.worldBridgeEyebrow}>Carte</Text>
-              {formingCount > 0 ? (
-                <Text style={styles.worldBridgeDetail}>{worldBridgeText}</Text>
-              ) : null}
-            </View>
-            <View style={styles.worldBridgeFooter}>
-              <Text style={styles.worldBridgeCTA}>Ouvrir</Text>
-              <Text style={styles.worldBridgeChevron}>›</Text>
-            </View>
-          </Pressable>
 
           {/* ── Health bar ───────────────────────────────────────────────────────── */}
           {hasAnyRelationships ? (
@@ -805,7 +781,7 @@ export default function GardenScreen() {
                   onPress={() => setSelectedFilter('active')}
                   style={styles.bucketBack}
                 >
-                  <Text style={styles.bucketBackText}>‹ Jardin</Text>
+                  <Text style={styles.bucketBackText}>‹ Rechercher</Text>
                 </Pressable>
                 <Text style={[styles.bucketTitle, { color: bucketLabelInfo.accent }]}>
                   {getLinkStrengthDisplayLabel(bucketLabelInfo.label)}
@@ -820,7 +796,7 @@ export default function GardenScreen() {
                   onPress={() => setSelectedFilter('active')}
                   style={styles.filterBackButton}
                 >
-                  <Text style={styles.filterBackText}>‹ Jardin</Text>
+                  <Text style={styles.filterBackText}>‹ Rechercher</Text>
                 </Pressable>
               </View>
             )}
@@ -913,6 +889,8 @@ export default function GardenScreen() {
 
 
     </ScrollView>
+      <PrimaryNavBar />
+    </View>
   );
 }
 
