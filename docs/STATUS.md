@@ -17,13 +17,24 @@
 
 - **Sonde retirée** : `revert(B33)` `8cd688b` → `PrimaryNavBar.tsx` **identique à `cfb6355`** (état B32), aucun
   résidu. tsc 0, vitest 1127/1127. Diagnostic complet : `docs/DIAG-B33.md`.
-- **⚠️ La sonde est encore LIVE sur l'OTA production** (`019fd2c3`) : le revert est **commité mais pas publié**.
-  Les installs build-31 actuelles voient toujours le texte rouge **tant qu'un OTA propre n'est pas publié**.
-  → **Décision en attente Samo** : publier un OTA de revert propre (retire la sonde immédiatement des testeurs
-  actuels) **avant/en plus** du build 32. Sans GO, rien n'est publié.
+- **OTA de revert publié (05/08)** : la sonde n'est plus servie — les installs build-31 se nettoient au prochain
+  cold start. branch `production`, runtime `1.0.0`, iOS, commit `d9f2fae` (code = état `8cd688b`, sans sonde).
+  **Update group** `c6ea739c-1b1f-49a8-8cf0-4c3c2b7b4729` · **iOS update** `019fd34a-71ed-741e-bef2-560e85b8e40c`.
 
-**Prochaine action** : build natif **32** (embarque tout B22→B33 : FR + barre de nav) — voir le plan de build
-soumis pour audit. **STOP avant lancement.**
+### Build natif 32 — LANCÉ (05/08)
+- Commande : `eas build --platform ios --profile production --auto-submit` (auto-submit TestFlight programmé,
+  clé ASC déjà configurée). **Aucun bump** : version `1.0.0`, runtime `1.0.0`, `app.json` inchangé ; build number
+  **auto-incrémenté → 32** (`appVersionSource: remote`).
+- **Build ID** `72266b36-dee0-442e-b3eb-f11552f3d590` · date 05/08 20:58 · App Version 1.0.0 / build 32.
+  Suivi : https://expo.dev/accounts/qeqoeq/projects/baobab/builds/72266b36-dee0-442e-b3eb-f11552f3d590
+  Soumission : https://expo.dev/accounts/qeqoeq/projects/baobab/submissions/0add2016-12ad-428a-9124-97e08b541600
+- **Contenu embarqué** : HEAD `8cd688b` = **31 commits depuis le build 31 (`688f80ea`)** = tout **B22→B33**
+  (pass B22, nav permanente B23, cascade nom B24, deep link B25, resync B26, **FR complet** B27/B28, photo
+  local-only B29-a1, **one home Jardin + barre partagée** B30, navigate + conteneurs opaques B32 ; sonde B33
+  annulée par le revert). Le bundle 31 était **antérieur à B22** (anglais, sans barre) — motif du build.
+- **⚠️ RAPPEL — le build 32 devra REPASSER la beta review Apple** pour le groupe externe (BT) **avant** que les
+  testeurs externes puissent l'installer. (Le groupe interne peut l'avoir sans review.)
+- **À revérifier sur ce build** : l'artefact fantôme natif B33 (parké) — si persistant → investiguer `enableScreens`.
 
 ---
 
@@ -182,9 +193,11 @@ libellé « Visible par toi uniquement ». La vraie sync (option b) est **parké
 | B28 UI FR complète + B29-a1 (label local-only) | `e15621c7-2ab8-4282-a3b7-5b1c07089a04` | `019f8a70-3229-74bf-97c9-8b6f08d373e3` | `7748324` |
 | B30 one home Jardin + barre partagée + routage déterministe | `5eb96cb8-a6bf-45a1-b062-806ccba60a3f` | `019fd148-5034-72c3-b7e5-64d0fb0bce8a` | `461674d` |
 | B32 barre fantôme : navigate dedup + conteneurs opaques | `26bd84de-a02f-4b7e-8108-29664d287ac7` | `019fd298-1c58-76d1-a9a1-976688f71b5a` | `cfb6355` |
-| ⚠️ B33 **SONDE TEMPORAIRE** (à retirer) | `e9be94e2-283b-404e-a11f-e944fb44b13d` | `019fd2c3-b9b3-72e8-8f12-1acaba261e38` | `fd48942` |
+| ~~B33 sonde temporaire~~ (remplacée par le revert ci-dessous) | `e9be94e2-283b-404e-a11f-e944fb44b13d` | `019fd2c3-b9b3-72e8-8f12-1acaba261e38` | `fd48942` |
+| B33 **revert sonde** (état propre, sans sonde) | `c6ea739c-1b1f-49a8-8cf0-4c3c2b7b4729` | `019fd34a-71ed-741e-bef2-560e85b8e40c` | `d9f2fae` |
 
-tsc 0 · vitest 1127/1127 aux six publications (la 6ᵉ = sonde temporaire).
+tsc 0 · vitest 1127/1127 à chaque publication (la sonde `019fd2c3` a été remplacée par le revert `019fd34a`).
+Dernier OTA production servi = **`019fd34a`** (revert, propre).
 
 ---
 
