@@ -18,7 +18,9 @@ l'invitation** (ou soumet une lecture en tant que sideB) — deux gestes qui exi
 `relationship_invites` (§2 + requête §4b), et **on est aveugle sur le parcours de l'invité avant le claim** (§3).
 
 **Confirmé terrain (05/08/2026)** — voir « Résultats terrain » : convention `sideA` sur 19/19, expiration non
-causale, 9 relations bloquées (8 pré-claim + 1 post-claim `1a375332`), 0 anomalie serveur → **mur unique côté invité**.
+causale, 9 relations bloquées (8 pré-claim + 1 post-claim `1a375332`, **cause de ce dernier non tranchée**),
+0 anomalie serveur → **mur côté invité, quasi tout pré-claim**. Dénominateur organique (hors 2 relations de test
+de mai) : **8 relations, 1 reveal complet**.
 
 ---
 
@@ -163,18 +165,29 @@ viser la même relation — renvois — d'où invites ≠ relations.)
 (aucune ligne incohérente ; côté A toujours prêt, côté B jamais). Décomposition :
 - **8** avec `side_b_user_id NULL` → **pré-claim** : l'invité n'a **jamais réclamé** (segment non instrumenté, §3).
 - **1** — `1a375332…` — `side_b_user_id` **renseigné** mais `side_b_reading_id` **NULL** → **post-claim** : claim
-  **réussi** (compte invité lié), mais **lecture invité jamais soumise** = abandon devant l'écran d'évaluation.
+  **réussi** (compte invité lié), **évaluation de l'invité jamais soumise**. ⚠️ **Correction (verdict f06f0a8
+  erroné)** : ce n'est **pas** un « abandon devant l'écran d'évaluation ». La requête d'identités montre que
+  l'invité de `1a375332` est **Laure @lolo**, qui est **aussi inviteuse de `66fb0fbe`** (créée le même jour,
+  24/07, `lecture_a=true`) — elle **a donc rempli une évaluation ce jour-là**. **Cause inconnue**, hypothèses :
+  non-saillance de la relation entrante dans l'accueil, filtrage possible par `my_shared_relationships()`, ou
+  choix utilisateur. **Non tranché — terrain requis.**
+
+**Nettoyage du dénominateur** — `86aec1a5` et `34ed1c23` (mai) impliquent les **appareils de test PhoneA /
+iPhoneBB** → à exclure du funnel organique. **Dénominateur organique réel = 8 relations, dont 1 seul reveal complet.**
 
 ### Verdict acté
 - Convention `inviter_side='sideA'` : **confirmée (19/19)**.
 - Expiration : **non causale** (5/5 des claims le jour même de la création).
 - Blocage : **exclusivement côté invité** — **0 blocage inviteur, 0 anomalie serveur** (transitions saines,
-  côté A toujours prêt). Le mur est unique et se répartit en **8 abandons pré-claim** (avant de lier un compte,
-  invisibles côté serveur — §3) **+ 1 abandon post-claim** (compte lié, lecture jamais faite, `1a375332`).
+  côté A toujours prêt). Brut : 9 relations bloquées = **8 pré-claim** (invité jamais réclamé, invisibles
+  serveur — §3) **+ 1 post-claim** (`1a375332` : claim réussi, évaluation invité jamais soumise — **cause NON
+  tranchée**, cf. 5a ; **pas** un abandon d'évaluation avéré, la même personne en a rempli une le même jour).
+- **Dénominateur organique** (hors les 2 relations de test de mai `86aec1a5` / `34ed1c23`, appareils PhoneA/
+  iPhoneBB) : **8 relations, 1 reveal complet.**
 - **Implication produit** : le point de perte n'est **pas technique** (serveur sain, TTL hors de cause) mais
   **l'activation de l'invité**, très majoritairement **avant le claim** — sur le segment que le serveur ne voit
-  pas. Leviers : instrumenter/alléger le parcours jusqu'au claim (8/9) ; secondairement, la friction de l'écran
-  d'évaluation post-claim (1/9).
+  pas (§3). Le seul cas post-claim (`1a375332`) reste **non expliqué** (cf. 5a) et demande une observation
+  terrain avant toute conclusion. Levier principal : instrumenter/alléger le parcours **jusqu'au claim**.
 
 ---
 
@@ -186,6 +199,7 @@ viser la même relation — renvois — d'où invites ≠ relations.)
 | `side_b_user_id` renseigné quand ? | Quand un compte agit en **sideB** : claim, ou submit sideB. Jamais avant, jamais réassignable |
 | `side_b NULL` = invité jamais réclamé ? | **Oui** (invité = sideB dans Baobab). Sous-cas (i) invite jamais envoyée / (ii) envoyée non réclamée / (iii) claim partiel — cf. §4b |
 | Trace avant le claim ? | **Aucune.** Seuls `created_at`→`claimed_at` ; pas d'ouverture/install/écran. Segment **aveugle** |
+| Verdict terrain (05/08) | Mur **côté invité** : 8 pré-claim + 1 post-claim (`1a375332`, **cause non tranchée** — même personne a rempli une éval le même jour). Dénominateur **organique** (hors 2 relations test mai `86aec1a5`/`34ed1c23`) = **8 relations, 1 reveal complet** |
 
 _Diagnostic seul. Aucune modification de code de production. Requêtes §4 + résultats terrain = lecture seule
 (exécutées par Samo le 05/08/2026 ; aucun SQL exécuté par l'assistant, aucun `DELETE`)._

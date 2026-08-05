@@ -17,10 +17,16 @@
   - convention `inviter_side='sideA'` **confirmée 19/19** ;
   - **expiration non causale** (les 5 invites réclamées l'ont été le jour même de leur création) ;
   - **9 relations bloquées** en `waiting_other_side`, toutes `lecture_a=true` / `lecture_b=false`, **0 anomalie**
-    de transition ; `1a375332` = claim réussi mais lecture invité jamais soumise.
-- **Verdict acté : mur unique côté invité** — **8 abandons pré-claim** (avant compte, invisibles serveur)
-  **+ 1 abandon post-claim** (`1a375332`, devant l'écran d'évaluation). **0 blocage inviteur, 0 anomalie serveur.**
-  Le levier est l'**activation de l'invité** (surtout pré-claim), pas un défaut technique.
+    de transition ; `1a375332` = claim réussi mais évaluation invité jamais soumise.
+- **Verdict acté (corrigé) : mur côté invité** — **8 pré-claim** (avant compte, invisibles serveur) **+ 1
+  post-claim** (`1a375332`). **0 blocage inviteur, 0 anomalie serveur.** Le levier est l'**activation de l'invité**
+  (surtout pré-claim), pas un défaut technique.
+- **Correction du verdict f06f0a8** : `1a375332` n'est **pas** un « abandon devant l'écran d'évaluation ».
+  L'invité est **Laure @lolo**, aussi inviteuse de `66fb0fbe` (même jour 24/07, `lecture_a=true`) → elle **a**
+  rempli une évaluation ce jour-là. **Cause non tranchée** (non-saillance de la relation entrante ? filtrage par
+  `my_shared_relationships()` ? choix utilisateur ?) — **terrain requis**.
+- **Dénominateur organique** : `86aec1a5` et `34ed1c23` (mai) = appareils de test **PhoneA/iPhoneBB** → exclus.
+  Réel = **8 relations organiques, 1 reveal complet**.
 
 ---
 
