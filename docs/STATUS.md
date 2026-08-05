@@ -4,6 +4,54 @@
 
 ---
 
+## B30 — CLOS (05/08) — one home named Jardin, barre partagée, routage déterministe
+
+> Option B livrée (fusion atlas/liste = option A **parkée**, `docs/PARKING.md`). Constat Sou 20/07 :
+> deux surfaces / trois noms + pas de retour uniforme. **Aucun SQL, aucun deploy Edge Function, aucun build EAS.**
+> B26 (resync) et B25 (atterrissage deep-link) **non touchés**.
+
+### Commit & OTA
+```
+$ git log --oneline -3
+  461674d feat(B30): one home named Jardin, shared nav bar, deterministic routing
+  7171b5c docs: diagnostic B30 (one home, one name)
+  4ce797d docs: close B28 + B29-a1 (OTA published), park B29-b avatar sync
+```
+- **Preuves avant OTA** : `tsc --noEmit` → **0 erreur** ; `vitest run` → **40 fichiers / 1127 tests passés**.
+- **OTA** (un seul) : branch `production`, runtime `1.0.0`, iOS, commit `461674d`.
+  **Update group** `5eb96cb8-a6bf-45a1-b062-806ccba60a3f` · **iOS update** `019fd148-5034-72c3-b7e5-64d0fb0bce8a`.
+
+### Ce qui est livré
+- **Nommage** : « Jardin » = l'**accueil** (ego graph, `index.tsx`) ; « Bao » = marque seule (retiré de la chrome de
+  nav) ; « Carte » supprimé comme nom d'écran ; `garden.tsx` = mode de consultation « **Rechercher** ».
+- **Barre permanente partagée** : bloc extrait de `index.tsx` → `components/ui/PrimaryNavBar.tsx`, montée sur les
+  **5 surfaces** (accueil, garden, place, reveals, profile). 5 entrées, accueil en 1er :
+  **Jardin(/(tabs)) · Rechercher(/garden) · Lieux · Révélations · Toi**. Entrée active distinguée (libellé accent
+  or + soulignement, `accessibilityState.selected`). **Sans troncature par construction** : items `flex:1`, badge
+  **positionné en absolu** (ne dispute jamais la largeur au libellé le plus long « Révélations »),
+  `adjustsFontSizeToFit`. Invariant B23 préservé (chaque entrée rend toujours ; le compteur n'est qu'un badge).
+  _Vérification visuelle sur device recommandée au prochain coup d'œil testeur — la robustesse est structurelle._
+- **Routage déterministe** : la barre navigue en `router.push` (jamais `replace`) ; taper l'entrée active = no-op.
+  `reveals/index.tsx` → cible l'**accueil** `/(tabs)` (push), **plus jamais** `/(tabs)/garden` (:134, :172).
+  `me/profile.tsx` back → `/(tabs)` explicite (plus `router.back()`). Pont « Carte » de garden **supprimé**
+  (la barre le remplace). `/(tabs)/garden` **reste résolvable** (route conservée, `href:null`) → aucun lien mort.
+- **Vocabulaire** (exactement les chaînes listées) : index `Ton Bao`→`Ton Jardin`, `dans ton Bao`→`dans ton Jardin`,
+  `Signaux privés de ton Bao.`→`…Jardin.` ; `(tabs)/_layout` title `Bao`→`Jardin` ; profile back `Bao`→`Jardin`,
+  `Préparation de ton Bao…`→`…de ton profil…` ; garden header `Jardin`→`Rechercher`, `‹ Jardin`→`‹ Rechercher` (x2).
+  Kickers `BAOBAB` inchangés (marque). `primary-nav.test` mis à jour pour le jeu à 5 entrées.
+
+### ⚠️ Tradeoff signalé (auditeur)
+La barre navigue en **push** partout (mandat « jamais replace »), avec no-op sur l'entrée active. La pile peut donc
+croître en alternant les onglets (A→B→A…) puisque ce ne sont pas de vrais onglets natifs. Suffisant et sûr en
+Phase 0 ; si l'on veut une pile bornée à la « vrai onglet », passer la barre à `router.navigate` (dedup, toujours
+≠ replace) — à décider hors périmètre B30.
+
+### Fichiers (9) : `components/ui/PrimaryNavBar.tsx` (nouveau) · `lib/primary-nav.ts` + `.test.ts` ·
+`app/(tabs)/index.tsx` · `app/(tabs)/_layout.tsx` · `app/(tabs)/garden.tsx` · `app/reveals/index.tsx` ·
+`app/place/index.tsx` · `app/me/profile.tsx`.
+
+---
+
 ## B28/B29-a1 — CLOS (22/07)
 
 > Livrés et publiés. Preuves ci-dessous. **Aucun SQL, aucun deploy d'Edge Function, aucun build EAS** — 100 % JS → OTA.
@@ -75,8 +123,9 @@ libellé « Visible par toi uniquement ». La vraie sync (option b) est **parké
 | Fixes B25 / B26 / B27-app | `ca43dd0b-2fd0-429b-9e67-61111ef50179` | `019f81ad-773d-7841-87e4-20ea2fd2df19` | `acbea07` |
 | Complétion mots de tiers FR | `ca5238ca-3969-4b21-97ea-5b27b5c4e7e5` | `019f81b4-d374-7822-87ea-ede00ab56663` | `bb20f64` |
 | B28 UI FR complète + B29-a1 (label local-only) | `e15621c7-2ab8-4282-a3b7-5b1c07089a04` | `019f8a70-3229-74bf-97c9-8b6f08d373e3` | `7748324` |
+| B30 one home Jardin + barre partagée + routage déterministe | `5eb96cb8-a6bf-45a1-b062-806ccba60a3f` | `019fd148-5034-72c3-b7e5-64d0fb0bce8a` | `461674d` |
 
-tsc 0 · vitest 1127/1127 aux trois publications.
+tsc 0 · vitest 1127/1127 aux quatre publications.
 
 ---
 
