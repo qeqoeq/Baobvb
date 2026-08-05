@@ -21,8 +21,11 @@ import { useRelationsStore } from '../../store/useRelationsStore';
  * The active entry is visually distinguished (accent label + underline) — Sou:
  * « bien distinguer les différentes pages ».
  *
- * Routing is deterministic: every entry navigates with router.push (never replace);
- * tapping the entry you are already on is a no-op (prevents redundant self-pushes).
+ * Routing is deterministic AND non-stacking (B32): every entry uses router.navigate,
+ * which dedupes to the existing instance (NAVIGATE → the divergent navigator: JUMP_TO
+ * for the tabs, pop-to-existing for the root stack) instead of pushing a new screen.
+ * router.push grew the stack, leaving screens mounted underneath (the "ghost bar").
+ * Never replace. Tapping the entry you are already on is a no-op.
  */
 
 const ROUTE_BY_KEY: Record<PrimaryNavKey, Href> = {
@@ -75,7 +78,9 @@ export function PrimaryNavBar() {
             onPress={() => {
               if (isActive) return;
               if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push(ROUTE_BY_KEY[item.key]);
+              // B32: navigate (not push) — dedupes to the existing instance so screens
+              // never stack and no under-mounted screen can bleed through (ghost bar).
+              router.navigate(ROUTE_BY_KEY[item.key]);
             }}
           >
             <Text

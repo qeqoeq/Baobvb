@@ -10,6 +10,9 @@ export default function TabLayout() {
         tabBarStyle: { display: 'none' },
         tabBarActiveTintColor: colors.accent.warmGold,
         tabBarInactiveTintColor: colors.text.muted,
+        // B32: opaque tab scene — index and garden are both kept mounted by the
+        // tab navigator; an opaque backing stops the inactive one bleeding through.
+        sceneStyle: { backgroundColor: colors.background.primary },
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Jardin' }} />

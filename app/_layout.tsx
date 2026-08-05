@@ -434,7 +434,14 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        // B32: opaque card content — a stacked screen must never let the one
+        // beneath it show through (the "ghost bar"). This is the real guarantee;
+        // navigate() only stops the stack from growing.
+        contentStyle: { backgroundColor: colors.background.primary },
+      }}
+    >
       <Stack.Screen
         name="auth/sign-in"
         options={{ title: 'Connexion', presentation: 'modal', gestureEnabled: false }}
