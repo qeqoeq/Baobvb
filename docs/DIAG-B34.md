@@ -17,6 +17,9 @@ l'invitation** (ou soumet une lecture en tant que sideB) — deux gestes qui exi
 **l'invité n'a jamais réclamé l'invitation** (aucun compte lié). Trois sous-cas à distinguer par jointure avec
 `relationship_invites` (§2 + requête §4b), et **on est aveugle sur le parcours de l'invité avant le claim** (§3).
 
+**Confirmé terrain (05/08/2026)** — voir « Résultats terrain » : convention `sideA` sur 19/19, expiration non
+causale, 9 relations bloquées (8 pré-claim + 1 post-claim `1a375332`), 0 anomalie serveur → **mur unique côté invité**.
+
 ---
 
 ## 1. Cycle de vie d'une relation partagée
@@ -140,6 +143,41 @@ _(EXISTS plutôt qu'un JOIN pour éviter le fan-out si une relation a plusieurs 
 
 ---
 
+## Résultats terrain (05/08/2026)
+
+> Requêtes de lecture seule exécutées par Samo dans l'éditeur SQL Supabase. Verdict acté ci-dessous.
+
+**4c — distribution `inviter_side`**
+`select inviter_side, count(*) from public.relationship_invites group by inviter_side;`
+→ **`sideA = 19`, `sideB = 0`**. La convention **inviteur = `sideA` est confirmée empiriquement sur 19/19
+invites** — `side_b_user_id` est bien, sans exception, le côté invité.
+
+**4d — timing des invites réclamées** (`created_at` → `claimed_at`, vs `expires_at`)
+→ **5 invites réclamées, toutes réclamées le JOUR MÊME de leur création** (0 jour d'écart). ⇒ **l'expiration
+(TTL 7 j) n'est PAS causale** : aucun claim perdu par péremption ; qui réclame le fait immédiatement. Le TTL
+n'explique aucun des non-claims. (5 réclamées sur 19 envoyées ⇒ 14 jamais réclamées ; plusieurs invites peuvent
+viser la même relation — renvois — d'où invites ≠ relations.)
+
+**5a — relations bloquées en `waiting_other_side`** (état des deux lectures + cohérence)
+→ **9 relations bloquées**, **toutes** `lecture_a = true`, `lecture_b = false`, **aucune anomalie de transition**
+(aucune ligne incohérente ; côté A toujours prêt, côté B jamais). Décomposition :
+- **8** avec `side_b_user_id NULL` → **pré-claim** : l'invité n'a **jamais réclamé** (segment non instrumenté, §3).
+- **1** — `1a375332…` — `side_b_user_id` **renseigné** mais `side_b_reading_id` **NULL** → **post-claim** : claim
+  **réussi** (compte invité lié), mais **lecture invité jamais soumise** = abandon devant l'écran d'évaluation.
+
+### Verdict acté
+- Convention `inviter_side='sideA'` : **confirmée (19/19)**.
+- Expiration : **non causale** (5/5 des claims le jour même de la création).
+- Blocage : **exclusivement côté invité** — **0 blocage inviteur, 0 anomalie serveur** (transitions saines,
+  côté A toujours prêt). Le mur est unique et se répartit en **8 abandons pré-claim** (avant de lier un compte,
+  invisibles côté serveur — §3) **+ 1 abandon post-claim** (compte lié, lecture jamais faite, `1a375332`).
+- **Implication produit** : le point de perte n'est **pas technique** (serveur sain, TTL hors de cause) mais
+  **l'activation de l'invité**, très majoritairement **avant le claim** — sur le segment que le serveur ne voit
+  pas. Leviers : instrumenter/alléger le parcours jusqu'au claim (8/9) ; secondairement, la friction de l'écran
+  d'évaluation post-claim (1/9).
+
+---
+
 ## Synthèse
 
 | Question | Réponse |
@@ -149,4 +187,5 @@ _(EXISTS plutôt qu'un JOIN pour éviter le fan-out si une relation a plusieurs 
 | `side_b NULL` = invité jamais réclamé ? | **Oui** (invité = sideB dans Baobab). Sous-cas (i) invite jamais envoyée / (ii) envoyée non réclamée / (iii) claim partiel — cf. §4b |
 | Trace avant le claim ? | **Aucune.** Seuls `created_at`→`claimed_at` ; pas d'ouverture/install/écran. Segment **aveugle** |
 
-_Diagnostic seul. Aucune modification de code de production, aucun SQL exécuté. Requêtes §4 = lecture seule._
+_Diagnostic seul. Aucune modification de code de production. Requêtes §4 + résultats terrain = lecture seule
+(exécutées par Samo le 05/08/2026 ; aucun SQL exécuté par l'assistant, aucun `DELETE`)._

@@ -4,6 +4,26 @@
 
 ---
 
+## B34 — CLOS (05/08) — funnel d'activation (diagnostic + résultats terrain)
+
+> **Diagnostic seul, aucun code, aucun OTA, aucun SQL exécuté par l'assistant.** Détail : `docs/DIAG-B34.md`.
+> Question : sens de `waiting_other_side` + `side_b_user_id IS NULL` dans `shared_relationship_reveals`.
+
+- **Réponse** : inviteur = `sideA`, invité = `sideB` (convention client). Donc `side_b_user_id` = compte de
+  l'invité, renseigné **uniquement au claim** (ou submit sideB), jamais réassignable → `side_b NULL` = **l'invité
+  n'a jamais réclamé**. Aucune trace serveur avant le claim (seuls `created_at`→`claimed_at` ; pas d'analytics) →
+  **segment pré-claim aveugle**.
+- **Résultats terrain (05/08, requêtes lecture seule par Samo)** :
+  - convention `inviter_side='sideA'` **confirmée 19/19** ;
+  - **expiration non causale** (les 5 invites réclamées l'ont été le jour même de leur création) ;
+  - **9 relations bloquées** en `waiting_other_side`, toutes `lecture_a=true` / `lecture_b=false`, **0 anomalie**
+    de transition ; `1a375332` = claim réussi mais lecture invité jamais soumise.
+- **Verdict acté : mur unique côté invité** — **8 abandons pré-claim** (avant compte, invisibles serveur)
+  **+ 1 abandon post-claim** (`1a375332`, devant l'écran d'évaluation). **0 blocage inviteur, 0 anomalie serveur.**
+  Le levier est l'**activation de l'invité** (surtout pré-claim), pas un défaut technique.
+
+---
+
 ## B33 — CLOS (05/08) — barre fantôme = artefact de rendu natif
 
 > **Verdict (preuve sonde, capture device update `019fd2c3`)** : DEUX textes rouges **identiques** à l'écran,
