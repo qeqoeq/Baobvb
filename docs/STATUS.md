@@ -4,6 +4,31 @@
 
 ---
 
+## ⚠️ B33 — SONDE TEMPORAIRE EN PROD (à RETIRER) — 05/08
+
+> **Instrumentation de diagnostic, PAS un correctif.** `components/ui/PrimaryNavBar.tsx` porte une sonde
+> temporaire (commit `fd48942`) : un petit texte rouge dans chaque barre affichant
+> **`#<idInstance>/<totalMonté> @<route> u:<updateId8> y<Y> h<hauteur>`**. Objectif : prouver le
+> double-montage de la barre fantôme au cold start et confirmer quel bundle s'exécute.
+>
+> **CETTE SONDE DOIT ÊTRE RETIRÉE** une fois la capture lue (prochaine tâche : `revert(B33)` + OTA propre).
+> Elle est laide **par conception** (texte rouge visible). Ne pas la laisser en prod pour les testeurs.
+
+- **OTA sonde** : branch `production`, runtime `1.0.0`, iOS, commit `fd48942`.
+  **Update group** `e9be94e2-283b-404e-a11f-e944fb44b13d` · **iOS update** `019fd2c3-b9b3-72e8-8f12-1acaba261e38`.
+- **Lecture (Samo, sans build natif)** : cold start (kill + relaunch ×2), regarder l'écran d'accueil.
+  - Le champ **`u:`** doit afficher **`019fd2c3`** → confirme que l'app exécute bien ce bundle (donc les OTA
+    postérieurs à B30, dont B32, s'appliquent). Si `u:` montre un id plus ancien → l'update ne s'applique pas.
+  - **Deux barres** marquées p.ex. `#1/2 …` et `#2/2 …` → **double-montage runtime confirmé** ; le `@route` de
+    chacune dit d'où vient le doublon ; les `y/h` expliquent le tiers-supérieur.
+  - **Une seule** barre `#1/1 …` alors que le fantôme persiste → la 2ᵉ rangée n'est pas une PrimaryNavBar vivante
+    (piste snapshot natif figé).
+- tsc 0, vitest 1127/1127. Aucun autre changement. Diagnostic : `docs/DIAG-B33.md`.
+
+**Prochaine action** : Samo capture l'accueil → on lit → **revert de la sonde + OTA propre** → puis correctif ciblé.
+
+---
+
 ## B32 — CLOS (05/08) — barre fantôme (écrans empilés)
 
 > Correctif OTA du symptôme signalé après B30 : après un aller-retour Jardin→Rechercher→Jardin, la barre d'un
@@ -159,8 +184,9 @@ libellé « Visible par toi uniquement ». La vraie sync (option b) est **parké
 | B28 UI FR complète + B29-a1 (label local-only) | `e15621c7-2ab8-4282-a3b7-5b1c07089a04` | `019f8a70-3229-74bf-97c9-8b6f08d373e3` | `7748324` |
 | B30 one home Jardin + barre partagée + routage déterministe | `5eb96cb8-a6bf-45a1-b062-806ccba60a3f` | `019fd148-5034-72c3-b7e5-64d0fb0bce8a` | `461674d` |
 | B32 barre fantôme : navigate dedup + conteneurs opaques | `26bd84de-a02f-4b7e-8108-29664d287ac7` | `019fd298-1c58-76d1-a9a1-976688f71b5a` | `cfb6355` |
+| ⚠️ B33 **SONDE TEMPORAIRE** (à retirer) | `e9be94e2-283b-404e-a11f-e944fb44b13d` | `019fd2c3-b9b3-72e8-8f12-1acaba261e38` | `fd48942` |
 
-tsc 0 · vitest 1127/1127 aux cinq publications.
+tsc 0 · vitest 1127/1127 aux six publications (la 6ᵉ = sonde temporaire).
 
 ---
 
