@@ -1,7 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { router, usePathname, type Href } from 'expo-router';
-import * as Updates from 'expo-updates'; // SONDE B33 (TEMPORAIRE — à retirer)
-import { useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -37,12 +36,6 @@ const ROUTE_BY_KEY: Record<PrimaryNavKey, Href> = {
   profile: '/me/profile',
 };
 
-// ── SONDE B33 (TEMPORAIRE — à retirer, cf. STATUS.md) ─────────────────────────
-// Compteur d'instances au niveau module : chaque PrimaryNavBar montée prend un id
-// stable et incrémente le total. Sert à prouver le double-montage au cold start.
-let __b33Seq = 0;
-// ──────────────────────────────────────────────────────────────────────────────
-
 function activeKeyForPath(pathname: string): PrimaryNavKey | null {
   if (pathname === '/' || pathname === '/(tabs)') return 'home';
   if (pathname.startsWith('/garden')) return 'garden';
@@ -55,16 +48,7 @@ function activeKeyForPath(pathname: string): PrimaryNavKey | null {
 export function PrimaryNavBar() {
   const { relations, evaluations } = useRelationsStore();
   const { bottom: bottomInset } = useSafeAreaInsets();
-  const pathname = usePathname();
-  const activeKey = activeKeyForPath(pathname);
-
-  // ── SONDE B33 (TEMPORAIRE — à retirer) ──────────────────────────────────────
-  const b33Id = useRef(0);
-  if (b33Id.current === 0) { __b33Seq += 1; b33Id.current = __b33Seq; }
-  const b33BarRef = useRef<View>(null);
-  const [b33Pos, setB33Pos] = useState<{ y: number; h: number } | null>(null);
-  const b33UpdateId = (Updates.updateId ?? 'embedded').slice(0, 8);
-  // ────────────────────────────────────────────────────────────────────────────
+  const activeKey = activeKeyForPath(usePathname());
 
   // Pending reveals badge — computed once here so every host shows the same count
   // (ready + in-flight toward a reveal), same rule as the home used before B30.
@@ -82,19 +66,7 @@ export function PrimaryNavBar() {
   }, [relations, evaluations]);
 
   return (
-    <View
-      ref={b33BarRef}
-      onLayout={() => b33BarRef.current?.measureInWindow((_x, y, _w, h) => {
-        const ny = Math.round(y);
-        const nh = Math.round(h);
-        setB33Pos((prev) => (prev && prev.y === ny && prev.h === nh ? prev : { y: ny, h: nh }));
-      })}
-      style={[styles.bar, { paddingBottom: bottomInset + spacing.xs }]}
-    >
-      {/* ── SONDE B33 (TEMPORAIRE — à retirer) ── #instance/total @route u:updateId y/h ── */}
-      <Text style={styles.b33Probe} numberOfLines={1}>
-        {`#${b33Id.current}/${__b33Seq} @${pathname} u:${b33UpdateId} y${b33Pos?.y ?? '?'} h${b33Pos?.h ?? '?'}`}
-      </Text>
+    <View style={[styles.bar, { paddingBottom: bottomInset + spacing.xs }]}>
       {getPrimaryNavItems({ pendingReveals }).map((item) => {
         const isActive = item.key === activeKey;
         return (
@@ -136,16 +108,6 @@ export function PrimaryNavBar() {
 }
 
 const styles = StyleSheet.create({
-  // SONDE B33 (TEMPORAIRE — à retirer avec le reste de la sonde)
-  b33Probe: {
-    position: 'absolute',
-    top: -13,
-    left: 4,
-    right: 4,
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#FF3B30',
-  },
   bar: {
     flexDirection: 'row',
     alignItems: 'flex-start',
