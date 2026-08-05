@@ -4,6 +4,40 @@
 
 ---
 
+## B32 — CLOS (05/08) — barre fantôme (écrans empilés)
+
+> Correctif OTA du symptôme signalé après B30 : après un aller-retour Jardin→Rechercher→Jardin, la barre d'un
+> écran resté monté SOUS l'écran courant apparaissait en haut du cadre de l'atlas. La source JSX était propre
+> (DIAG-B31, 1 seule barre montée) — le défaut venait de la **pile** + de **conteneurs transparents**.
+> **Aucun SQL, aucun deploy Edge Function, aucun build EAS.** B25/B26 non touchés. Doublon de relations **non
+> touché** (sujet séparé B33).
+
+### Commit & OTA
+```
+$ git log --oneline -2
+  cfb6355 fix(B32): nav bar uses navigate + opaque screen containers (ghost bar)
+  629424d docs: diagnostic B31 (double nav bar, duplicate node)
+```
+- **Preuves avant OTA** : `tsc --noEmit` → **0 erreur** ; `vitest run` → **40 fichiers / 1127 tests passés**.
+- **OTA** : branch `production`, runtime `1.0.0`, iOS, commit `cfb6355`.
+  **Update group** `26bd84de-a02f-4b7e-8108-29664d287ac7` · **iOS update** `019fd298-1c58-76d1-a9a1-976688f71b5a`.
+
+### Les deux causes traitées (3 fichiers)
+1. **Croissance de la pile** — `components/ui/PrimaryNavBar.tsx` : `router.push` → **`router.navigate`**.
+   Vérifié dans la source expo-router que `navigate` **dédupe avec cette config** : `navigate` émet l'event
+   `NAVIGATE` (`node_modules/expo-router/build/global-state/routing.js:97-98`) ; `getNavigateAction` cible le
+   navigateur divergent (`:226`) → `JUMP_TO` pour l'`expo-tab` (`:235-237`, switch d'onglet, aucun empilement)
+   et `NAVIGATE` pop-vers-l'existant pour le root stack. `push` empile toujours sur un stack (`:232`). Jamais
+   `replace` ; taper l'entrée active = no-op.
+2. **Racine (pourquoi l'écran du dessous était visible)** — conteneurs d'écran **non opaques** : le root
+   `<Stack>` (`app/_layout.tsx:437`) n'avait **aucun `contentStyle`** et `<Tabs>` (`app/(tabs)/_layout.tsx`)
+   **aucun `sceneStyle`** → fond par défaut du thème (non opaque), l'écran monté dessous transparaissait.
+   Ajout de fonds **opaques** : `Stack screenOptions.contentStyle` + `Tabs screenOptions.sceneStyle` =
+   `colors.background.primary`. **C'est la vraie garantie** ; `navigate` seul n'aurait fait que masquer le symptôme.
+   (Props confirmés pour ces versions : native-stack `contentStyle`, bottom-tabs v7 `sceneStyle`.)
+
+---
+
 ## B30 — CLOS (05/08) — one home named Jardin, barre partagée, routage déterministe
 
 > Option B livrée (fusion atlas/liste = option A **parkée**, `docs/PARKING.md`). Constat Sou 20/07 :
@@ -124,8 +158,9 @@ libellé « Visible par toi uniquement ». La vraie sync (option b) est **parké
 | Complétion mots de tiers FR | `ca5238ca-3969-4b21-97ea-5b27b5c4e7e5` | `019f81b4-d374-7822-87ea-ede00ab56663` | `bb20f64` |
 | B28 UI FR complète + B29-a1 (label local-only) | `e15621c7-2ab8-4282-a3b7-5b1c07089a04` | `019f8a70-3229-74bf-97c9-8b6f08d373e3` | `7748324` |
 | B30 one home Jardin + barre partagée + routage déterministe | `5eb96cb8-a6bf-45a1-b062-806ccba60a3f` | `019fd148-5034-72c3-b7e5-64d0fb0bce8a` | `461674d` |
+| B32 barre fantôme : navigate dedup + conteneurs opaques | `26bd84de-a02f-4b7e-8108-29664d287ac7` | `019fd298-1c58-76d1-a9a1-976688f71b5a` | `cfb6355` |
 
-tsc 0 · vitest 1127/1127 aux quatre publications.
+tsc 0 · vitest 1127/1127 aux cinq publications.
 
 ---
 
