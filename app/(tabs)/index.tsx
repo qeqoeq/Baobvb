@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Fragment, useCallback, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../../constants/colors';
@@ -168,19 +168,12 @@ export default function CircleScreen() {
 
   // Gateway tap → Through X. Locked gateway → alert. Regular node → relation screen.
   const handleNodeTap = useCallback((member: MapMember) => {
-    if (member.gatewayAccessState === 'open') {
-      if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push(`../through/${member.id}`);
-    } else if (member.gatewayAccessState === 'locked') {
-      if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
-      Alert.alert(
-        'Pas encore ouvert',
-        `Termine ta révélation avec ${member.name} pour accéder à son monde.`,
-      );
-    } else {
-      if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push(`../relation/${member.id}`);
-    }
+    // B36-1: a simple tap on ANY node opens that relationship's fiche, unconditionally.
+    // The gateway branching (open→through/[id], locked→Alert) is removed. through/[id]
+    // keeps its existing entry points (its own center tap, deep links) — no new affordance
+    // is created here. Long-press keeps its tooltip (EgoGraph handleLongPress).
+    if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`../relation/${member.id}`);
   }, []);
 
   const handleOverflowTap = useCallback(() => {
