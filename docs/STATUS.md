@@ -4,6 +4,25 @@
 
 ---
 
+## B36-1 — FAIT (10/08) — le tap d'un nœud du Jardin ouvre la fiche
+
+> Commit code `d574160` (+ docs). **tsc 0 · vitest 1127/1127.** JS-only → **OTA-able, non publié** (en attente ;
+> commande prête : `eas update --channel production --platform ios`). Diagnostic : `docs/DIAG-B36-1.md`.
+
+- **Avant** : `handleNodeTap` routait par `gatewayAccessState` → une relation révélée « passerelle » (ex. iPhoneBB)
+  ouvrait `through/[id]` (« Aucune connexion via… »), jamais la fiche.
+- **Après** : tap sur **n'importe quel** nœud → `relation/[id]` (branches `open→through` et `locked→Alert`
+  supprimées ; `through/[id]` garde ses accès existants ; long-press = tooltip inchangé ; import `Alert` retiré).
+- **Helpers conservés** : `deriveGatewayAccessState`/`deriveGatewayPowerBand` **restent utilisés** (visuels de
+  nœud + tooltip) → pas de code mort, rien à supprimer.
+- **Question tranchée — côté B, la carte s'affiche ? OUI** : la carte lit le score/tier depuis `sharedReveal`
+  (`get_my_reveal_state`) via `getEffectiveRevealSnapshot` (`relationship-reveal-precedence.ts:39,46`) →
+  `effectiveRelation` (`relation/[id]:204,384,393-394`), **pas** depuis le store. Donc ouvrir la fiche suffit
+  côté B (bref chargement puis score/tier). ⚠️ Les 3 écrans de synthèse (DIAG-B35) restent vides côté B (ils
+  lisent le store) — **chantier distinct, non traité ici**.
+
+---
+
 ## B34 — CLOS (05/08) — funnel d'activation (diagnostic + résultats terrain)
 
 > **Diagnostic seul, aucun code, aucun OTA, aucun SQL exécuté par l'assistant.** Détail : `docs/DIAG-B34.md`.

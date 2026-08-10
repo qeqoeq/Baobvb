@@ -102,4 +102,46 @@ Le bouton retour de `through/[id]` intitulé **« (tabs) »** = **libellé natif
 — le tap route vers `relation/[id]` pour tous les nœuds ; l'accès à `through` passe à une autre affordance
 (à préciser au GO). Aucun code n'est modifié dans ce diagnostic.
 
-_Diagnostic seul. Aucune modification de code de production, aucun SQL. STOP — attente du GO._
+---
+
+## Réalisation (GO — 10/08) — commit code `d574160`
+
+**Appliqué** dans `handleNodeTap` (`app/(tabs)/index.tsx`) : suppression du branchement sur `gatewayAccessState`.
+Un tap simple sur **n'importe quel** nœud → `router.push(`../relation/${member.id}`)`. Les deux branches
+`'open'→through/[id]` et `'locked'→Alert` **supprimées**. `through/[id]` **garde ses chemins existants** (tap
+centre `through:117-119`, deep links) — **aucune nouvelle affordance créée**. Le long-press conserve son tooltip
+(`EgoGraph:144-153`). Import `Alert` devenu inutilisé → **retiré**.
+
+**Helpers de passerelle conservés** (comme demandé, non supprimés) : `deriveGatewayAccessState` /
+`deriveGatewayPowerBand` **restent utilisés** — ils alimentent toujours `graphMembers` (`index.tsx:68,78`) et
+sont consommés pour les **visuels de nœud** (rayon `GATEWAY_NODE_RADIUS[gatewayPowerBand]`
+`lib/circle-node-state.ts:695`, état/couleur `:479-481`) et le **label du tooltip** « Passage ouvert »
+(`EgoGraph:149-150`). **Ils ne deviennent PAS inutilisés** — rien à trancher séparément de ce côté.
+
+### Question tranchée : la carte s'affichera-t-elle côté B (Sou) ? → **OUI**
+
+La carte de lecture (`relation/[id].tsx:865-905`) lit le score/tier depuis **`sharedReveal`** (état local
+alimenté par `refreshSharedReveal` → `get_my_reveal_state`, qui **renvoie `mutual_score` + `tier`**), **pas**
+depuis le `revealSnapshot` du store. Chaîne prouvée :
+
+1. `refreshSharedReveal` (`relation/[id]:123-135`) → `setSharedReveal(record)` (record = `get_my_reveal_state`).
+2. `effectiveRelation = applyEffectiveRevealToRelation(relation, sharedReveal)` (`relation/[id]:204`) →
+   `getEffectiveRevealSnapshot` (`lib/relationship-reveal-precedence.ts:5-49`) : quand `sharedReveal.status === 'revealed'`,
+   **`mutualScore: sharedReveal.mutual_score` (`:39`)** et **`tier: normalize(sharedReveal.tier, sharedReveal.mutual_score)` (`:46`)**.
+3. `relationForDisplay = effectiveRelation ?? relation` (`:384`) → `frozenMutualScore/Tier` (`:393-394`) →
+   `revealedScore/revealedTier` (`:400-404`) → carte (`:867-905`).
+
+⇒ **La source réellement lue par la carte est `sharedReveal` (serveur), pas le store.** Le fix B36-1 **suffit
+côté B** : ouvrir `relation/[id]` affichera bien « Enraciné/Pilier/… » + score (le 90/Legend d'iPhoneBB).
+Réserve mineure : bref état de chargement tant que `refreshSharedReveal` n'a pas répondu (`sharedReveal === null`
+→ `relation/[id]:417-419`, « On amène ta lecture partagée… » `:950`), puis la carte se peuple. **Sans rapport
+avec le store** — donc B36-1 n'a pas besoin du correctif DIAG-B35 pour que la **fiche** fonctionne côté B.
+
+> Cohérent avec DIAG-B35 : la fiche marche (lit `sharedReveal`), **mais** les 3 écrans de synthèse (Révélations,
+> Rechercher/Santé, Rechercher/Liens partagés) restent vides côté B car ils lisent le **store** (jamais backfillé).
+> B36-1 ne les corrige pas — c'est un chantier distinct (DIAG-B35).
+
+**Preuves** : `tsc --noEmit` = 0 ; `vitest run` = 40 fichiers / 1127 tests. **JS-only → OTA-able** (OTA non
+publié dans cette tâche ; commande prête : `eas update --channel production --platform ios`).
+
+_Réalisé. Code = `d574160`. Aucun SQL, aucun build EAS._
