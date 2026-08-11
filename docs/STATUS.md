@@ -16,8 +16,9 @@
 - **Migration** (à coller après audit Samo) : `DROP FUNCTION` + recréation avec **1 colonne** `mutual_score`
   **en fin** de `RETURNS TABLE` (16 colonnes ; **pas de `tier`**), **gardée `CASE WHEN status='revealed' … ELSE NULL`**
   (doctrine : aucun score avant le reveal ; la colonne est peuplée dès `reveal_ready`, donc le `CASE` est critique).
-  `SECURITY DEFINER` + `search_path` préservés ; grants recréés à l'identique (`authenticated` EXECUTE, **jamais
-  anon/PUBLIC**) ; le tout en `BEGIN;…COMMIT;`.
+  `SECURITY DEFINER` + `search_path` préservés ; grants recréés pour **les 3 grantees réels** (`authenticated` +
+  `postgres` + `service_role` EXECUTE — le relevé réel en compte 3, pas 1 ; **service_role = Edge Functions**, le
+  DROP les casserait sinon ; **jamais anon/PUBLIC**) ; le tout en `BEGIN;…COMMIT;`.
 - **Diff client** (proposé, non appliqué) : `SharedRelationBootstrapInput` (+`mutual_score`) +
   `buildSharedRevealLocalState` (mapper `mutualScore`, gardé `revealed` ; **tier non mappé**, re-dérivé du score au
   rendu cf. B36-2) + **⚠️ `mergeBootstrappedRevealSnapshot` backfill** (sinon les relations **déjà** révélées — le

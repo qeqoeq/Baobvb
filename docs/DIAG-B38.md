@@ -98,22 +98,32 @@ Colonne source à exposer : `shared_relationship_reveals.mutual_score numeric(5,
 
 ## 2. Grants actuels
 
-`docs/sql/b8_b4_counterpart_name.sql:188-190` :
+**⚠️ Le relevé RÉEL sur le projet (source de vérité) renvoie TROIS grantees, pas un seul :**
+`authenticated`, `postgres`, `service_role` (tous EXECUTE ; aucun `anon` ; aucun `PUBLIC`).
+
+Le bloc de grants du fichier d'origine `docs/sql/b8_b4_counterpart_name.sql:188-190` **est INCOMPLET** — il ne
+liste que `authenticated` :
 ```sql
 REVOKE ALL ON FUNCTION public.my_shared_relationships() FROM public;
 REVOKE ALL ON FUNCTION public.my_shared_relationships() FROM anon;
 GRANT EXECUTE ON FUNCTION public.my_shared_relationships() TO authenticated;
 ```
-⇒ **`authenticated` : EXECUTE. `anon`/`public` : révoqués.** `postgres` (owner) + `service_role` (clé serveur)
-peuvent apparaître — normal. **Jamais de grant `anon` ni `PUBLIC`** (3 incidents historiques, cf. SUPABASE-REGISTRY).
+`postgres` (owner) et `service_role` (clé serveur — **utilisée par les Edge Functions**) ont EXECUTE dans l'état
+réel mais **ne figurent pas** dans ce bloc. Un `DROP FUNCTION` supprimerait **les trois** grants ; recréer le seul
+`authenticated` **casserait `service_role`** (donc les Edge Functions qui appellent la fonction). La migration §4
+doit donc recréer **les trois**. **Jamais de grant `anon` ni `PUBLIC`** (3 incidents historiques, cf. SUPABASE-REGISTRY).
 
-**Relève à exécuter par Samo AVANT la migration** (pour confirmer l'état réel, au cas où il aurait dérivé) :
+> **Note de méthode (leçon B38)** : **toujours relever les grants RÉELS** (`information_schema.routine_privileges`)
+> **avant tout `DROP FUNCTION`** — la liste en dur dans le fichier de migration d'origine était **incomplète**
+> (owner + `service_role` acquis hors de ce bloc). Ne jamais se fier au fichier source pour reconstruire les grants.
+
+**Relève à exécuter par Samo AVANT la migration** (confirme l'état réel) :
 ```sql
 SELECT grantee, privilege_type
 FROM information_schema.routine_privileges
 WHERE routine_schema = 'public' AND routine_name = 'my_shared_relationships'
 ORDER BY grantee;
--- Attendu : authenticated EXECUTE ; aucun anon ; aucun PUBLIC.
+-- Attendu : 3 lignes EXECUTE — authenticated, postgres, service_role ; aucun anon ; aucun PUBLIC.
 ```
 
 ## 3. Piège Postgres — changement de type de retour
@@ -197,10 +207,14 @@ BEGIN
 END;
 $$;
 
--- 3) Grants recréés À L'IDENTIQUE (le DROP les a supprimés). JAMAIS anon ni PUBLIC.
+-- 3) Grants recréés À L'IDENTIQUE (le DROP a supprimé LES TROIS). JAMAIS anon ni PUBLIC.
+--    Le relevé réel = 3 grantees : authenticated, postgres, service_role.
+--    service_role est utilisé par les Edge Functions → l'omettre les casserait.
 REVOKE ALL ON FUNCTION public.my_shared_relationships() FROM public;
 REVOKE ALL ON FUNCTION public.my_shared_relationships() FROM anon;
 GRANT EXECUTE ON FUNCTION public.my_shared_relationships() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.my_shared_relationships() TO postgres;
+GRANT EXECUTE ON FUNCTION public.my_shared_relationships() TO service_role;
 
 COMMIT;
 ```
@@ -211,11 +225,13 @@ COMMIT;
 SELECT pg_get_function_result('public.my_shared_relationships()'::regprocedure);
 -- Attendu : TABLE(… counterpart_handle text, mutual_score numeric)
 
--- V-B38.2 — grants : authenticated EXECUTE, aucun anon/public
+-- V-B38.2 — grants : 3 grantees EXECUTE (authenticated, postgres, service_role), aucun anon/public
 SELECT grantee, privilege_type
 FROM information_schema.routine_privileges
 WHERE routine_schema = 'public' AND routine_name = 'my_shared_relationships'
 ORDER BY grantee;
+-- Attendu : 3 lignes EXECUTE — authenticated, postgres, service_role. Aucun anon, aucun PUBLIC.
+-- (Doit être IDENTIQUE au relevé pré-migration du §2.)
 
 -- V-B38.3 — DOCTRINE : aucune ligne non-revealed ne porte de score
 --            (doit renvoyer 0 pour un compte de test qui a des relations non révélées)
@@ -307,7 +323,9 @@ autre consommateur de `my_shared_relationships` (grep : uniquement bootstrap/res
 - [ ] `SECURITY DEFINER` + `SET search_path = public` présents dans le CREATE.
 - [ ] 1 colonne **en fin** de `RETURNS TABLE` **et** en fin du `SELECT` : `mutual_score` (pas de `tier`).
 - [ ] `CASE WHEN sr.status = 'revealed' … ELSE NULL` sur `mutual_score`.
-- [ ] Grants recréés : `authenticated` EXECUTE, `anon`/`public` révoqués. **Aucun `GRANT … TO anon/PUBLIC`.**
+- [ ] **Relever les grants RÉELS avant le DROP** (§2) — ne pas se fier au fichier source (incomplet).
+- [ ] Grants recréés pour **les 3 grantees** : `authenticated` + `postgres` + `service_role` EXECUTE
+      (service_role = Edge Functions). `anon`/`public` révoqués. **Aucun `GRANT … TO anon/PUBLIC`.**
 - [ ] Le tout dans `BEGIN; … COMMIT;`.
 - [ ] V-B38.3 (fuite) = 0 avant de déployer le client.
 - [ ] Client (5a/5b/5c) : le backfill (5c) est présent sinon les relations déjà révélées restent sans score.
