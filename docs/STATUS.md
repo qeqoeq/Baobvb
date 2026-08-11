@@ -4,11 +4,23 @@
 
 ---
 
-## B38 — EN ATTENTE (11/08) — exposer `mutual_score` au bootstrap (migration à auditer)
+## B38 — SERVEUR APPLIQUÉ + CLIENT CODÉ (11/08) — `mutual_score` au bootstrap ; OTA en attente
 
-> **Migration produite, PAS appliquée.** Aucun SQL exécuté, aucun code appliqué. Livrable : `docs/DIAG-B38.md`.
-> **Correction 11/08 : `tier` RETIRÉ** — label legacy serveur (B36-2), mort à l'arrivée (le client re-dérive le
-> tier du score) ; on n'expose que `mutual_score`.
+> **Migration serveur appliquée** par Samo (`my_shared_relationships` renvoie 16 colonnes, `mutual_score numeric`
+> en fin, 3 grants intacts, vérif anti-fuite = 0). **Code client appliqué** (commit `c316aed`) — **tsc 0,
+> vitest 1129/1129**. **OTA non publié** (en attente ; JS-only → `eas update --channel production --platform ios`).
+> Détail : `docs/DIAG-B38.md`.
+>
+> **Code client (`c316aed`)** : `SharedRelationBootstrapInput` +`mutual_score` ; `buildSharedRevealLocalState`
+> mappe `mutualScore` (gardé `revealed`) ; **backfill non-destructif** dans `mergeBootstrappedRevealSnapshot`
+> (une relation déjà révélée sans score adopte le score serveur à rang égal — cas de Sou et de tous les reveals
+> pré-B38 ; n'écrase jamais un score local). `tier` non porté (re-dérivé du score au rendu, B36-2). Champ requis
+> ⇒ `mutual_score: null` ajouté aux 2 constructeurs de claim (invite/claim-handoff, non révélé). Tests Y7/Y8
+> couvrent le backfill (adopte si absent ; jamais d'écrasement). **Corrige buckets Santé/Liens partagés vides
+> des DEUX côtés.**
+
+> **Correction 11/08 : `tier` RETIRÉ** de l'exposition serveur — label legacy (B36-2), mort à l'arrivée (le client
+> re-dérive le tier du score) ; on n'expose que `mutual_score`.
 
 - **Problème** : `my_shared_relationships()` ne renvoie pas `mutual_score` → le score n'entre jamais dans le
   `revealSnapshot` du store → buckets **Santé/Liens partagés vides** — **des DEUX côtés** (correction de portée
