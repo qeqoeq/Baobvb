@@ -1,8 +1,14 @@
-# B38 — Exposer `mutual_score` + `tier` au bootstrap (migration à AUDITER, pas à appliquer)
+# B38 — Exposer `mutual_score` au bootstrap (migration à AUDITER, pas à appliquer)
 
-> Objectif : `my_shared_relationships()` renvoie aussi `mutual_score` + `tier` (NULL tant que non `revealed`),
-> et le bootstrap client les mappe dans le `revealSnapshot`. **Aucun SQL exécuté, aucun code appliqué** —
+> Objectif : `my_shared_relationships()` renvoie aussi `mutual_score` (NULL tant que non `revealed`),
+> et le bootstrap client le mappe dans le `revealSnapshot`. **Aucun SQL exécuté, aucun code appliqué** —
 > Samo colle après audit. Preuves `fichier:ligne`.
+>
+> **Correction (11/08) : `tier` RETIRÉ de la migration.** `sr.tier` est le label **legacy serveur**
+> (Legend/Vibrant/Thrill/Spark/Ghost — taxonomie parquée en B36-2). Le client **re-dérive systématiquement** son
+> tier depuis le score (`normalizePersistedRevealSnapshotTier` → `getMutualTier`) et **écarte** le label serveur :
+> la colonne serait **morte à l'arrivée** tout en **injectant du vocabulaire abandonné** dans le store. On
+> n'expose donc **que `mutual_score`** ; le tier reste re-dérivé du score côté client (B36-2 option A).
 
 ---
 
@@ -86,8 +92,9 @@ END;
 $$;
 ```
 
-Colonnes source disponibles (non exposées aujourd'hui) : `shared_relationship_reveals.mutual_score numeric(5,2)`
-(`supabase/shared_reveal_day1.sql:11`) et `tier text` (`:12`).
+Colonne source à exposer : `shared_relationship_reveals.mutual_score numeric(5,2)`
+(`supabase/shared_reveal_day1.sql:11`). La colonne `tier text` (`:12`) existe **mais n'est PAS exposée**
+(label legacy — voir correction en tête).
 
 ## 2. Grants actuels
 
@@ -118,8 +125,8 @@ supprime aussi les GRANT** → la migration doit les **recréer à l'identique**
 
 ## 4. Migration prête à coller (à AUDITER — ne pas appliquer avant GO)
 
-> Ajoute `mutual_score` + `tier` **en fin** de `RETURNS TABLE` (n'affecte pas l'accès par nom côté client, §6).
-> **Doctrine** : `CASE WHEN sr.status = 'revealed' … ELSE NULL` — aucun score/tier ne sort avant le reveal mutuel.
+> Ajoute `mutual_score` **en fin** de `RETURNS TABLE` (n'affecte pas l'accès par nom côté client, §6).
+> **Doctrine** : `CASE WHEN sr.status = 'revealed' … ELSE NULL` — aucun score ne sort avant le reveal mutuel.
 > ⚠️ La colonne `mutual_score` est **déjà peuplée dès `reveal_ready`** (guard `mutual_score IS NOT NULL`,
 > migration `20260529174636`) : **sans le `CASE`, le score fuiterait avant le reveal** = défaut critique.
 
@@ -129,7 +136,7 @@ BEGIN;
 -- 1) Le type de retour change → DROP obligatoire (CREATE OR REPLACE échouerait).
 DROP FUNCTION IF EXISTS public.my_shared_relationships();
 
--- 2) Recréation : 15 colonnes existantes + 2 nouvelles EN FIN (mutual_score, tier).
+-- 2) Recréation : 15 colonnes existantes + 1 nouvelle EN FIN (mutual_score). tier NON exposé (legacy).
 CREATE FUNCTION public.my_shared_relationships()
 RETURNS TABLE(
   relationship_id               text,
@@ -147,8 +154,7 @@ RETURNS TABLE(
   counterpart_public_profile_id uuid,
   counterpart_display_name      text,
   counterpart_handle            text,
-  mutual_score                  numeric,   -- B38 (NOUVEAU) — NULL tant que status <> 'revealed'
-  tier                          text       -- B38 (NOUVEAU) — NULL tant que status <> 'revealed'
+  mutual_score                  numeric    -- B38 (NOUVEAU) — NULL tant que status <> 'revealed'
 )
 LANGUAGE plpgsql
 SECURITY DEFINER                 -- PRÉSERVÉ
@@ -177,9 +183,8 @@ BEGIN
     c_upp.public_profile_id  AS counterpart_public_profile_id,
     c_upp.display_name       AS counterpart_display_name,
     c_upp.handle             AS counterpart_handle,
-    -- ── DOCTRINE : aucun score/tier avant le reveal mutuel ────────────────────
-    CASE WHEN sr.status = 'revealed' THEN sr.mutual_score ELSE NULL END AS mutual_score,
-    CASE WHEN sr.status = 'revealed' THEN sr.tier         ELSE NULL END AS tier
+    -- ── DOCTRINE : aucun score avant le reveal mutuel ─────────────────────────
+    CASE WHEN sr.status = 'revealed' THEN sr.mutual_score ELSE NULL END AS mutual_score
   FROM public.shared_relationship_reveals sr
   LEFT JOIN public.user_public_profiles c_upp
     ON c_upp.user_id = CASE
@@ -202,9 +207,9 @@ COMMIT;
 
 ### Vérifications post-apply (à coller après la transaction)
 ```sql
--- V-B38.1 — type de retour = 17 colonnes, avec mutual_score + tier EN FIN
+-- V-B38.1 — type de retour = 16 colonnes, avec mutual_score EN FIN (pas de tier)
 SELECT pg_get_function_result('public.my_shared_relationships()'::regprocedure);
--- Attendu : TABLE(… counterpart_handle text, mutual_score numeric, tier text)
+-- Attendu : TABLE(… counterpart_handle text, mutual_score numeric)
 
 -- V-B38.2 — grants : authenticated EXECUTE, aucun anon/public
 SELECT grantee, privilege_type
@@ -216,7 +221,7 @@ ORDER BY grantee;
 --            (doit renvoyer 0 pour un compte de test qui a des relations non révélées)
 SELECT count(*) AS fuites
 FROM public.my_shared_relationships()
-WHERE status <> 'revealed' AND (mutual_score IS NOT NULL OR tier IS NOT NULL);
+WHERE status <> 'revealed' AND mutual_score IS NOT NULL;
 -- Attendu : 0. Toute valeur > 0 = fuite = NE PAS déployer le client.
 ```
 
@@ -231,15 +236,12 @@ qui caste par **nom** — rien à changer là-bas).
    counterpart_handle: string | null;
 +  /** B38: mutual score — NULL unless status='revealed' (server NULL-gates). */
 +  mutual_score: number | null;
-+  /** B38: server tier label — NULL unless revealed; re-derived client-side from the score. */
-+  tier: string | null;
  };
 ```
 
-**(5b) Projection `buildSharedRevealLocalState`** (`store/useRelationsStore.ts:2721-2732`) — mapper dans le
-snapshot, **gardé sur `revealed`** (défense en profondeur, en plus du CASE serveur) ; le `tier` est **re-dérivé
-du score** pour rester cohérent avec B36-2 option A (via `normalizePersistedRevealSnapshotTier`, déjà importée
-par `getEffectiveRevealSnapshot`) :
+**(5b) Projection `buildSharedRevealLocalState`** (`store/useRelationsStore.ts:2721-2732`) — mapper `mutualScore`
+dans le snapshot, **gardé sur `revealed`** (défense en profondeur, en plus du CASE serveur). **Le `tier` n'est PAS
+mappé ici** : il reste re-dérivé du score par `getEffectiveRevealSnapshot` au rendu (B36-2 option A) :
 ```diff
      revealSnapshot: {
        status: normalizedStatus,
@@ -250,12 +252,9 @@ par `getEffectiveRevealSnapshot`) :
        readyAt: isReady || revealed ? toOptionalTs(data.ready_at) : undefined,
        revealedAt: revealed ? toOptionalTs(data.revealed_at) : undefined,
 +      mutualScore: revealed && typeof data.mutual_score === 'number' ? data.mutual_score : undefined,
-+      tier: revealed
-+        ? (normalizePersistedRevealSnapshotTier(data.tier, data.mutual_score) ?? undefined)
-+        : undefined,
      },
 ```
-_(import à ajouter en tête du fichier : `import { normalizePersistedRevealSnapshotTier } from '../lib/persisted-tier-normalization';` — vérifier qu'il n'est pas déjà importé.)_
+_(Aucun nouvel import requis : seul `mutualScore` (un nombre) est mappé ; aucune normalisation de tier ici.)_
 
 **(5c) ⚠️ `mergeBootstrappedRevealSnapshot`** (`store/useRelationsStore.ts:2753-2766`) — **backfill obligatoire**.
 Le merge actuel **retourne `local` sans rien adopter quand les rangs sont égaux** (`:2757-2758`). Or les
@@ -306,8 +305,8 @@ autre consommateur de `my_shared_relationships` (grep : uniquement bootstrap/res
 ## Checklist d'audit avant que Samo colle
 - [ ] `DROP FUNCTION` + `CREATE` (pas `CREATE OR REPLACE` seul) — type de retour changé.
 - [ ] `SECURITY DEFINER` + `SET search_path = public` présents dans le CREATE.
-- [ ] 2 colonnes **en fin** de `RETURNS TABLE` **et** en fin du `SELECT`, même ordre.
-- [ ] `CASE WHEN sr.status = 'revealed' … ELSE NULL` sur `mutual_score` **et** `tier`.
+- [ ] 1 colonne **en fin** de `RETURNS TABLE` **et** en fin du `SELECT` : `mutual_score` (pas de `tier`).
+- [ ] `CASE WHEN sr.status = 'revealed' … ELSE NULL` sur `mutual_score`.
 - [ ] Grants recréés : `authenticated` EXECUTE, `anon`/`public` révoqués. **Aucun `GRANT … TO anon/PUBLIC`.**
 - [ ] Le tout dans `BEGIN; … COMMIT;`.
 - [ ] V-B38.3 (fuite) = 0 avant de déployer le client.
