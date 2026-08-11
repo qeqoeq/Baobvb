@@ -6,16 +6,24 @@
 
 ## Volet (a) — reveal `revealed` (score 90, Legend) invisible sur 3 écrans côté invité (@sounj)
 
+> **⚠️ CORRECTION DE PORTÉE (B38, 11/08)** : ce volet parlait de « côté invité ». En réalité **les DEUX côtés**
+> sont concernés. Le seul writer du `mutualScore` dans le store est le **calcul LOCAL** (`store:1845`) qui exige
+> **les deux lectures** dans `state.evaluations` — or **ni A ni B** ne possède la lecture du counterpart (le
+> serveur n'expose que des reading IDs, jamais les ratings de l'autre). Donc le `revealSnapshot` du store n'a
+> **jamais** de score pour une relation partagée, **côté A comme côté B** → buckets **Santé/Liens partagés**
+> vides **des deux côtés**. Correctif = B38 (exposer `mutual_score`/`tier` au bootstrap). Détail : `docs/DIAG-B38.md`.
+
 ### Verdict
 
-Sou est **side B** (invitée). **Le score mutuel n'entre jamais dans son snapshot de store** :
+Sou est **side B** (invitée) — **mais le défaut vaut aussi côté A** (voir correction ci-dessus).
+**Le score mutuel n'entre jamais dans le snapshot de store** :
 1. le bootstrap `my_shared_relationships()` **ne renvoie ni `mutual_score` ni `tier`** ;
-2. le **seul writer du score dans le store est un calcul LOCAL** qui exige **les deux lectures** — or side B
-   n'a jamais la lecture de side A ;
+2. le **seul writer du score dans le store est un calcul LOCAL** qui exige **les deux lectures** — or **aucun des
+   deux côtés** n'a la lecture du counterpart ;
 3. le score serveur **existe** et est renvoyé par `get_my_reveal_state`, mais `refreshSharedReveal` le garde en
    **état local du composant détail** et **ne le persiste jamais dans le `revealSnapshot`**.
 
-Les 3 écrans lisent le **snapshot du store** (`mutualScore` / `status`) → `mutualScore` **undefined** côté B →
+Les 3 écrans lisent le **snapshot du store** (`mutualScore` / `status`) → `mutualScore` **undefined des deux côtés** →
 toutes les vues indexées sur le score sont vides.
 
 ### Chemin de lecture, preuves

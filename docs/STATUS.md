@@ -4,6 +4,28 @@
 
 ---
 
+## B38 — EN ATTENTE (11/08) — exposer `mutual_score`+`tier` au bootstrap (migration à auditer)
+
+> **Migration produite, PAS appliquée.** Aucun SQL exécuté, aucun code appliqué. Livrable : `docs/DIAG-B38.md`.
+
+- **Problème** : `my_shared_relationships()` ne renvoie ni `mutual_score` ni `tier` → le score n'entre jamais dans
+  le `revealSnapshot` du store → buckets **Santé/Liens partagés vides** — **des DEUX côtés** (correction de
+  portée apportée à `docs/DIAG-B35.md` : ce n'était pas seulement côté invité ; ni A ni B ne peut calculer le
+  score localement).
+- **Migration** (à coller après audit Samo) : `DROP FUNCTION` + recréation avec 2 colonnes **en fin** de
+  `RETURNS TABLE`, **gardées `CASE WHEN status='revealed' … ELSE NULL`** (doctrine : aucun score avant le reveal ;
+  la colonne est peuplée dès `reveal_ready`, donc le `CASE` est critique). `SECURITY DEFINER` + `search_path`
+  préservés ; grants recréés à l'identique (`authenticated` EXECUTE, **jamais anon/PUBLIC**) ; le tout en `BEGIN;…COMMIT;`.
+- **Diff client** (proposé, non appliqué) : `SharedRelationBootstrapInput` + `buildSharedRevealLocalState`
+  (mapper, gardé `revealed`, tier re-dérivé du score cf. B36-2) + **⚠️ `mergeBootstrappedRevealSnapshot` backfill**
+  (sinon les relations **déjà** révélées — le cas terrain — ne reçoivent jamais le score, car le merge ne fait
+  rien à rang égal).
+- **Ajout non cassant** : appelants (`bootstrap-shared-relations.ts:14-17` → `_layout:225`, `resync:53`) lisent
+  par nom → colonnes en fin sans risque.
+- **STOP** : attente audit + GO Samo avant application SQL et avant tout code client.
+
+---
+
 ## B36-2 — CLOS (11/08, option A) — « Enraciné » à 90, pas « Légende »
 
 > **Aucun code — comportement actuel assumé.** Diagnostic : `docs/DIAG-B36-2.md`.
