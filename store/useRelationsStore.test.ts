@@ -804,6 +804,7 @@ function makeBootstrapRow(canonicalId: string): SharedRelationBootstrapInput {
     counterpart_public_profile_id: null,
     counterpart_display_name: null,
     counterpart_handle: null,
+    mutual_score: null,
   };
 }
 
@@ -1144,6 +1145,7 @@ describe('upsertBootstrappedSharedRelations — counterpartPublicProfileId backf
       counterpart_public_profile_id: null,
       counterpart_display_name:      null,
       counterpart_handle:            null,
+      mutual_score:                  null,
       ...overrides,
     };
   }
@@ -1228,6 +1230,7 @@ describe('upsertBootstrappedSharedRelations — counterpart identity (B4 / B11 V
       counterpart_public_profile_id: null,
       counterpart_display_name:      null,
       counterpart_handle:            null,
+      mutual_score:                  null,
       ...overrides,
     };
   }
@@ -1383,6 +1386,7 @@ describe('upsertBootstrappedSharedRelations — B22 reveal status re-sync', () =
       counterpart_public_profile_id: null,
       counterpart_display_name: 'iPhoneBB',
       counterpart_handle: '@iphonebb',
+      mutual_score: null,
       ...over,
     };
   }
@@ -1469,6 +1473,25 @@ describe('upsertBootstrappedSharedRelations — B22 reveal status re-sync', () =
     const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === 'b22-new-canon')!;
     expect(rel).toBeDefined();
     expect(rel.localState.revealSnapshot.revealed).toBe(true);
+  });
+
+  it('Y7 (B38): an already-revealed but scoreless relation adopts the server mutual_score (backfill)', () => {
+    // Every reveal that happened BEFORE B38 was stored scoreless (Sou + all existing).
+    // Same-rank (revealed→revealed) so the merge would `return local`; the backfill
+    // branch must let the now-exposed server score fill the missing local one.
+    injectExisting({ status: 'revealed', revealed: true, firstViewedAt: '2026-06-01T09:00:00Z' });
+    upsertBootstrappedSharedRelations([serverRow('revealed', { mutual_score: 90 })]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
+    expect(rel.localState.revealSnapshot.status).toBe('revealed');
+    expect(rel.localState.revealSnapshot.mutualScore).toBe(90);
+    expect(rel.localState.revealSnapshot.firstViewedAt).toBe('2026-06-01T09:00:00Z'); // untouched
+  });
+
+  it('Y8 (B38): backfill is non-destructive — an existing local score is never overwritten', () => {
+    injectExisting({ status: 'revealed', revealed: true, mutualScore: 42, tier: 'Forming' });
+    upsertBootstrappedSharedRelations([serverRow('revealed', { mutual_score: 90 })]);
+    const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
+    expect(rel.localState.revealSnapshot.mutualScore).toBe(42); // local wins, server 90 ignored
   });
 });
 

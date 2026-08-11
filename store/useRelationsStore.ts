@@ -2678,6 +2678,13 @@ export type SharedRelationBootstrapInput = {
   counterpart_public_profile_id: string | null;
   counterpart_display_name: string | null;
   counterpart_handle: string | null;
+  /**
+   * B38: mutual score. The RPC NULL-gates it server-side (CASE WHEN status='revealed'),
+   * so it is only a number once the mutual reveal has happened. `tier` is intentionally
+   * NOT carried: it is a legacy server label; the client re-derives the tier from the
+   * score at render (getMutualTier / normalizePersistedRevealSnapshotTier, B36-2 option A).
+   */
+  mutual_score: number | null;
 };
 
 /**
@@ -2729,6 +2736,10 @@ function buildSharedRevealLocalState(data: SharedRelationBootstrapInput): Relati
       unlockAt: isCooking ? toOptionalTs(data.unlock_at) : undefined,
       readyAt: isReady || revealed ? toOptionalTs(data.ready_at) : undefined,
       revealedAt: revealed ? toOptionalTs(data.revealed_at) : undefined,
+      // B38: adopt the server mutual score once revealed (defence-in-depth on top of
+      // the RPC's own NULL gate). tier is NOT set here — re-derived from the score at
+      // render (getEffectiveRevealSnapshot / getMutualTier, B36-2 option A).
+      mutualScore: revealed && typeof data.mutual_score === 'number' ? data.mutual_score : undefined,
     },
   };
 }
@@ -2747,14 +2758,31 @@ const REVEAL_STATUS_RANK: Record<RelationshipRevealSnapshot['status'], number> =
  * is strictly more advanced than the local snapshot — never downgrade a local
  * 'revealed' (B10 Fix A: a server row stuck at reveal_ready must not undo a
  * local reveal). When advancing, preserve local `firstViewedAt` (the B5 open
- * gate — the RPC row never carries it) and local `mutualScore`/`tier` (the
- * 15-column RPC carries neither). Returns the same reference when unchanged.
+ * gate — the RPC row never carries it) and local `mutualScore`/`tier` (never
+ * overwrite a locally-computed value). B38: the RPC now carries `mutual_score`
+ * (16 columns), so a same-rank server row can backfill the score into an already
+ * -revealed local snapshot that has none (see the backfill branch below); `tier`
+ * is still not carried (re-derived from the score at render). Returns the same
+ * reference when unchanged.
  */
 function mergeBootstrappedRevealSnapshot(
   local: RelationshipRevealSnapshot,
   server: RelationshipRevealSnapshot,
 ): RelationshipRevealSnapshot {
   if (REVEAL_STATUS_RANK[server.status] <= REVEAL_STATUS_RANK[local.status]) {
+    // B38 backfill: when the relation is ALREADY revealed locally but carries no score
+    // (revealed before B38 exposed mutual_score — the case of every pre-existing reveal,
+    // e.g. Sou), adopt the server score. The rank guard above would otherwise `return local`
+    // and never let an equal-rank server row fill the missing score.
+    // Non-destructive: only when local.mutualScore is absent — a present local value is
+    // NEVER overwritten. status / firstViewedAt / finalizedVersion are left untouched.
+    if (
+      local.status === 'revealed' &&
+      local.mutualScore === undefined &&
+      typeof server.mutualScore === 'number'
+    ) {
+      return { ...local, mutualScore: server.mutualScore, tier: local.tier ?? server.tier };
+    }
     return local;
   }
   return {

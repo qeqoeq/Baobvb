@@ -51,6 +51,8 @@ export function putClaimRecord(
     counterpart_public_profile_id: claimResult.counterpart_public_profile_id,
     counterpart_display_name: null,
     counterpart_handle: null,
+    // B38: a fresh claim is never revealed → no score yet.
+    mutual_score: null,
   });
 }
 
