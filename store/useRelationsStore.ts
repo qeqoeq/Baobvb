@@ -41,6 +41,7 @@ import {
 import { sanitizePlaceIdentityHint } from '../lib/place-identity-hint';
 import { mergePlaceUpdate, type MergePlaceFieldUpdate } from '../lib/places';
 import { clearPersistedState, loadPersistedState, persistState } from '../lib/storage';
+import { b39Push } from '../lib/b39-buffer'; // [B39] TEMPORARY — remove by grepping [B39]
 import {
   findAssistedReconciliationSuggestionForRelation,
   findDraftResolutionSuggestionForRelation,
@@ -1576,11 +1577,13 @@ export function applyHydratedState(persisted: unknown): void {
       const b39Incoming = (p.relations as Array<{ canonicalRelationId?: string; id?: string; localState?: { revealSnapshot?: { mutualScore?: unknown } } }>)
         .filter((r) => typeof r.localState?.revealSnapshot?.mutualScore === 'number')
         .map((r) => ({ id: r.canonicalRelationId ?? r.id, score: r.localState?.revealSnapshot?.mutualScore }));
-      console.log('[B39] applyHydratedState (wholesale replace)', {
+      const b39HydratePayload = {
         ts: Date.now(),
         currentInMemoryWithScore: b39Current,
         incomingPersistedWithScore: b39Incoming,
-      });
+      };
+      console.log('[B39] applyHydratedState (wholesale replace)', b39HydratePayload);
+      b39Push('applyHydratedState (wholesale replace)', b39HydratePayload);
     }
     state.relations = persisted.relations.map((relation) =>
       applyNormalizedRelationModel({
@@ -2733,7 +2736,7 @@ function buildSharedRevealLocalState(data: SharedRelationBootstrapInput): Relati
 
   // [B39] TEMPORARY instrumentation — per RPC row: what the server delivered and
   // what buildSharedRevealLocalState maps into the snapshot. Remove by grepping [B39].
-  console.log('[B39] buildSharedRevealLocalState', {
+  const b39BuildPayload = {
     ts: Date.now(),
     relationshipId: data.relationship_id,
     status: data.status,
@@ -2741,7 +2744,9 @@ function buildSharedRevealLocalState(data: SharedRelationBootstrapInput): Relati
     revealed,
     mutualScoreMapped:
       revealed && typeof data.mutual_score === 'number' ? data.mutual_score : undefined,
-  });
+  };
+  console.log('[B39] buildSharedRevealLocalState', b39BuildPayload);
+  b39Push('buildSharedRevealLocalState', b39BuildPayload);
 
   return {
     sideA: {
@@ -2847,13 +2852,15 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     // [B39] TEMPORARY — the exact ':2817' existence boolean, per row. If false for a
     // revealed row, the score goes through the CREATE path (then risks being wiped by a
     // late hydration — H2). Remove by grepping [B39].
-    console.log('[B39] upsert row', {
+    const b39UpsertPayload = {
       ts: Date.now(),
       relationshipId: canonicalId,
       existsLocally: Boolean(existing),
       incomingStatus: row.status,
       incomingMutualScore: row.mutual_score,
-    });
+    };
+    console.log('[B39] upsert row', b39UpsertPayload);
+    b39Push('upsert row', b39UpsertPayload);
     if (existing) {
       const newPpid = !existing.counterpartPublicProfileId && row.counterpart_public_profile_id
         ? row.counterpart_public_profile_id : null;
@@ -2945,13 +2952,15 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     const cid = typeof row.relationship_id === 'string' ? row.relationship_id.trim() : '';
     if (!cid) continue;
     const after = state.relations.find((r) => r.canonicalRelationId === cid);
-    console.log('[B39] after upsert', {
+    const b39AfterPayload = {
       ts: Date.now(),
       relationshipId: cid,
       storedMutualScore: after?.localState.revealSnapshot.mutualScore,
       storedStatus: after?.localState.revealSnapshot.status,
       storedFirstViewedAt: after?.localState.revealSnapshot.firstViewedAt,
-    });
+    };
+    console.log('[B39] after upsert', b39AfterPayload);
+    b39Push('after upsert', b39AfterPayload);
   }
 
   if (didChange) {

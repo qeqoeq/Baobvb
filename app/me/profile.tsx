@@ -3,7 +3,8 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Updates from 'expo-updates';
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Svg, { G, Path } from 'react-native-svg';
 
@@ -13,9 +14,12 @@ import { deriveBaobabCode } from '../../lib/identity-format';
 import { buildPersonCardPayload, encodePersonCardPayload } from '../../lib/person-card';
 import { useRelationsStore } from '../../store/useRelationsStore';
 import { PrimaryNavBar } from '../../components/ui/PrimaryNavBar';
+import { b39Entries } from '../../lib/b39-buffer'; // [B39] TEMPORARY — remove by grepping [B39]
 
 export default function ProfileScreen() {
-  const { me, updateShowBaobabCode } = useRelationsStore();
+  const { me, relations, updateShowBaobabCode } = useRelationsStore();
+  // [B39] TEMPORARY — hidden production diagnostic panel (long-press the build stamp).
+  const [b39Open, setB39Open] = useState(false);
 
   const baobabCode = deriveBaobabCode(me.publicProfileId);
   const isCardReady = Boolean(me.publicProfileId);
@@ -143,10 +147,12 @@ export default function ProfileScreen() {
         </Pressable>
       </View>
 
-      {/* Build/OTA identity — permanent, discreet. Lets any OTA be verified on device. */}
-      <Text style={styles.buildStamp}>
-        {`v${Updates.runtimeVersion ?? '?'} · ${(Updates.updateId ?? 'embedded').slice(0, 8)}`}
-      </Text>
+      {/* Build/OTA identity — permanent, discreet. Long-press (~2s) opens the [B39] panel. */}
+      <Pressable onLongPress={() => setB39Open(true)} delayLongPress={2000}>
+        <Text style={styles.buildStamp}>
+          {`v${Updates.runtimeVersion ?? '?'} · ${(Updates.updateId ?? 'embedded').slice(0, 8)}`}
+        </Text>
+      </Pressable>
 
       <View pointerEvents="none" style={styles.treeZone}>
         <View style={styles.treeGlow} />
@@ -155,6 +161,52 @@ export default function ProfileScreen() {
 
     </ScrollView>
       <PrimaryNavBar />
+
+      {/* [B39] TEMPORARY — hidden production diagnostic panel. Remove by grepping [B39]. */}
+      {b39Open ? (
+        <Modal visible animationType="slide" onRequestClose={() => setB39Open(false)}>
+          {(() => {
+            const B39_REL = 'c41ab40b-6d3a-4003-8c81-15633391eb6e';
+            const rel = relations.find((r) => r.canonicalRelationId === B39_REL || r.id === B39_REL);
+            const snap = rel?.localState?.revealSnapshot;
+            const raw = (v: unknown): string =>
+              v === null ? 'null' : v === undefined ? 'undefined' : String(v);
+            const entries = b39Entries();
+            const dump = [
+              `updateId: ${Updates.updateId ?? 'embedded'}`,
+              `runtimeVersion: ${Updates.runtimeVersion ?? '?'}`,
+              `entries: ${entries.length}`,
+              '',
+              `--- ÉTAT ACTUEL DU STORE @ open ---`,
+              `relation ${B39_REL}`,
+              `relationPresent: ${rel ? 'yes' : 'no'}`,
+              `revealSnapshotPresent: ${snap ? 'yes' : 'no'}`,
+              `status: ${raw(snap?.status)}`,
+              `mutualScore: ${raw(snap?.mutualScore)}`,
+              `firstViewedAt: ${raw(snap?.firstViewedAt)}`,
+              '',
+              '--- [B39] ENTRIES (chronological) ---',
+              ...entries.map((e) => `${new Date(e.ts).toISOString()} [${e.label}] ${e.payload}`),
+            ].join('\n');
+            return (
+              <View style={styles.b39Panel}>
+                <View style={styles.b39HeaderRow}>
+                  <Text style={styles.b39Title}>{`Diagnostic [B39] · ${entries.length} entrées`}</Text>
+                  <Pressable onPress={() => setB39Open(false)} style={styles.b39CloseBtn}>
+                    <Text style={styles.b39CloseText}>Fermer</Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.b39Hint}>
+                  Appui long sur le texte → Tout sélectionner → Copier, puis envoie à Samo.
+                </Text>
+                <ScrollView style={styles.b39Scroll} contentContainerStyle={styles.b39ScrollContent}>
+                  <Text selectable style={styles.b39Mono}>{dump}</Text>
+                </ScrollView>
+              </View>
+            );
+          })()}
+        </Modal>
+      ) : null}
     </View>
   );
 }
@@ -441,6 +493,58 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     opacity: 0.5,
     letterSpacing: 0.3,
+  },
+  // [B39] TEMPORARY panel styles — remove by grepping [B39].
+  b39Panel: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+    paddingTop: 56,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+  },
+  b39HeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  b39Title: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  b39CloseBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+  },
+  b39CloseText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.text.secondary,
+  },
+  b39Hint: {
+    fontSize: 11,
+    color: colors.text.muted,
+    marginBottom: spacing.sm,
+  },
+  b39Scroll: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border.soft,
+    borderRadius: radius.sm,
+    backgroundColor: colors.background.secondary,
+  },
+  b39ScrollContent: {
+    padding: spacing.sm,
+  },
+  b39Mono: {
+    fontFamily: process.env.EXPO_OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.text.primary,
   },
   treeZone: {
     flex: 1,
