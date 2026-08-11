@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as Updates from 'expo-updates';
 import { Image } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -141,6 +142,11 @@ export default function ProfileScreen() {
           <Text style={styles.settingsLinkText}>{'Réglages'}</Text>
         </Pressable>
       </View>
+
+      {/* Build/OTA identity — permanent, discreet. Lets any OTA be verified on device. */}
+      <Text style={styles.buildStamp}>
+        {`v${Updates.runtimeVersion ?? '?'} · ${(Updates.updateId ?? 'embedded').slice(0, 8)}`}
+      </Text>
 
       <View pointerEvents="none" style={styles.treeZone}>
         <View style={styles.treeGlow} />
@@ -427,6 +433,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.muted,
     fontWeight: '600',
+  },
+  buildStamp: {
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+    fontSize: 9,
+    color: colors.text.muted,
+    opacity: 0.5,
+    letterSpacing: 0.3,
   },
   treeZone: {
     flex: 1,

@@ -1565,6 +1565,23 @@ export function applyHydratedState(persisted: unknown): void {
         publicProfileId: state.me.publicProfileId ?? null,
       };
     }
+    // [B39] TEMPORARY — the wholesale replace below (state.relations = persisted…)
+    // discards whatever is currently in memory. If the bootstrap already wrote a
+    // mutualScore, this log names what is about to be overwritten (proves/kills H2).
+    // Also log the incoming persisted scores for comparison. Remove by grepping [B39].
+    {
+      const b39Current = state.relations
+        .filter((r) => typeof r.localState?.revealSnapshot?.mutualScore === 'number')
+        .map((r) => ({ id: r.canonicalRelationId ?? r.id, score: r.localState.revealSnapshot.mutualScore }));
+      const b39Incoming = (p.relations as Array<{ canonicalRelationId?: string; id?: string; localState?: { revealSnapshot?: { mutualScore?: unknown } } }>)
+        .filter((r) => typeof r.localState?.revealSnapshot?.mutualScore === 'number')
+        .map((r) => ({ id: r.canonicalRelationId ?? r.id, score: r.localState?.revealSnapshot?.mutualScore }));
+      console.log('[B39] applyHydratedState (wholesale replace)', {
+        ts: Date.now(),
+        currentInMemoryWithScore: b39Current,
+        incomingPersistedWithScore: b39Incoming,
+      });
+    }
     state.relations = persisted.relations.map((relation) =>
       applyNormalizedRelationModel({
         ...relation,
@@ -2714,6 +2731,18 @@ function buildSharedRevealLocalState(data: SharedRelationBootstrapInput): Relati
     return typeof value === 'string' && value.length > 0 ? value : undefined;
   }
 
+  // [B39] TEMPORARY instrumentation — per RPC row: what the server delivered and
+  // what buildSharedRevealLocalState maps into the snapshot. Remove by grepping [B39].
+  console.log('[B39] buildSharedRevealLocalState', {
+    ts: Date.now(),
+    relationshipId: data.relationship_id,
+    status: data.status,
+    mutualScoreReceived: data.mutual_score,
+    revealed,
+    mutualScoreMapped:
+      revealed && typeof data.mutual_score === 'number' ? data.mutual_score : undefined,
+  });
+
   return {
     sideA: {
       exists: sideAPresent,
@@ -2815,6 +2844,16 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     // Patch counterpartPublicProfileId (day11) and counterpart identity (B4)
     // when the RPC now provides values the local copy is missing.
     const existing = state.relations.find((r) => r.canonicalRelationId === canonicalId);
+    // [B39] TEMPORARY — the exact ':2817' existence boolean, per row. If false for a
+    // revealed row, the score goes through the CREATE path (then risks being wiped by a
+    // late hydration — H2). Remove by grepping [B39].
+    console.log('[B39] upsert row', {
+      ts: Date.now(),
+      relationshipId: canonicalId,
+      existsLocally: Boolean(existing),
+      incomingStatus: row.status,
+      incomingMutualScore: row.mutual_score,
+    });
     if (existing) {
       const newPpid = !existing.counterpartPublicProfileId && row.counterpart_public_profile_id
         ? row.counterpart_public_profile_id : null;
@@ -2898,6 +2937,21 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
 
     state.relations = [relation, ...state.relations];
     didChange = true;
+  }
+
+  // [B39] TEMPORARY — after all upserts: the mutualScore/firstViewedAt that actually
+  // landed in the store, per row. Written or lost? Remove by grepping [B39].
+  for (const row of rows) {
+    const cid = typeof row.relationship_id === 'string' ? row.relationship_id.trim() : '';
+    if (!cid) continue;
+    const after = state.relations.find((r) => r.canonicalRelationId === cid);
+    console.log('[B39] after upsert', {
+      ts: Date.now(),
+      relationshipId: cid,
+      storedMutualScore: after?.localState.revealSnapshot.mutualScore,
+      storedStatus: after?.localState.revealSnapshot.status,
+      storedFirstViewedAt: after?.localState.revealSnapshot.firstViewedAt,
+    });
   }
 
   if (didChange) {
