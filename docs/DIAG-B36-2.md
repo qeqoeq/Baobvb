@@ -105,16 +105,18 @@ fausse (le **score** 90 est le tier maximal des deux côtés) — seul le **nom*
 | (3) frozen pré-sharedReveal | **Réfutée** : `effectiveRelation` recalculé par `useMemo` (`relation/[id]:204`) ; pas de gel |
 | Label « Légende » manquant (B28) ? | **Non** : présent (`tier-display.ts:26`) mais inatteignable par construction |
 
-**Question produit soulevée (à trancher séparément, non ici)** : veut-on que 90 s'affiche « Légende » ou
-« Enraciné » ?
-- **A — accepter « Enraciné »** : le client est cohérent (Rooted = top tier à 90) ; `'Legend'` serveur = vestige
-  legacy. Coût nul.
-- **B — adopter « Légende » client-side** : ajouter un vrai palier `Legend` au client (type `Tier`, `getMutualTier`,
-  lexique, narratif, accent, tier-display) **et** aligner l'échelle serveur — chantier taxonomie complet.
-- **C — hybride** : faire confiance à un `'Legend'` serveur *whitelisté* pour les snapshots `revealed` + ajouter
-  Legend au client. Intermédiaire.
+**Question produit — TRANCHÉE (11/08) : option A retenue.**
+- **A — accepter « Enraciné » ✅ RETENUE** : le tier affiché **reste dérivé du score côté client** (`getMutualTier`) ;
+  le label serveur legacy `'Legend'` est **écarté par `normalize()` comme prévu**. À 90, l'app affiche
+  **« Enraciné »**. Le **score est correct des deux côtés** — seul le **nom** diverge. **Aucun code** : c'est le
+  comportement actuel, désormais assumé.
+- ~~B — adopter « Légende » client-side~~ (non retenue) : aurait exigé un palier `Legend` client complet + alignement serveur.
+- ~~C — hybride~~ (non retenue).
 
-Corollaire à noter : l'échelle **serveur** est restée en taxonomie **pré-V.1** (`day3_lifecycle:175-186`) — à
-migrer quelle que soit l'option, sinon le serveur continuera d'émettre Ghost/Spark/Thrill/Vibrant/Legend.
+Corollaire (parké, `docs/PARKING.md`) : l'échelle **serveur** est restée en taxonomie **pré-V.1**
+(`day3_lifecycle:175-186` : Ghost/Spark/Thrill/Vibrant/Anchor/Legend) — à migrer vers l'échelle client actuelle
+**avant toute exposition publique des tiers**. Sans impact tant que le client re-dérive du score (option A).
 
-_Diagnostic seul. Aucune modification de code de production, aucun SQL. STOP — attente d'arbitrage._
+**STATUT : CLOS (11/08) — option A. Aucun code, le comportement est celui attendu.**
+
+_Diagnostic clos. Aucune modification de code de production, aucun SQL._

@@ -4,6 +4,22 @@
 
 ---
 
+## B36-2 — CLOS (11/08, option A) — « Enraciné » à 90, pas « Légende »
+
+> **Aucun code — comportement actuel assumé.** Diagnostic : `docs/DIAG-B36-2.md`.
+
+- La carte affichait « ENRACINÉ » alors que la base porte `tier='Legend'`, `mutual_score=90`.
+- **Cause** : le client **re-dérive toujours le tier du score** — `normalizePersistedRevealSnapshotTier`
+  (`persisted-tier-normalization.ts:69`) → `getMutualTier(90)='Rooted'` (`evaluation.ts:137`) → FR « Enraciné »
+  (`tier-display.ts:20`). Le label serveur legacy `'Legend'` est **écarté par `normalize()` comme prévu** (rawTier
+  jamais lu quand un score existe). Pas un bug de traduction, ni de `sharedReveal` null, ni de gel.
+- **Option A retenue** : le tier affiché **reste dérivé du score côté client** ; à 90 → **« Enraciné »**. Le
+  **score est correct des deux côtés**, seul le **nom** diverge. Aucun code.
+- **Parké** (`docs/PARKING.md`) : migration de la **taxonomie serveur** (Legend/Vibrant/Thrill/Spark/Ghost, pré-V1)
+  vers l'échelle client — à traiter **avant toute exposition publique des tiers**.
+
+---
+
 ## B36-1 — FAIT (10/08) — le tap d'un nœud du Jardin ouvre la fiche
 
 > Commit code `d574160` (+ docs). **tsc 0 · vitest 1127/1127.** JS-only → **OTA-able, non publié** (en attente ;
