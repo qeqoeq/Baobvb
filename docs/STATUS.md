@@ -4,12 +4,56 @@
 
 ---
 
-## B38 — SERVEUR APPLIQUÉ + CLIENT CODÉ (11/08) — `mutual_score` au bootstrap ; OTA en attente
+## B38→B41 — CLOS (12/08) — cérémonie de reveal restaurée pour le second participant
+
+> **Fil unique.** B38 expose `mutual_score` au bootstrap → B39 instrumente pour vérifier on-device → B39-bis/B40
+> diagnostiquent pourquoi Santé reste vide et pourquoi Révélations n'affiche pas un reveal → **cause racine
+> serveur trouvée** → **B41 corrige côté client** (commit `124ec04`, **tsc 0, vitest 1131/1131**). DIAG :
+> `docs/DIAG-B38.md`, `docs/DIAG-B39-sante-vide-apres-B38.md`, `docs/DIAG-B40-reveals-revealed-absents.md`,
+> `docs/DIAG-B41-plan-reveal-ready-local.md`.
+
+### B38 — validé terrain (12/08)
+- `mutual_score` **arrive bien au bootstrap** — prouvé par le **tampon B39** lu on-device (updateId `019ff337`).
+  La colonne `mutual_score` de `my_shared_relationships()` peuple le `revealSnapshot` du store comme prévu (commit
+  client `c316aed`). Le vide de Santé n'était **pas** un défaut de B38 → l'enquête bascule sur la cérémonie.
+
+### Cause racine (serveur) — `open_shared_reveal` marque `first_viewed_at` GLOBALEMENT, pas par côté
+- Le RPC `open_shared_reveal` estampille `first_viewed_at` dans **le même `UPDATE`** que `revealed_at` — donc
+  **une seule fois, pour le premier qui ouvre**, jamais par participant. Preuve : lecture du `prosrc` de la
+  fonction **+ 4 lignes** de `shared_relationship_reveals` où `first_viewed_at` et `revealed_at` sont **identiques
+  à la microseconde**.
+- Conséquence : le **SECOND participant ne recevait jamais sa cérémonie** — sa fiche s'ouvrait déjà « révélée ».
+  **Aucun reveal du produit n'avait été ouvert par les deux côtés.**
+
+### B41 — correctif client (commit `124ec04`)
+- Un `revealed` **serveur** sans `firstViewedAt` **LOCAL** est **tenu à `reveal_ready`** jusqu'à la cérémonie de
+  ce côté — overlay (`getEffectiveRevealSnapshot`) **+** bootstrap (`mergeBootstrappedRevealSnapshot` downgrade
+  ciblé + chemin de création `upsertBootstrappedSharedRelations`). La cérémonie jouée, `firstViewedAt` local est
+  estampillé, persiste et se réhydrate → la garde ne s'applique plus, score/tier reviennent (backfill B38).
+  **Anti-boucle vérifié** (persistance + réhydratation).
+- **Corrige aussi une fuite préexistante** : la fiche affichait **tier + score sans cérémonie** à un participant
+  qui n'avait jamais ouvert — un score/tier avant reveal est un **défaut critique** (doctrine Baobab).
+- **100 % client** : aucune migration SQL, aucun changement de `open_shared_reveal`, aucun trigger, aucun nouvel
+  appel serveur. Tests adaptés (**aucun masqué** ; détail dans le corps du commit).
+
+### Vérifié terrain (12/08, sur @iphonebb)
+- **Révélations affiche 3** → **cérémonie Sou jouée** → **Santé affiche enfin des données** → badge **3 → 2**.
+  Boucle de reveal restaurée bout-en-bout pour le second participant.
+
+### Instrumentation permanente (écran « Toi »)
+- Tampon **`updateId` + `runtimeVersion`** (`Updates.updateId` / `Updates.runtimeVersion`) affiché en clair sur
+  l'écran Toi → **tout OTA est désormais vérifiable on-device** (quel bundle tourne réellement). **Permanent.**
+- ⚠️ Les logs **`[B39]`** (ring buffer module + panneau appui-long) restent **temporaires** → parkés pour retrait
+  quand le chantier sera froid (`docs/PARKING.md`).
+
+---
+
+## B38 — CLOS (validé terrain 12/08 — cf. bloc B38→B41 ci-dessus) — `mutual_score` au bootstrap
 
 > **Migration serveur appliquée** par Samo (`my_shared_relationships` renvoie 16 colonnes, `mutual_score numeric`
 > en fin, 3 grants intacts, vérif anti-fuite = 0). **Code client appliqué** (commit `c316aed`) — **tsc 0,
-> vitest 1129/1129**. **OTA non publié** (en attente ; JS-only → `eas update --channel production --platform ios`).
-> Détail : `docs/DIAG-B38.md`.
+> vitest 1129/1129**. **OTA publié et validé terrain le 12/08** (updateId on-device `019ff337` ; cf. bloc
+> B38→B41 ci-dessus). Détail : `docs/DIAG-B38.md`.
 >
 > **Code client (`c316aed`)** : `SharedRelationBootstrapInput` +`mutual_score` ; `buildSharedRevealLocalState`
 > mappe `mutualScore` (gardé `revealed`) ; **backfill non-destructif** dans `mergeBootstrappedRevealSnapshot`
@@ -298,9 +342,12 @@ libellé « Visible par toi uniquement ». La vraie sync (option b) est **parké
 | B32 barre fantôme : navigate dedup + conteneurs opaques | `26bd84de-a02f-4b7e-8108-29664d287ac7` | `019fd298-1c58-76d1-a9a1-976688f71b5a` | `cfb6355` |
 | ~~B33 sonde temporaire~~ (remplacée par le revert ci-dessous) | `e9be94e2-283b-404e-a11f-e944fb44b13d` | `019fd2c3-b9b3-72e8-8f12-1acaba261e38` | `fd48942` |
 | B33 **revert sonde** (état propre, sans sonde) | `c6ea739c-1b1f-49a8-8cf0-4c3c2b7b4729` | `019fd34a-71ed-741e-bef2-560e85b8e40c` | `d9f2fae` |
+| B38 (`mutual_score` au bootstrap) + instrumentation B39 (tampon updateId/runtime + logs) | groupe au registre EAS | `019ff337-…` (updateId relevé on-device) | `c316aed` |
+| **B41** — restaure la cérémonie du 2ᵉ participant (publié par Samo, validé terrain 12/08) | groupe au registre EAS | au registre EAS | `124ec04` |
 
-tsc 0 · vitest 1127/1127 à chaque publication (la sonde `019fd2c3` a été remplacée par le revert `019fd34a`).
-Dernier OTA production servi = **`019fd34a`** (revert, propre).
+tsc 0 à chaque publication ; vitest **1127/1127** (B25→B33), **1129/1129** (B38), **1131/1131** (B41). La sonde
+`019fd2c3` a été remplacée par le revert `019fd34a`. Dernier OTA production servi = l'OTA **B41** (`124ec04`,
+publié par Samo le 12/08 ; groupe/update **au registre EAS**, non recopié ici pour ne pas inventer d'UUID).
 
 ---
 
