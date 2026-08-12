@@ -64,7 +64,7 @@ export default function ScanCardScreen() {
       }
       processScannedData(barcodes[0].data);
     } catch {
-      setError('No QR code found in this image.');
+      setError('Aucun QR code trouvé dans cette image.');
     } finally {
       setIsPickingPhoto(false);
     }

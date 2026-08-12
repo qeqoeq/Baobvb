@@ -111,13 +111,13 @@ describe('getReadingNoteText', () => {
 
   it('returns private note for waiting_other_side', () => {
     expect(getReadingNoteText(false, 'waiting_other_side')).toBe(
-      'Ta lecture reste privée jusqu’à ce que les deux côtés partagent.',
+      'Tes réponses restent privées jusqu’à ce que les deux côtés partagent.',
     );
   });
 
   it('returns private note for cooking_reveal', () => {
     expect(getReadingNoteText(false, 'cooking_reveal')).toBe(
-      'Ta lecture reste privée jusqu’à ce que les deux côtés partagent.',
+      'Tes réponses restent privées jusqu’à ce que les deux côtés partagent.',
     );
   });
 

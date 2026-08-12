@@ -216,14 +216,14 @@ export function getTierNarrative(
   tier: Tier | null,
   weakestPillar: PillarKey | null,
 ): string {
-  if (!tier) return 'Pas encore de lecture fondatrice.';
+  if (!tier) return 'Pas encore de réponses.';
   const base = TIER_NARRATIVES[tier];
   // Runtime guard (Sprint V.4). A `tier` that is truthy but absent from
   // TIER_NARRATIVES indicates either a legacy persisted label that escaped
   // Sprint V.3 normalization, or an unknown value injected from a backend/
   // bundle mismatch. In all cases we treat it as an absence of trustworthy
   // reading rather than fabricate a relational verdict.
-  if (!base) return 'Pas encore de lecture fondatrice.';
+  if (!base) return 'Pas encore de réponses.';
   if (!base.includes('%s')) return base;
   // When no pillar is honestly weakest, swap to a balanced fallback narrative
   // instead of substituting the placeholder "-" (which used to leak through).

@@ -220,7 +220,7 @@ export default function EvaluateScreen() {
     hasSavedReadingRef.current = true;
     const saved = attachPrivateReadingToRelationshipSide(evaluation, targetSide);
     if (!saved) {
-      Alert.alert('Impossible d’enregistrer la lecture', 'Ce côté n’est pas encore prêt pour une lecture privée.');
+      Alert.alert('Impossible d’enregistrer tes réponses', 'Ce côté n’est pas encore prêt pour répondre.');
       hasSavedReadingRef.current = false;
       setIsSubmitting(false);
       return;
@@ -307,7 +307,7 @@ export default function EvaluateScreen() {
         message,
       });
       Alert.alert(
-        'Lecture enregistrée en local',
+        'Réponses enregistrées en local',
         'La synchro partagée n’a pas abouti. La révélation mutuelle reste verrouillée jusqu’à ce que le serveur confirme ton côté.',
       );
     }
@@ -328,7 +328,7 @@ export default function EvaluateScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.kicker}>Lire ce lien</Text>
+        <Text style={styles.kicker}>Répondre sur ce lien</Text>
         <View style={styles.identityRow}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
@@ -453,7 +453,7 @@ export default function EvaluateScreen() {
                         );
                       })}
                     </View>
-                    <Text style={styles.unlockFooter}>Seulement pour ta lecture privée.</Text>
+                    <Text style={styles.unlockFooter}>Seulement pour tes réponses privées.</Text>
                   </View>
                 );
               })()}
@@ -475,7 +475,7 @@ export default function EvaluateScreen() {
             {isSubmitting
               ? 'Enregistrement…'
               : allRated
-                ? (isInviteNumberRelation ? 'Enregistrer et envoyer' : 'Enregistrer ma lecture')
+                ? (isInviteNumberRelation ? 'Enregistrer et envoyer' : 'Enregistrer mes réponses')
                 : `Encore ${PILLARS.length - completedCount}`}
           </Text>
         </Pressable>

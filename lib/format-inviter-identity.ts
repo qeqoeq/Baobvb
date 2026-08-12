@@ -10,7 +10,7 @@ import type { InvitePreviewResult } from './reveal-shared-types';
  *   - Handle is shown as `(@handle)` when present and non-empty.
  *   - Pure, no React, no I/O. Trivially testable.
  */
-const FALLBACK = 'Someone opened a private reading for this connection.';
+const FALLBACK = 'Quelqu’un a commencé à répondre de son côté.';
 
 /**
  * Normalizes a handle for display: trims surrounding whitespace and strips
@@ -32,6 +32,6 @@ export function formatInviterPrompt(preview: InvitePreviewResult | null): string
   const name = preview.inviter_display_name?.trim();
   if (!name) return FALLBACK;
   const handle = normalizeInviterHandle(preview.inviter_handle);
-  if (handle) return `${name} (@${handle}) opened a private reading for this connection.`;
-  return `${name} opened a private reading for this connection.`;
+  if (handle) return `${name} (@${handle}) a commencé à répondre de son côté.`;
+  return `${name} a commencé à répondre de son côté.`;
 }

@@ -247,8 +247,8 @@ export default function CircleScreen() {
                 }}
               >
                 <Text style={styles.emptyPromptHeadline}>{'Commence par quelqu’un qui compte.'}</Text>
-                <Text style={styles.emptyPromptSupport}>{'Une lecture privée. Rien ne s’ouvre tant que les deux côtés ne sont pas prêts.'}</Text>
-                <Text style={styles.emptyPromptAction}>{'Commencer une lecture'}</Text>
+                <Text style={styles.emptyPromptSupport}>{'Tes réponses restent privées. Rien ne s’ouvre tant que les deux côtés ne sont pas prêts.'}</Text>
+                <Text style={styles.emptyPromptAction}>{'Commencer à répondre'}</Text>
               </Pressable>
             )}
 
@@ -284,7 +284,7 @@ export default function CircleScreen() {
           )}
           {trustedWorlds.length > 0 && (
             <View style={styles.worldsStrip}>
-              <Text style={styles.worldsStripEyebrow}>{'MONDES OUVERTS'}</Text>
+              <Text style={styles.worldsStripEyebrow}>{'THÈMES EN COMMUN'}</Text>
               <View style={styles.worldsStripWorldsRow}>
                 {trustedWorlds.map((world, index) => (
                   <Fragment key={world}>
@@ -354,7 +354,7 @@ export default function CircleScreen() {
                 router.push('../relation/add');
               }}
             >
-              <Text style={styles.actionMenuRowText}>{'Commencer une lecture'}</Text>
+              <Text style={styles.actionMenuRowText}>{'Commencer à répondre'}</Text>
               <Text style={styles.actionMenuRowSupport}>{'Comprendre une connexion'}</Text>
             </Pressable>
             <View style={styles.actionMenuDivider} />

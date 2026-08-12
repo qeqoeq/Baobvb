@@ -17,43 +17,43 @@ const base: InvitePreviewResult = {
 describe('formatInviterPrompt', () => {
   it('falls back to "Someone" when preview is null', () => {
     expect(formatInviterPrompt(null)).toBe(
-      'Someone opened a private reading for this connection.',
+      'Quelqu’un a commencé à répondre de son côté.',
     );
   });
 
   it('falls back to "Someone" when displayName is empty', () => {
     expect(
       formatInviterPrompt({ ...base, inviter_display_name: '' }),
-    ).toBe('Someone opened a private reading for this connection.');
+    ).toBe('Quelqu’un a commencé à répondre de son côté.');
   });
 
   it('falls back to "Someone" when displayName is whitespace only', () => {
     expect(
       formatInviterPrompt({ ...base, inviter_display_name: '   ' }),
-    ).toBe('Someone opened a private reading for this connection.');
+    ).toBe('Quelqu’un a commencé à répondre de son côté.');
   });
 
   it('shows displayName alone when handle is null', () => {
     expect(
       formatInviterPrompt({ ...base, inviter_handle: null }),
-    ).toBe('Alice opened a private reading for this connection.');
+    ).toBe('Alice a commencé à répondre de son côté.');
   });
 
   it('shows displayName alone when handle is empty', () => {
     expect(
       formatInviterPrompt({ ...base, inviter_handle: '' }),
-    ).toBe('Alice opened a private reading for this connection.');
+    ).toBe('Alice a commencé à répondre de son côté.');
   });
 
   it('shows displayName alone when handle is whitespace only', () => {
     expect(
       formatInviterPrompt({ ...base, inviter_handle: '   ' }),
-    ).toBe('Alice opened a private reading for this connection.');
+    ).toBe('Alice a commencé à répondre de son côté.');
   });
 
   it('shows "displayName (@handle)" when both are present', () => {
     expect(formatInviterPrompt(base)).toBe(
-      'Alice (@alice.bao) opened a private reading for this connection.',
+      'Alice (@alice.bao) a commencé à répondre de son côté.',
     );
   });
 
@@ -64,7 +64,7 @@ describe('formatInviterPrompt', () => {
         inviter_display_name: '  Bob  ',
         inviter_handle: '  bob.bao  ',
       }),
-    ).toBe('Bob (@bob.bao) opened a private reading for this connection.');
+    ).toBe('Bob (@bob.bao) a commencé à répondre de son côté.');
   });
 
   it('renders a single @ when the stored handle already has a leading @', () => {
@@ -74,7 +74,7 @@ describe('formatInviterPrompt', () => {
         inviter_display_name: 'Yasmine',
         inviter_handle: '@yasmine.baobab',
       }),
-    ).toBe('Yasmine (@yasmine.baobab) opened a private reading for this connection.');
+    ).toBe('Yasmine (@yasmine.baobab) a commencé à répondre de son côté.');
   });
 
   it('collapses repeated @ in the stored handle to a single @', () => {
@@ -84,7 +84,7 @@ describe('formatInviterPrompt', () => {
         inviter_display_name: 'Yasmine',
         inviter_handle: '@@yasmine.baobab',
       }),
-    ).toBe('Yasmine (@yasmine.baobab) opened a private reading for this connection.');
+    ).toBe('Yasmine (@yasmine.baobab) a commencé à répondre de son côté.');
   });
 
   it('trims whitespace before stripping the @ prefix', () => {
@@ -94,7 +94,7 @@ describe('formatInviterPrompt', () => {
         inviter_display_name: 'Yasmine',
         inviter_handle: '   @yasmine.baobab   ',
       }),
-    ).toBe('Yasmine (@yasmine.baobab) opened a private reading for this connection.');
+    ).toBe('Yasmine (@yasmine.baobab) a commencé à répondre de son côté.');
   });
 
   it('never produces "@@" or "((" in any rendered output', () => {

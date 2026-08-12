@@ -155,7 +155,7 @@ export function PlaceQuickSignalSheet({
         <View style={styles.grabber} />
 
         <Text style={styles.title}>Une lecture rapide</Text>
-        <Text style={styles.caption}>Aide Bao à comprendre quand ce lieu te convient.</Text>
+        <Text style={styles.caption}>Aide-nous à mieux connaître ce lieu.</Text>
 
         <ScrollView
           style={styles.scroll}
@@ -296,7 +296,7 @@ export function PlaceQuickSignalSheet({
         ) : null}
 
         {showAcknowledgement ? (
-          <Text style={styles.acknowledgement}>Ton Bao a appris ce lieu.</Text>
+          <Text style={styles.acknowledgement}>C’est enregistré.</Text>
         ) : null}
         </ScrollView>
 

@@ -373,7 +373,7 @@ export default function GardenScreen() {
       entry,
       homonymSubline:
         (titleCounts.get(titleKey) ?? 0) >= 2
-          ? `${identity.relationDepthLabel} · ${identity.stateLabel}`
+          ? identity.stateLabel
           : undefined,
     }));
   }, [searchResults]);
@@ -454,9 +454,9 @@ export default function GardenScreen() {
             ? 'Révélation en cours'
             : revealStatus === 'waiting_other_side'
               ? 'En attente de l’autre'
-              : 'Lecture enregistrée'
+              : 'Réponses enregistrées'
         )
-        : 'Pas encore de lecture';
+        : 'Pas encore de réponses';
     const signalText = isRevealed
       ? (sharedLink ? getLinkStrengthDisplayLabel(sharedLink.label) : 'Révélé')
       : entry.toNurture
@@ -471,7 +471,7 @@ export default function GardenScreen() {
                 ? 'En attente'
                 : unread
                   ? 'Non lu'
-                  : 'Lecture enregistrée';
+                  : 'Réponses enregistrées';
     const signalStyle = isRevealed
       ? (sharedLink?.label === 'Strong'
         ? styles.mappingSignalStrengthStrong

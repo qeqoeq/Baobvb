@@ -537,7 +537,7 @@ export default function RootLayout() {
       <Stack.Screen
         name="relation/evaluate/[id]"
         options={{
-          title: 'Lecture fondatrice',
+          title: 'Premières réponses',
           headerBackTitle: '',
           headerBackButtonDisplayMode: 'minimal',
         }}

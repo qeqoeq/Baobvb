@@ -99,7 +99,7 @@ function buildSummaryFromDisplayState(
     case 'cooking_reveal':
       return {
         stateLabel: 'Baobab prépare ton lien',
-        shortDescription: 'Tes lectures privées sont enregistrées. La révélation se débloquera bientôt sur cet appareil.',
+        shortDescription: 'Tes réponses sont enregistrées. La révélation se débloquera bientôt sur cet appareil.',
       };
     case 'reveal_ready':
       return {
@@ -116,12 +116,12 @@ function buildSummaryFromDisplayState(
       return {
         stateLabel: 'Mes réponses enregistrées',
         shortDescription: 'Ton côté est enregistré. En attente de l’autre côté.',
-        waitingReason: 'L’autre côté n’a pas encore terminé sa lecture privée.',
+        waitingReason: 'L’autre côté n’a pas encore terminé de répondre.',
       };
     case 'private_reading_pending':
       return {
         stateLabel: 'Mes réponses en attente',
-        shortDescription: 'Une lecture privée est nécessaire avant toute révélation.',
+        shortDescription: 'Répondre est nécessaire avant toute révélation.',
       };
     case 'draft':
       return {

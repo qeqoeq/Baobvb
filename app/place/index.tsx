@@ -99,7 +99,7 @@ export default function PlacesScreen() {
         </View>
         <Text style={styles.title}>Tes lieux</Text>
         <Text style={styles.subtitle}>
-          Une lecture privée des endroits où ton monde laisse des traces.
+          Une lecture privée des endroits où tes thèmes laissent des traces.
         </Text>
         <View style={styles.headerAccentLine} />
       </View>
@@ -125,7 +125,7 @@ export default function PlacesScreen() {
             ))}
           </View>
           <Text style={styles.territoryCaption}>
-            {'Ce que ton monde de confiance retrouve.'}
+            {'Ce que tes thèmes de confiance retrouvent.'}
           </Text>
         </View>
       )}

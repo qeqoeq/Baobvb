@@ -205,7 +205,7 @@ export default function InviteByNumberScreen() {
           </View>
 
           {/* ── Copy ── */}
-          <Text style={styles.title}>{'Envoyer un Bao'}</Text>
+          <Text style={styles.title}>{'Envoyer une invitation'}</Text>
           <Text style={styles.body}>{'Choisis quelqu’un que tu connais.'}</Text>
 
           {/* ── Error ── */}

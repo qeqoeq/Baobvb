@@ -149,7 +149,7 @@ export function getReadingNoteText(nameRevealed: boolean, revealStatus: RevealSt
   // without reducing it to a score, label, or definitive judgement.
   if (nameRevealed) return 'Un résultat n’est pas un jugement.';
   if (revealStatus === 'reveal_ready') return 'La révélation est une action unique.';
-  return 'Ta lecture reste privée jusqu’à ce que les deux côtés partagent.';
+  return 'Tes réponses restent privées jusqu’à ce que les deux côtés partagent.';
 }
 
 export function getTemporaryRelationDepth(input: {
@@ -303,9 +303,9 @@ export function getRelationNextAction(input: {
 
   if (!input.hasEvaluation) {
     return {
-      title: 'Commence par une lecture privée',
+      title: 'Commence par répondre de ton côté',
       body: 'Reste privée jusqu’à ce que les deux côtés y soient.',
-      ctaLabel: 'Lire cette relation',
+      ctaLabel: 'Répondre sur ce lien',
       ctaKind: 'evaluate',
     };
   }

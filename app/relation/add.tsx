@@ -297,10 +297,10 @@ export default function AddRelationScreen() {
         <View pointerEvents="none" style={styles.glowAccent} />
         <View style={styles.card}>
           <Text style={styles.hubKicker}>{'BAOBAB'}</Text>
-          <Text style={styles.title}>{'Commencer une lecture privée'}</Text>
+          <Text style={styles.title}>{'Commencer à répondre de ton côté'}</Text>
 
           <Pressable style={styles.button} onPress={() => setMode('private')}>
-            <Text style={styles.buttonText}>{'Commencer une lecture'}</Text>
+            <Text style={styles.buttonText}>{'Commencer à répondre'}</Text>
           </Pressable>
 
           <Pressable
@@ -337,7 +337,7 @@ export default function AddRelationScreen() {
           <Text style={styles.subtitle}>{'Donne un nom à cette personne, pour toi.'}</Text>
 
           <View style={styles.scanHintCard}>
-            <Text style={styles.scanHintTitle}>{'Carte Bao'}</Text>
+            <Text style={styles.scanHintTitle}>{'Ma carte'}</Text>
             <Text style={styles.scanHintText}>
               {params.prefillHandle ?? 'Aucun pseudo sur cette carte'}
             </Text>
@@ -398,7 +398,7 @@ export default function AddRelationScreen() {
       <View style={styles.card}>
         {!fromClaim && <Text style={styles.hubKicker}>{'BAOBAB'}</Text>}
         <Text style={styles.title}>
-          {fromClaim ? 'Nomme cette personne' : 'Commencer une lecture'}
+          {fromClaim ? 'Nomme cette personne' : 'Commencer à répondre'}
         </Text>
         <Text style={styles.subtitle}>
           {fromClaim

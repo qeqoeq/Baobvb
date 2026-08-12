@@ -28,9 +28,9 @@ export function getRelationshipInviteMessage(params: {
   senderName?: string;
 }): RelationshipInvitePayload {
   const url = buildRelationshipInviteUrl(params.relationId, params.inviteToken);
-  const sender = params.senderName?.trim() || 'Someone';
+  const sender = params.senderName?.trim() || 'Quelqu’un';
   return {
-    message: `${sender} started a private reading of your connection on Baobab. Only the two of you can see it. Reveal it together when you're both ready.`,
+    message: `${sender} vous invite sur Baobab. Répondez chacun de votre côté, puis ouvrez le résultat ensemble — vous êtes les seuls à pouvoir le voir.`,
     url,
   };
 }

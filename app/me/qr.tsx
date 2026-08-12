@@ -209,7 +209,7 @@ export default function MyCardQrScreen() {
               <View style={styles.loadingContent}>
                 <BaoSprout />
                 <Text style={styles.loadingTitle}>{'Ton code se forme'}</Text>
-                <Text style={styles.loadingBody}>{'On aligne les deux lectures.'}</Text>
+                <Text style={styles.loadingBody}>{'On aligne vos deux réponses.'}</Text>
                 {provisionFailed ? (
                   <Pressable onPress={handleRetry} style={styles.retryAction}>
                     <Text style={styles.retryActionText}>{'Réessayer'}</Text>

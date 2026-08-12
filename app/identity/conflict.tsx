@@ -43,7 +43,7 @@ export default function IdentityConflictScreen() {
           {'. Pour garder tes relations synchronisées, reconnecte-toi avec le compte propriétaire de cette carte.'}
         </Text>
         <Text style={styles.reassure}>
-          {'Rien n’est supprimé sur cet appareil. Tes notes privées et tes lectures restent exactement où elles sont.'}
+          {'Rien n’est supprimé sur cet appareil. Tes notes privées et tes réponses restent exactement où elles sont.'}
         </Text>
 
         <Pressable

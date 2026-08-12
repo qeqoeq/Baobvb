@@ -35,7 +35,7 @@ function micro(opts: {
 
 describe('getTierNarrative', () => {
   it('null tier → no-reading fallback', () => {
-    expect(getTierNarrative(null, 'trust')).toBe('Pas encore de lecture fondatrice.');
+    expect(getTierNarrative(null, 'trust')).toBe('Pas encore de réponses.');
   });
 
   it('Rooted → canonical narrative, no substitution', () => {
@@ -96,42 +96,42 @@ describe('getTierNarrative', () => {
   // hydration normalization through a runtime mutation path, or an unknown
   // value injected from a backend / bundle mismatch. These tests reproduce
   // the crash and lock the defensive contract: any unrecognized tier must
-  // fall back to 'Pas encore de lecture fondatrice.', never crash, never expose
+  // fall back to 'Pas encore de réponses.', never crash, never expose
   // the legacy label, never fabricate a relational verdict.
 
   it('legacy "Ghost" tier (Sprint-pre-V.1 leak) → "Pas encore de lecture fondatrice." (no crash)', () => {
     expect(getTierNarrative('Ghost' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'Pas encore de lecture fondatrice.',
+      'Pas encore de réponses.',
     );
   });
 
   it('legacy "Spark" tier → "Pas encore de lecture fondatrice." (no crash)', () => {
     expect(getTierNarrative('Spark' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'Pas encore de lecture fondatrice.',
+      'Pas encore de réponses.',
     );
   });
 
   it('legacy "Thrill" tier → "Pas encore de lecture fondatrice." (no crash)', () => {
     expect(getTierNarrative('Thrill' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'Pas encore de lecture fondatrice.',
+      'Pas encore de réponses.',
     );
   });
 
   it('legacy "Vibrant" tier → "Pas encore de lecture fondatrice." (no crash)', () => {
     expect(getTierNarrative('Vibrant' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'Pas encore de lecture fondatrice.',
+      'Pas encore de réponses.',
     );
   });
 
   it('legacy "Legend" tier → "Pas encore de lecture fondatrice." (no crash)', () => {
     expect(getTierNarrative('Legend' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'Pas encore de lecture fondatrice.',
+      'Pas encore de réponses.',
     );
   });
 
   it('arbitrary unknown tier (defensive: any future / backend / bundle mismatch) → fallback', () => {
     expect(getTierNarrative('Unknown' as unknown as Parameters<typeof getTierNarrative>[0], null)).toBe(
-      'Pas encore de lecture fondatrice.',
+      'Pas encore de réponses.',
     );
   });
 
@@ -139,7 +139,7 @@ describe('getTierNarrative', () => {
     // Verifies the guard fires before the weakestPillar / substitution paths
     // could touch an undefined `base`.
     expect(getTierNarrative('Ghost' as unknown as Parameters<typeof getTierNarrative>[0], 'trust')).toBe(
-      'Pas encore de lecture fondatrice.',
+      'Pas encore de réponses.',
     );
   });
 

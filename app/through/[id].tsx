@@ -106,7 +106,7 @@ export default function ThroughScreen() {
       router.push(`../through/${member.id}`);
     } else if (member.gatewayAccessState === 'locked') {
       if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
-      Alert.alert('Pas encore ouvert', `Termine ta révélation avec ${member.name} pour accéder à son monde.`);
+      Alert.alert('Pas encore ouvert', `Termine ta révélation avec ${member.name} pour accéder à ses thèmes.`);
     } else {
       if (process.env.EXPO_OS === 'ios') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       router.push(`../relation/${member.id}`);

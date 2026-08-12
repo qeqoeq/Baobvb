@@ -906,7 +906,7 @@ export default function RelationDetailScreen() {
                     ) : null}
                     {evaluation ? (
                       <View style={styles.pillarsSection}>
-                        <Text style={styles.signalsEyebrow}>Ta lecture</Text>
+                        <Text style={styles.signalsEyebrow}>Tes réponses</Text>
                         {PILLAR_ORDER.map((key) => {
                           const dots = reading?.pillarDots?.[key] ?? [];
                           return (
@@ -936,13 +936,13 @@ export default function RelationDetailScreen() {
                         {deeperSignal.lines.map((line, idx) => (
                           <Text key={idx} style={styles.deeperSignalLine}>{line}</Text>
                         ))}
-                        <Text style={styles.deeperSignalAttribution}>D’après ta lecture privée.</Text>
+                        <Text style={styles.deeperSignalAttribution}>D’après tes réponses privées.</Text>
                       </View>
                     ) : null}
                   </>
                 ) : (
                   <View style={styles.privateStateCard}>
-                    <Text style={styles.privateStateTitle}>On amène ta lecture partagée…</Text>
+                    <Text style={styles.privateStateTitle}>On amène vos deux réponses…</Text>
                     <Text style={styles.privateStateText}>Un instant.</Text>
                   </View>
                 )
@@ -992,7 +992,7 @@ export default function RelationDetailScreen() {
                   )}
                   {evaluation && reading?.pillarDots ? (
                     <View style={styles.privateReadbackBlock}>
-                      <Text style={styles.privateReadbackEyebrow}>Ta lecture</Text>
+                      <Text style={styles.privateReadbackEyebrow}>Tes réponses</Text>
                       {PILLAR_ORDER.map((key) => {
                         const dots = reading.pillarDots?.[key] ?? [];
                         return (
@@ -1025,7 +1025,7 @@ export default function RelationDetailScreen() {
                   Prêt·e à comprendre cette relation ensemble ?
                 </Text>
                 <Text style={styles.mutualRevealMomentBody}>
-                  Ta lecture reste privée. Invite-la seulement quand tu veux une révélation mutuelle.
+                  Tes réponses restent privées. Invite-la seulement quand tu veux une révélation mutuelle.
                 </Text>
               </View>
             ) : null}
@@ -1073,7 +1073,7 @@ export default function RelationDetailScreen() {
               <View style={styles.sectionLine} />
             </View>
             <View style={styles.unreadCard}>
-              <Text style={styles.unreadTitle}>Pas encore de lecture</Text>
+              <Text style={styles.unreadTitle}>Pas encore de réponses</Text>
               <Text style={styles.unreadText}>
                 Reste privée jusqu’à ce que les deux côtés y soient.
               </Text>

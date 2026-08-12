@@ -40,7 +40,7 @@ export default function RelationshipLexiconScreen() {
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>Aucun nom de relation découvert pour l’instant</Text>
           <Text style={styles.emptyText}>
-            Termine ta première lecture fondatrice pour révéler un premier nom.
+            Termine tes premières réponses pour révéler un premier nom.
           </Text>
         </View>
       ) : (

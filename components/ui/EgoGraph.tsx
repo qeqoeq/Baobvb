@@ -476,7 +476,7 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
       {members.length === 0 && emptyText !== null && (
         <View style={[styles.emptyOverlay, { top: cy + effectiveCenterR + spacing.md }]}>
           <Text style={styles.emptyText}>
-            {emptyText ?? 'Reveal a connection\nto see your world.'}
+            {emptyText ?? 'Révèle un lien\npour voir ton réseau.'}
           </Text>
         </View>
       )}
