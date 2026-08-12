@@ -18,14 +18,14 @@ export const colors = {
     text: {
       primary: '#F2EDE6',    // B43: warm white (was #F4F1EA / never pure #FFFFFF)
       secondary: '#9A9088',  // B43: warm grey (was #B8B3A8)
-      muted: '#7E7A72',      // kept (warm grey)
+      muted: '#8B8279',      // B43-bis: lightened for ≥4.5:1 on #141210 (was #7E7A72)
     },
 
     semantic: {
       growth: '#7D9070',     // B43: sage positive (was #7A9E7E)
       caution: '#D4A054',
-      alert: '#C46B5C',
-      trust: '#C4623C',      // B43: de-tealed to terracotta (was #38C8B5) — see report: now in the same family as `alert`
+      alert: '#A33F2E',      // B43-bis: dark brick, separated from `trust` terracotta (was #C46B5C)
+      trust: '#C4623C',      // B43: de-tealed to terracotta (was #38C8B5)
     },
 
     border: {

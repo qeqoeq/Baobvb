@@ -225,7 +225,7 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
           <SvgText
             x={cx} y={cy + (effectiveCenterR < 26 ? 5 : 6)}
             fontSize={effectiveCenterR < 26 ? 14 : 18} fontWeight="700"
-            fill={colors.text.primary}
+            fill="#141210"
             textAnchor="middle"
           >
             {meInitial}
@@ -282,6 +282,9 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
           const dotR       = node.nodeRadius <= GATEWAY_NODE_RADIUS.low + 1 ? 3.5 : 4.5;
           const fontSize   = node.nodeRadius <= GATEWAY_NODE_RADIUS.low + 1 ? 10 : 13;
           const nodeColors = LINK_QUALITY_NODE_COLOR[member.linkQualityBand];
+          // B43-bis: dark initial on the two light solid fills (strong/terracotta,
+          // moderate/sage); light initial stays on the dark faint node.
+          const initialColor = member.linkQualityBand === 'faint' ? colors.text.primary : '#141210';
 
           return (
             <G key={node.id} opacity={isUnread ? 0.50 : 1}>
@@ -312,7 +315,7 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
               <SvgText
                 x={node.cx} y={node.cy + (fontSize <= 10 ? 4 : 5)}
                 fontSize={fontSize} fontWeight="600"
-                fill={colors.text.primary}
+                fill={initialColor}
                 textAnchor="middle"
               >
                 {initial}
