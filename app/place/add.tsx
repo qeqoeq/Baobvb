@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: '#F2EDE6',
     fontWeight: '700',
   },
 });

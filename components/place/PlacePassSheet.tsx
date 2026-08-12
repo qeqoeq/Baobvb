@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   passButtonText: {
-    color: '#FFFFFF',
+    color: '#F2EDE6',
     fontWeight: '700',
     fontSize: 14,
   },

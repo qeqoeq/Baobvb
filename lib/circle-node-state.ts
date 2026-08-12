@@ -241,8 +241,8 @@ export const LINK_QUALITY_NODE_COLOR: Record<
   LinkQualityBand,
   { fill: string; fillOpacity: number; stroke: string; strokeOpacity: number; strokeWidth: number }
 > = {
-  strong:   { fill: colors.accent.deepTeal,     fillOpacity: 0.18, stroke: colors.accent.deepTeal,  strokeOpacity: 0.80, strokeWidth: 1.5 },
-  moderate: { fill: colors.accent.mutedSage,     fillOpacity: 0.14, stroke: colors.accent.mutedSage, strokeOpacity: 0.70, strokeWidth: 1   },
+  strong:   { fill: colors.accent.deepTeal,     fillOpacity: 1,    stroke: colors.accent.deepTeal,  strokeOpacity: 0.80, strokeWidth: 1.5 },
+  moderate: { fill: colors.accent.mutedSage,     fillOpacity: 1,    stroke: colors.accent.mutedSage, strokeOpacity: 0.70, strokeWidth: 1   },
   faint:    { fill: colors.background.secondary, fillOpacity: 1,    stroke: colors.border.strong,     strokeOpacity: 1,    strokeWidth: 1   },
 };
 

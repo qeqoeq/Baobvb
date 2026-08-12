@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   keepButtonText: {
-    color: '#FFFFFF',
+    color: '#F2EDE6',
     fontWeight: '700',
     fontSize: 14,
   },

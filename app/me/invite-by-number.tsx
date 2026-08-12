@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md + 2,
     marginTop: spacing.xs,
     // Soft teal shadow — adds depth and life to the CTA.
-    shadowColor: colors.accent.deepTeal,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.28,
     shadowRadius: 14,

@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   doneButtonText: {
-    color: '#FFFFFF',
+    color: '#F2EDE6',
     fontWeight: '700',
   },
 });

@@ -487,7 +487,7 @@ export default function InviteArrivalScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#111A15',
+    backgroundColor: colors.background.primary,
   },
 
   // ── Atmospheric background glows ─────────────────────────────────────────────
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent.warmGold + '88',
     borderWidth: 1.5,
     borderColor: colors.accent.warmGold + 'D0',
-    shadowColor: colors.accent.warmGold,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
     shadowRadius: 12,
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 5.5,
     backgroundColor: colors.accent.warmGold,
-    shadowColor: colors.accent.warmGold,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
     shadowRadius: 6,

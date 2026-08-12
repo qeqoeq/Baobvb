@@ -30,9 +30,9 @@ const p = {
 // Avatar ring colours — legible on dark surfaces.
 const avatarPaletteReveal = [
   '#A04818', // terracotta
-  '#1A6040', // deep teal
+  '#4E6B3A', // B43: moss (was deep teal '#1A6040')
   '#702858', // plum
-  '#245480', // slate blue
+  '#6B4A2A', // B43: bronze (was slate blue '#245480')
   '#486818', // olive
   '#803A18', // burnt sienna
 ] as const;
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     borderColor: p.heroBorder,
     padding: spacing.lg,
     gap: spacing.xs,
-    shadowColor: p.heroGlow,
+    shadowColor: '#000000',
     shadowOpacity: 0.4,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 8 },
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     right: 10,
     top: 52,
     backgroundColor: p.amber,
-    shadowColor: p.amber,
+    shadowColor: '#000000',
     shadowOpacity: 0.8,
     shadowRadius: 7,
     shadowOffset: { width: 0, height: 0 },

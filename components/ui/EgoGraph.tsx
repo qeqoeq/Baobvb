@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle as SvgCircle, Defs, G, Line, RadialGradient, Rect, Stop, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle as SvgCircle, G, Line, Text as SvgText } from 'react-native-svg';
 import { Image } from 'expo-image';
 
 import { colors } from '../../constants/colors';
@@ -11,7 +11,6 @@ import {
   GATEWAY_NODE_RADIUS,
   LINK_QUALITY_NODE_COLOR,
   computeEgoLayoutV2,
-  computeOrbitRadii,
   getCircleNodeStatusLabel,
   resolveDisplayNames,
   sortAndBucketEgoMembers,
@@ -127,8 +126,6 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
     return applyNodeSpread(layoutNodes, cx, cy);
   }, [layoutNodes, cx, cy]);
 
-  const orbitRadii = useMemo(() => computeOrbitRadii(canvas), [canvas]);
-
   // Resolved display labels — first name only, disambiguated on collision
   const displayNames = useMemo(() => resolveDisplayNames(visible), [visible]);
 
@@ -158,32 +155,8 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
   return (
     <View style={{ width: size, height: size, alignSelf: 'center' }} pointerEvents="box-none">
       <Svg width={size} height={size}>
-        {/* Gradient definitions */}
-        <Defs>
-          <RadialGradient id="worldBg" cx="50%" cy="50%" rx="50%" ry="50%">
-            <Stop offset="0%"   stopColor={colors.background.tertiary} stopOpacity={0.65} />
-            <Stop offset="100%" stopColor={colors.background.primary}  stopOpacity={0}    />
-          </RadialGradient>
-        </Defs>
-
-        {/* Canvas depth — soft radial illumination from center */}
-        <Rect x={0} y={0} width={size} height={size} fill="url(#worldBg)" />
-
-        {/* Orbit ghost rings — barely perceptible, dashed, just a hint of tiers */}
-        {orbitRadii.map((r, i) =>
-          r > 0 ? (
-            <SvgCircle
-              key={`ring-${i}`}
-              cx={cx} cy={cy}
-              r={r}
-              fill="none"
-              stroke={colors.border.soft}
-              strokeWidth={1}
-              strokeOpacity={0.12}
-              strokeDasharray="2 10"
-            />
-          ) : null,
-        )}
+        {/* B43: removed the radial-illumination background and the concentric
+            ghost rings — diffuse glow that read as an "AI" canvas. */}
 
         {/* Lines from center to each orbit node — quality-tinted */}
         {cloudNodes.map((node) => {
@@ -230,9 +203,8 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
           );
         })}
 
-        {/* Center — Me/Gateway — layered glow; radius + color driven by props */}
-        <SvgCircle cx={cx} cy={cy} r={effectiveCenterR + 12} fill={effectiveCenterFill} fillOpacity={0.08} />
-        <SvgCircle cx={cx} cy={cy} r={effectiveCenterR + 6}  fill={effectiveCenterFill} fillOpacity={0.14} />
+        {/* Center — Me/Gateway — solid fill + fine ring; radius + color driven by props.
+            B43: removed the two layered glow halos (r+12, r+6). */}
         {/* Fill circle — only when no photo; photo is rendered in a View layer above SVG */}
         {!me.photoUri && (
           <SvgCircle cx={cx} cy={cy} r={effectiveCenterR} fill={effectiveCenterFill} fillOpacity={0.88} />
@@ -313,24 +285,17 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
 
           return (
             <G key={node.id} opacity={isUnread ? 0.50 : 1}>
-              {/* Gateway halo — filled glow + fine stroke ring */}
+              {/* Gateway indicator — fine stroke ring only.
+                  B43: removed the filled glow halo (r+9); kept the thin ring. */}
               {node.gatewayAccessState === 'open' && (
-                <>
-                  <SvgCircle
-                    cx={node.cx} cy={node.cy}
-                    r={node.nodeRadius + 9}
-                    fill={colors.accent.warmGold}
-                    fillOpacity={0.07}
-                  />
-                  <SvgCircle
-                    cx={node.cx} cy={node.cy}
-                    r={node.nodeRadius + 4}
-                    fill="none"
-                    stroke={colors.accent.warmGold}
-                    strokeWidth={0.8}
-                    strokeOpacity={0.40}
-                  />
-                </>
+                <SvgCircle
+                  cx={node.cx} cy={node.cy}
+                  r={node.nodeRadius + 4}
+                  fill="none"
+                  stroke={colors.accent.warmGold}
+                  strokeWidth={0.8}
+                  strokeOpacity={0.40}
+                />
               )}
 
               {/* Node body */}
