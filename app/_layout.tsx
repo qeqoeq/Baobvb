@@ -514,6 +514,10 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
+        name="place/edit/[id]"
+        options={{ title: 'Modifier le lieu' }}
+      />
+      <Stack.Screen
         name="relation/[id]"
         options={{
           title: '',

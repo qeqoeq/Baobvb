@@ -44,7 +44,7 @@ export default function ProfileScreen() {
       {/* ── Back ─────────────────────────────────────────────────────────────── */}
       <Pressable style={styles.backRow} onPress={() => router.push('/(tabs)')}>
         <Ionicons name="chevron-back" size={17} color={colors.text.muted} />
-        <Text style={styles.backLabel}>{'Jardin'}</Text>
+        <Text style={styles.backLabel}>{'Liens'}</Text>
       </Pressable>
 
       {/* ── Identity ─────────────────────────────────────────────────────────── */}
@@ -132,7 +132,7 @@ export default function ProfileScreen() {
       <View style={styles.quietLinks}>
         <TouchableOpacity style={styles.quietLink} onPress={handleScan} activeOpacity={0.7}>
           <Ionicons name="scan-outline" size={15} color={colors.text.muted} />
-          <Text style={styles.quietLinkLabel}>{'Scanner un Bao'}</Text>
+          <Text style={styles.quietLinkLabel}>{'Scanner un code'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.quietLink} onPress={() => router.push('/me/invite-by-number')} activeOpacity={0.7}>
           <Ionicons name="person-add-outline" size={15} color={colors.text.muted} />

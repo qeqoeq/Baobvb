@@ -15,7 +15,7 @@ export default function TabLayout() {
         sceneStyle: { backgroundColor: colors.background.primary },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Jardin' }} />
+      <Tabs.Screen name="index" options={{ title: 'Liens' }} />
       <Tabs.Screen
         name="garden"
         options={{

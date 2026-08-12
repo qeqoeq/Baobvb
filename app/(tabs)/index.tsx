@@ -202,13 +202,13 @@ export default function CircleScreen() {
             <View style={styles.baobabMark} />
             <Text style={styles.headerKicker}>{'BAOBAB'}</Text>
           </View>
-          <Text style={styles.headerTitle}>Ton Jardin</Text>
+          <Text style={styles.headerTitle}>Mes liens</Text>
         </View>
         <View style={styles.headerRight}>
           {networkCount > 0 && (
             <View style={styles.networkBadge}>
               <Text style={styles.networkCount}>{networkCount}</Text>
-              <Text style={styles.networkLabel}>{'dans ton Jardin'}</Text>
+              <Text style={styles.networkLabel}>{'dans tes liens'}</Text>
             </View>
           )}
           <Pressable
@@ -301,7 +301,7 @@ export default function CircleScreen() {
                 ))}
               </View>
               <Text style={styles.worldsStripCaption}>
-                {'Signaux privés de ton Jardin.'}
+                {'Signaux privés de tes liens.'}
               </Text>
               <Pressable
                 onPress={() => {

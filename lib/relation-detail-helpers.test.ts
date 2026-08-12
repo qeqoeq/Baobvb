@@ -85,7 +85,7 @@ describe('getVisibleTierLabel', () => {
   });
 
   it('returns "Private reading" when not revealed but has evaluation', () => {
-    expect(getVisibleTierLabel(false, true, 'Anchor')).toBe('Lecture privée');
+    expect(getVisibleTierLabel(false, true, 'Anchor')).toBe('Mes réponses');
   });
 
   it('returns "Unread" when no evaluation regardless of reveal', () => {
@@ -99,7 +99,7 @@ describe('getVisibleTierLabel', () => {
 describe('getReadingNoteText', () => {
   it('returns revealed note when nameRevealed is true', () => {
     expect(getReadingNoteText(true, 'revealed')).toBe(
-      'Une lecture partagée est une direction, pas un verdict.',
+      'Un résultat n’est pas un jugement.',
     );
   });
 
@@ -124,7 +124,7 @@ describe('getReadingNoteText', () => {
   it('nameRevealed takes priority over reveal_ready status', () => {
     // Status is reveal_ready but name is already revealed → revealed note wins
     expect(getReadingNoteText(true, 'reveal_ready')).toBe(
-      'Une lecture partagée est une direction, pas un verdict.',
+      'Un résultat n’est pas un jugement.',
     );
   });
 });
@@ -215,7 +215,7 @@ describe('getRelationNextAction', () => {
       deliveryChannelOpened: false,
     });
     expect(result.title).toBe('Ton côté est prêt');
-    expect(result.body).toBe('Lecture privée enregistrée. La révélation attend les deux côtés.');
+    expect(result.body).toBe('Mes réponses enregistrées. La révélation attend les deux côtés.');
   });
 
   it('reveal_ready without local evaluation shows Open reveal (bootstrap / claim relations)', () => {
@@ -316,7 +316,7 @@ describe('getSharedRevealDisplayState', () => {
     const result = getSharedRevealDisplayState({ nameRevealed: true, visibleScore: 65, revealedTier: null });
     expect(result.kind).toBe('score');
     if (result.kind === 'score') {
-      expect(result.tier).toBe('Lecture partagée');
+      expect(result.tier).toBe('Vos deux réponses');
     }
   });
 
@@ -331,7 +331,7 @@ describe('getSharedRevealDisplayState', () => {
     expect(result.kind).toBe('score');
     if (result.kind === 'score') {
       expect(result.score).toBe(45);
-      expect(result.tier).toBe('Lecture partagée');
+      expect(result.tier).toBe('Vos deux réponses');
     }
   });
 
@@ -470,16 +470,16 @@ describe('getSharedRevealDisplayState pre-reveal safety', () => {
 
 describe('getVisibleTierLabel pre-reveal safety', () => {
   it('nameRevealed=false + hasEvaluation=true + badgeLabel=Anchor → "Private reading"', () => {
-    expect(getVisibleTierLabel(false, true, 'Anchor')).toBe('Lecture privée');
+    expect(getVisibleTierLabel(false, true, 'Anchor')).toBe('Mes réponses');
   });
 
   it('nameRevealed=false + hasEvaluation=true + badgeLabel=Rooted → "Private reading"', () => {
-    expect(getVisibleTierLabel(false, true, 'Rooted')).toBe('Lecture privée');
+    expect(getVisibleTierLabel(false, true, 'Rooted')).toBe('Mes réponses');
   });
 
   it('nameRevealed=false + hasEvaluation=true + every tier name → "Private reading"', () => {
     for (const tierName of ['Distant', 'Forming', 'Active', 'Steady', 'Anchor', 'Rooted']) {
-      expect(getVisibleTierLabel(false, true, tierName)).toBe('Lecture privée');
+      expect(getVisibleTierLabel(false, true, tierName)).toBe('Mes réponses');
     }
   });
 

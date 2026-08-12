@@ -146,7 +146,7 @@ export default function MyCardQrScreen() {
       <View style={styles.content}>
         <View style={styles.brandZone}>
           <Text style={styles.brandKicker}>{'BAOBAB'}</Text>
-          <Text style={styles.brandTitle}>{'Mon Bao'}</Text>
+          <Text style={styles.brandTitle}>{'Mon code'}</Text>
         </View>
 
         <Animated.View
@@ -202,13 +202,13 @@ export default function MyCardQrScreen() {
                   )}
                 </View>
               </View>
-              <Text style={styles.qrScanLabel}>{'Scanne mon Bao'}</Text>
+              <Text style={styles.qrScanLabel}>{'Scanne mon code'}</Text>
             </>
           ) : (
             <View style={[styles.qrPlaceholder, styles.qrPlaceholderLoading]}>
               <View style={styles.loadingContent}>
                 <BaoSprout />
-                <Text style={styles.loadingTitle}>{'Ton Bao se forme'}</Text>
+                <Text style={styles.loadingTitle}>{'Ton code se forme'}</Text>
                 <Text style={styles.loadingBody}>{'On aligne les deux lectures.'}</Text>
                 {provisionFailed ? (
                   <Pressable onPress={handleRetry} style={styles.retryAction}>
@@ -227,7 +227,7 @@ export default function MyCardQrScreen() {
       )}
 
       <Pressable onPress={() => router.push('../me/edit')} style={styles.editAction}>
-        <Text style={styles.editActionText}>{'Modifier mon Bao'}</Text>
+        <Text style={styles.editActionText}>{'Modifier mon code'}</Text>
       </Pressable>
     </View>
   );

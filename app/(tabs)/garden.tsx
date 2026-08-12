@@ -564,7 +564,7 @@ export default function GardenScreen() {
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Rechercher dans ton Jardin"
+          placeholder="Rechercher un lien"
           placeholderTextColor={colors.text.muted}
           style={styles.searchInput}
           autoCorrect={false}

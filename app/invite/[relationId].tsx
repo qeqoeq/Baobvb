@@ -406,7 +406,7 @@ export default function InviteArrivalScreen() {
         <View style={styles.textZone}>
           <View style={styles.brandBlock}>
             <Text style={styles.kicker}>{'BAOBAB'}</Text>
-            <Text style={styles.kickerSubtitle}>{'Lecture privée'}</Text>
+            <Text style={styles.kickerSubtitle}>{'Mes réponses'}</Text>
           </View>
           <Text style={styles.title}>
             {preview?.inviter_display_name?.trim()
@@ -458,7 +458,7 @@ export default function InviteArrivalScreen() {
           <>
             <Text style={styles.stateTitle}>{'Tu as rejoint cette invitation'}</Text>
             <Text style={styles.stateBody}>
-              {'Ta participation a été enregistrée. Cette relation n’est pas encore disponible dans ton Jardin.'}
+              {'Ta participation a été enregistrée. Cette relation n’est pas encore disponible dans tes liens.'}
             </Text>
             <Pressable onPress={exitInviteFlow} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>{'OK'}</Text>

@@ -59,12 +59,12 @@ export default function ScanCardScreen() {
       if (picked.canceled || !picked.assets[0]) return;
       const barcodes = await scanFromURLAsync(picked.assets[0].uri, ['qr']);
       if (barcodes.length === 0) {
-        setError('Aucun QR Bao trouvé dans cette image.');
+        setError('Aucun QR code trouvé dans cette image.');
         return;
       }
       processScannedData(barcodes[0].data);
     } catch {
-      setError('No Bao QR found in this image.');
+      setError('No QR code found in this image.');
     } finally {
       setIsPickingPhoto(false);
     }

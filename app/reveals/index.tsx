@@ -137,7 +137,7 @@ export default function RevealLinksScreen() {
           }}
           style={styles.headerBack}
         >
-          <Text style={styles.headerBackText}>Jardin</Text>
+          <Text style={styles.headerBackText}>Liens</Text>
         </Pressable>
       </View>
 
@@ -172,7 +172,7 @@ export default function RevealLinksScreen() {
             Quand les deux côtés y sont, un lien apparaît ici.
           </Text>
           <Pressable onPress={() => router.push('/(tabs)')} style={styles.emptyCTA}>
-            <Text style={styles.emptyCTAText}>Jardin</Text>
+            <Text style={styles.emptyCTAText}>Liens</Text>
           </Pressable>
         </View>
       ) : (

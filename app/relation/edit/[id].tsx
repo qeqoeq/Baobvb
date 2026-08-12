@@ -80,7 +80,7 @@ export default function EditRelationScreen() {
         <Pressable onPress={save} style={styles.primaryButton}>
           <Text style={styles.primaryButtonText}>Enregistrer la relation</Text>
         </Pressable>
-        <Text style={styles.helperText}>Les changements apparaissent aussitôt dans le Jardin et cette relation.</Text>
+        <Text style={styles.helperText}>Les changements apparaissent aussitôt dans tes liens et cette relation.</Text>
         <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>Annuler</Text>
         </Pressable>

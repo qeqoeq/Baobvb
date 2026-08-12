@@ -134,7 +134,7 @@ export function getVisibleTierLabel(
   badgeLabel: string,
 ): string {
   if (nameRevealed && hasEvaluation) return badgeLabel;
-  if (hasEvaluation) return 'Lecture privée';
+  if (hasEvaluation) return 'Mes réponses';
   return 'Non lu';
 }
 
@@ -147,7 +147,7 @@ export function getReadingNoteText(nameRevealed: boolean, revealStatus: RevealSt
   // a verdict. Doctrine: Baobab is a private GPS for relationships, not a
   // social rating system. The reading helps orient how to read the link,
   // without reducing it to a score, label, or definitive judgement.
-  if (nameRevealed) return 'Une lecture partagée est une direction, pas un verdict.';
+  if (nameRevealed) return 'Un résultat n’est pas un jugement.';
   if (revealStatus === 'reveal_ready') return 'La révélation est une action unique.';
   return 'Ta lecture reste privée jusqu’à ce que les deux côtés partagent.';
 }
@@ -195,7 +195,7 @@ export function getRelationSheetIdentity(input: {
       stateLabel: relation.archived ? 'Archivé' : (isRevealed ? 'Connexion partagée' : 'Privé'),
       relationDepth,
       relationDepthLabel,
-      anchorLabel: 'Ancré par',
+      anchorLabel: 'Ajouté par',
       anchorValue: 'Numéro de téléphone',
       anchorHint: maskPhoneAnchor(relation.anchorValue) ?? null,
     };
@@ -213,12 +213,12 @@ export function getRelationSheetIdentity(input: {
     return {
       privateLabel,
       primaryTitle: privateLabel,
-      titleEyebrow: 'Identité partagée',
+      titleEyebrow: 'Sur Baobab',
       supportingText,
       stateLabel: relation.archived ? 'Archivé' : 'Connexion partagée',
       relationDepth,
       relationDepthLabel,
-      anchorLabel: 'Ancré par',
+      anchorLabel: 'Ajouté par',
       anchorValue: handleDisplay ?? 'Connexion Baobab partagée',
       anchorHint: 'Actif sur Baobab.',
     };
@@ -233,7 +233,7 @@ export function getRelationSheetIdentity(input: {
       stateLabel: relation.archived ? 'Archivé' : 'Scanné',
       relationDepth,
       relationDepthLabel,
-      anchorLabel: 'Ancré par',
+      anchorLabel: 'Ajouté par',
       anchorValue: 'Scan',
       anchorHint: null,
     };
@@ -247,7 +247,7 @@ export function getRelationSheetIdentity(input: {
     stateLabel: relation.archived ? 'Archivé' : 'Privé',
     relationDepth,
     relationDepthLabel,
-    anchorLabel: 'Ancré par',
+    anchorLabel: 'Ajouté par',
     anchorValue: 'Étiquette locale',
     anchorHint: null,
   };
@@ -284,7 +284,7 @@ export function getRelationNextAction(input: {
   if (input.revealStatus === 'revealed') {
     return {
       title: 'Vous y êtes tous les deux',
-      body: 'Ouvre ce que Baobab a trouvé.',
+      body: 'Ouvre le résultat.',
       ctaLabel: 'Ouvrir la révélation',
       ctaKind: 'reveal',
     };
@@ -295,7 +295,7 @@ export function getRelationNextAction(input: {
   if (input.revealStatus === 'reveal_ready') {
     return {
       title: 'Vous y êtes tous les deux',
-      body: 'Ouvre ce que Baobab a trouvé.',
+      body: 'Ouvre le résultat.',
       ctaLabel: 'Ouvrir la révélation',
       ctaKind: 'reveal',
     };
@@ -334,7 +334,7 @@ export function getRelationNextAction(input: {
     if (input.relation.source === 'claim') {
       return {
         title: 'Ton côté est prêt',
-        body: 'Lecture privée enregistrée. La révélation attend les deux côtés.',
+        body: 'Mes réponses enregistrées. La révélation attend les deux côtés.',
         ctaLabel: null,
         ctaKind: null,
       };
@@ -344,14 +344,14 @@ export function getRelationNextAction(input: {
       title: 'Ton côté est prêt',
       body: isInviteNumber
         ? 'Envoie l’invitation pour l’ouvrir ensemble.'
-        : 'Lecture privée enregistrée. La révélation attend les deux côtés.',
+        : 'Mes réponses enregistrées. La révélation attend les deux côtés.',
       ctaLabel: isInviteNumber ? 'Envoyer l’invitation' : 'Inviter',
       ctaKind: 'invite',
     };
   }
 
   return {
-    title: 'Lecture privée enregistrée',
+    title: 'Mes réponses enregistrées',
     body: 'Pas encore d’étape partagée.',
     ctaLabel: null,
     ctaKind: null,
@@ -427,7 +427,7 @@ export function getSharedRevealDisplayState(input: {
 }): SharedRevealDisplayState {
   if (!input.nameRevealed) return { kind: 'hidden' };
   if (input.visibleScore !== null) {
-    return { kind: 'score', score: input.visibleScore, tier: input.revealedTier ?? 'Lecture partagée' };
+    return { kind: 'score', score: input.visibleScore, tier: input.revealedTier ?? 'Vos deux réponses' };
   }
   return { kind: 'pending' };
 }

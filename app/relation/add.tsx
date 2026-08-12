@@ -182,7 +182,7 @@ export default function AddRelationScreen() {
           )
         : null;
       if (existingByCardMeId) {
-        Alert.alert('Cette personne existe déjà', `${getNormalizedPrivateLabel(existingByCardMeId)} est déjà dans ton Jardin.`, [
+        Alert.alert('Cette personne existe déjà', `${getNormalizedPrivateLabel(existingByCardMeId)} est déjà dans tes liens.`, [
           { text: 'Annuler', style: 'cancel' },
           { text: 'Ouvrir la relation', onPress: () => router.replace(`/relation/${existingByCardMeId.id}`) },
         ]);

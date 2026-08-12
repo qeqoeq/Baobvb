@@ -114,13 +114,13 @@ function buildSummaryFromDisplayState(
       };
     case 'private_reading_saved_waiting_other_side':
       return {
-        stateLabel: 'Lecture privée enregistrée',
+        stateLabel: 'Mes réponses enregistrées',
         shortDescription: 'Ton côté est enregistré. En attente de l’autre côté.',
         waitingReason: 'L’autre côté n’a pas encore terminé sa lecture privée.',
       };
     case 'private_reading_pending':
       return {
-        stateLabel: 'Lecture privée en attente',
+        stateLabel: 'Mes réponses en attente',
         shortDescription: 'Une lecture privée est nécessaire avant toute révélation.',
       };
     case 'draft':

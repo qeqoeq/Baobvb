@@ -421,7 +421,7 @@ export default function RelationDetailScreen() {
   const relationIdentity = getRelationSheetIdentity({
     relation,
   });
-  const isSharedIdentity = relationIdentity.titleEyebrow === 'Identité partagée';
+  const isSharedIdentity = relationIdentity.titleEyebrow === 'Sur Baobab';
   const isScannedIdentity = relationIdentity.titleEyebrow === 'Contact scanné';
   const deliveryChannelOpened = Boolean(relation.inviteDeliveryOpenedAt);
   const nextAction = getRelationNextAction({
@@ -431,7 +431,7 @@ export default function RelationDetailScreen() {
     nameRevealed,
     deliveryChannelOpened,
   });
-  const readingSectionLabel = nameRevealed ? 'Lecture partagée' : 'Lecture privée';
+  const readingSectionLabel = nameRevealed ? 'Vos deux réponses' : 'Mes réponses';
   // visibleScore is the revealed source of truth: mutual when available, private as fallback.
   const visibleScore = revealedScore;
   const sharedRevealDisplay = getSharedRevealDisplayState({ nameRevealed, visibleScore, revealedTier });
@@ -809,11 +809,6 @@ export default function RelationDetailScreen() {
                   ) : null}
                 </View>
               )}
-
-              <View style={styles.depthRow}>
-                <Text style={styles.depthLabel}>Profondeur</Text>
-                <Text style={styles.depthValue}>{relationIdentity.relationDepthLabel}</Text>
-              </View>
             </>
           )}
         </View>
@@ -846,7 +841,7 @@ export default function RelationDetailScreen() {
             </Pressable>
           ) : nextAction.ctaLabel ? (
             <Pressable onPress={handlePrimaryAction} style={styles.ctaButton} disabled={isRevealing || revealAwaitingLoad}>
-              <Text style={styles.ctaButtonText}>{revealAwaitingLoad ? 'Préparation de la révélation…' : nextAction.ctaLabel}</Text>
+              <Text style={styles.ctaButtonText}>{revealAwaitingLoad ? 'Ouverture…' : nextAction.ctaLabel}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -956,9 +951,9 @@ export default function RelationDetailScreen() {
                   <Text style={styles.privateStateDate}>
                     Enregistrée le {evaluation?.createdAt ? new Date(evaluation.createdAt).toLocaleDateString() : null}
                   </Text>
-                  <Text style={styles.revealReadyTitle}>Lecture partagée prête</Text>
+                  <Text style={styles.revealReadyTitle}>Vos deux réponses prêtes</Text>
                   <Text style={styles.privateStateText}>
-                    Ouvre-la au-dessus.
+                    Ouvre-les au-dessus.
                   </Text>
                 </View>
               ) : (
@@ -968,7 +963,7 @@ export default function RelationDetailScreen() {
                   </Text>
                   {readingVariant === 'waiting_other_side' ? (
                     <>
-                      <Text style={styles.privateStateTitle}>Lecture privée enregistrée</Text>
+                      <Text style={styles.privateStateTitle}>Mes réponses enregistrées</Text>
                       <Text style={styles.privateStateText}>En attente de son côté.</Text>
                     </>
                   ) : readingVariant === 'cooking' ? (
@@ -983,7 +978,7 @@ export default function RelationDetailScreen() {
                       </>
                     ) : (
                       <>
-                        <Text style={styles.privateStateTitle}>Lecture privée enregistrée</Text>
+                        <Text style={styles.privateStateTitle}>Mes réponses enregistrées</Text>
                         <Text style={styles.privateStateText}>
                           Verrouillée jusqu’à l’ouverture de la révélation.
                         </Text>
@@ -1037,8 +1032,8 @@ export default function RelationDetailScreen() {
 
             {privateLayerSections.length > 0 ? (
               <View style={styles.privateLayerBlock}>
-                <Text style={styles.privateLayerEyebrow}>Couche privée</Text>
-                <Text style={styles.privateLayerSubtitle}>Seulement sur cet appareil. Non partagé.</Text>
+                <Text style={styles.privateLayerEyebrow}>Le détail</Text>
+                <Text style={styles.privateLayerSubtitle}>Visible seulement par moi.</Text>
                 {privateLayerSections.map((section) => (
                   <View key={section.pillar} style={styles.privateLayerSection}>
                     <Text style={styles.privateLayerPillarLabel}>{section.pillarLabel}</Text>
@@ -1125,7 +1120,7 @@ export default function RelationDetailScreen() {
 
       {canUseOpenWorlds && (
         <View style={styles.openWorldsBlock}>
-          <Text style={styles.openWorldsEyebrow}>{'MONDES PRIVÉS'}</Text>
+          <Text style={styles.openWorldsEyebrow}>{'THÈMES'}</Text>
           <Text style={styles.openWorldsCaption}>
             {'Seulement sur cet appareil — jusqu’à 3.'}
           </Text>
@@ -1212,9 +1207,9 @@ export default function RelationDetailScreen() {
           <View style={styles.sharedReadingMomentSeal}>
             <View style={styles.sharedReadingMomentSeed} />
           </View>
-          <Text style={styles.sharedReadingMomentEyebrow}>Lecture partagée</Text>
-          <Text style={styles.sharedReadingMomentTitle}>Lien ouvert</Text>
-          <Text style={styles.sharedReadingMomentSubtitle}>Une direction, pas un verdict.</Text>
+          <Text style={styles.sharedReadingMomentEyebrow}>Vos deux réponses</Text>
+          <Text style={styles.sharedReadingMomentTitle}>C’est ouvert</Text>
+          <Text style={styles.sharedReadingMomentSubtitle}>Un résultat n’est pas un jugement.</Text>
           <Pressable
             onPress={() => setShowSharedReadingMoment(false)}
             style={styles.sharedReadingMomentContinue}

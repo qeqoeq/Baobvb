@@ -35,7 +35,7 @@ describe('getHumanRelationRevealDisplay', () => {
     });
     expect(result.kind).toBe('signature');
     if (result.kind === 'signature') {
-      expect(result.tier).toBe('Lecture partagée');
+      expect(result.tier).toBe('Vos deux réponses');
     }
   });
 
