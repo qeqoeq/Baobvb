@@ -2803,6 +2803,20 @@ function mergeBootstrappedRevealSnapshot(
   local: RelationshipRevealSnapshot,
   server: RelationshipRevealSnapshot,
 ): RelationshipRevealSnapshot {
+  // B41: server first_viewed_at is global (open_shared_reveal stamps it once, not per side), so a
+  // participant who never ran the LOCAL ceremony (no local firstViewedAt) is held at reveal_ready —
+  // never revealed — so the ceremony can play for this side. Only downgrade documented here.
+  if (server.status === 'revealed' && local.firstViewedAt === undefined) {
+    if (local.status === 'reveal_ready') return local; // already held — idempotent, no re-render churn
+    return {
+      ...local,
+      status: 'reveal_ready',
+      revealed: false,
+      relationshipNameRevealed: false,
+      mutualScore: undefined,
+      tier: undefined,
+    };
+  }
   if (REVEAL_STATUS_RANK[server.status] <= REVEAL_STATUS_RANK[local.status]) {
     // B38 backfill: when the relation is ALREADY revealed locally but carries no score
     // (revealed before B38 exposed mutual_score — the case of every pre-existing reveal,
@@ -2913,6 +2927,19 @@ function upsertBootstrappedSharedRelations(rows: SharedRelationBootstrapInput[])
     }
 
     const localState = buildSharedRevealLocalState(row);
+    // B41: a brand-new bootstrapped relation has never had a LOCAL reveal ceremony (server
+    // first_viewed_at is global, not per side) → hold a server-revealed row at reveal_ready so
+    // the "open reveal" cinematic can play for this participant instead of arriving pre-opened.
+    if (localState.revealSnapshot.status === 'revealed' && localState.revealSnapshot.firstViewedAt === undefined) {
+      localState.revealSnapshot = {
+        ...localState.revealSnapshot,
+        status: 'reveal_ready',
+        revealed: false,
+        relationshipNameRevealed: false,
+        mutualScore: undefined,
+        tier: undefined,
+      };
+    }
     const revealed = localState.revealSnapshot.revealed;
 
     const counterpartName = row.counterpart_display_name?.trim() ?? '';

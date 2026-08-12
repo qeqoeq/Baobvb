@@ -12,6 +12,11 @@ import type { RevealSnapshotSource, SharedRevealStatus } from './reveal-shared-t
 const BASELINE_LOCAL_SNAPSHOT: RelationshipRevealSnapshot = {
   status: 'waiting_other_side',
   revealed: false,
+  // B41: firstViewedAt present means this side has already opened the reveal locally, so the
+  // ceremony gate does NOT apply — these tests isolate the overlay-adoption contract (tier
+  // normalization, field preservation). The gate itself (firstViewedAt absent) is covered by
+  // the dedicated "B41 ceremony gate" describe below.
+  firstViewedAt: '2026-01-01T00:00:00.000Z',
 };
 
 function buildSharedReveal(
@@ -33,6 +38,48 @@ function buildSharedReveal(
     ...overrides,
   };
 }
+
+// ── getEffectiveRevealSnapshot — B41 ceremony gate ─────────────────────────
+// The reveal ceremony is per-participant, but the server's first_viewed_at is global
+// (open_shared_reveal stamps it once). When THIS side has no local firstViewedAt, the
+// overlay must hold the relation at reveal_ready and expose no score/tier — otherwise a
+// participant who never opened would see the reveal (pre-existing leak this fix closes).
+describe('getEffectiveRevealSnapshot — B41 ceremony gate', () => {
+  it('server revealed + local firstViewedAt ABSENT → held at reveal_ready, nothing exposed', () => {
+    const local: RelationshipRevealSnapshot = {
+      status: 'revealed',
+      revealed: true,
+      relationshipNameRevealed: true,
+      // firstViewedAt intentionally undefined — never opened on this side.
+    };
+    const server = buildSharedReveal({
+      status: 'revealed',
+      mutual_score: 90,
+      tier: 'Rooted' as unknown as RevealSnapshotSource['tier'],
+      first_viewed_at: '2026-07-01T00:00:00.000Z',
+    });
+    const result = getEffectiveRevealSnapshot(local, server);
+    expect(result.status).toBe('reveal_ready');
+    expect(result.revealed).toBe(false);
+    expect(result.mutualScore).toBeUndefined();
+    expect(result.tier).toBeUndefined();
+    expect(result.firstViewedAt).toBeUndefined(); // the server's GLOBAL first_viewed_at must NOT be adopted
+  });
+
+  it('server revealed + local firstViewedAt PRESENT → normal overlay (score/tier exposed)', () => {
+    const local: RelationshipRevealSnapshot = {
+      status: 'revealed',
+      revealed: true,
+      relationshipNameRevealed: true,
+      firstViewedAt: '2026-06-01T00:00:00.000Z',
+    };
+    const server = buildSharedReveal({ status: 'revealed', mutual_score: 90, tier: null });
+    const result = getEffectiveRevealSnapshot(local, server);
+    expect(result.status).toBe('revealed');
+    expect(result.mutualScore).toBe(90);
+    expect(result.tier).toBe('Rooted'); // getMutualTier(90) = Rooted
+  });
+});
 
 // ── getEffectiveRevealSnapshot — Sprint V.5 tier normalization ──────────────
 // V.5 plugs the runtime tier leak on the live reveal-precedence path. Before
@@ -234,7 +281,11 @@ describe('getEffectiveRevealSnapshot — Fix A: local revealed / server non-reve
     expect(result.tier).toBe('Anchor');
   });
 
-  it('A3: local reveal_ready + server revealed → server wins (server more advanced)', () => {
+  it('A3 (B41): local reveal_ready + server revealed but NO local firstViewedAt → held at reveal_ready (ceremony owed)', () => {
+    // B41 change of intent: previously the server "won" and the relation went straight to
+    // revealed on bootstrap. But the server's first_viewed_at is global (open_shared_reveal
+    // stamps it once, not per side), so a participant who never opened locally (no local
+    // firstViewedAt) must keep the ceremony — the overlay must NOT expose revealed/score/tier.
     const localReady: RelationshipRevealSnapshot = {
       status: 'reveal_ready',
       revealed: false,
@@ -242,8 +293,10 @@ describe('getEffectiveRevealSnapshot — Fix A: local revealed / server non-reve
     };
     const server = buildSharedReveal({ status: 'revealed', mutual_score: 80, tier: 'Steady' });
     const result = getEffectiveRevealSnapshot(localReady, server);
-    expect(result.status).toBe('revealed');
-    expect(result.mutualScore).toBe(80);
+    expect(result.status).toBe('reveal_ready');
+    expect(result.revealed).toBe(false);
+    expect(result.mutualScore).toBeUndefined();
+    expect(result.tier).toBeUndefined();
   });
 
   it('A4: local revealed + server revealed → server wins (both revealed, normal path unchanged)', () => {

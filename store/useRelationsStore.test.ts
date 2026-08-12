@@ -1426,13 +1426,15 @@ describe('upsertBootstrappedSharedRelations — B22 reveal status re-sync', () =
     resetDevStateToSeed();
   });
 
-  it('Y1: existing waiting + server revealed → local advances to revealed', () => {
+  it('Y1 (B41): existing waiting + server revealed, never opened locally → advances to reveal_ready (ceremony owed)', () => {
+    // B41: a never-opened relation (no local firstViewedAt) is held at reveal_ready, NOT
+    // revealed — the server's global first_viewed_at must not skip this side's ceremony.
     injectExisting({ status: 'waiting_other_side', revealed: false });
     upsertBootstrappedSharedRelations([serverRow('revealed')]);
     const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
-    expect(rel.localState.revealSnapshot.status).toBe('revealed');
-    expect(rel.localState.revealSnapshot.revealed).toBe(true);
-    expect(rel.relationshipNameRevealed).toBe(true);
+    expect(rel.localState.revealSnapshot.status).toBe('reveal_ready');
+    expect(rel.localState.revealSnapshot.revealed).toBe(false);
+    expect(rel.relationshipNameRevealed).toBe(false);
   });
 
   it('Y2: firstViewedAt is preserved when advancing (B5 gate not reset)', () => {
@@ -1460,19 +1462,26 @@ describe('upsertBootstrappedSharedRelations — B22 reveal status re-sync', () =
     expect(rel.localState.revealSnapshot.tier).toBe('Distant');
   });
 
-  it('Y5: a re-synced relation is pass-eligible (revealed + canonicalRelationId + !archived)', () => {
+  it('Y5 (B41): a re-synced never-opened relation is NOT yet pass-eligible (eligibility deferred to the ceremony)', () => {
+    // B41 refines B22: pass-eligibility requires the local reveal ceremony (revealed +
+    // firstViewedAt), not just the server status. A never-opened relation stays reveal_ready,
+    // so it is not eligible until this side opens it. (An already-opened relation stays
+    // eligible — see Y2/Y3 which carry a local firstViewedAt.)
     injectExisting({ status: 'waiting_other_side', revealed: false });
     upsertBootstrappedSharedRelations([serverRow('revealed')]);
     const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
     const eligible = rel.localState.revealSnapshot.revealed && !!rel.canonicalRelationId && !rel.archived;
-    expect(eligible).toBe(true);
+    expect(eligible).toBe(false);
+    expect(rel.localState.revealSnapshot.status).toBe('reveal_ready');
   });
 
-  it('Y6: a brand-new revealed row still creates a revealed relation (creation path unchanged)', () => {
+  it('Y6 (B41): a brand-new revealed row is created as reveal_ready (ceremony owed to this participant)', () => {
+    // B41: the creation path holds a server-revealed row at reveal_ready for a never-opened side.
     upsertBootstrappedSharedRelations([serverRow('revealed', { relationship_id: 'b22-new-canon' })]);
     const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === 'b22-new-canon')!;
     expect(rel).toBeDefined();
-    expect(rel.localState.revealSnapshot.revealed).toBe(true);
+    expect(rel.localState.revealSnapshot.status).toBe('reveal_ready');
+    expect(rel.localState.revealSnapshot.revealed).toBe(false);
   });
 
   it('Y7 (B38): an already-revealed but scoreless relation adopts the server mutual_score (backfill)', () => {
@@ -1488,7 +1497,9 @@ describe('upsertBootstrappedSharedRelations — B22 reveal status re-sync', () =
   });
 
   it('Y8 (B38): backfill is non-destructive — an existing local score is never overwritten', () => {
-    injectExisting({ status: 'revealed', revealed: true, mutualScore: 42, tier: 'Forming' });
+    // B41: firstViewedAt present so the ceremony gate does NOT apply — isolates the B38
+    // non-destructive backfill contract on an already-opened relation.
+    injectExisting({ status: 'revealed', revealed: true, mutualScore: 42, tier: 'Forming', firstViewedAt: '2026-06-01T09:00:00Z' });
     upsertBootstrappedSharedRelations([serverRow('revealed', { mutual_score: 90 })]);
     const rel = getRelationsSnapshot().find((r) => r.canonicalRelationId === CANON)!;
     expect(rel.localState.revealSnapshot.mutualScore).toBe(42); // local wins, server 90 ignored

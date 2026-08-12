@@ -8,6 +8,23 @@ export function getEffectiveRevealSnapshot(
 ): RelationshipRevealSnapshot {
   if (!sharedReveal) return localSnapshot;
 
+  // B41: the reveal ceremony is per-participant, but the server's first_viewed_at is global
+  // (open_shared_reveal stamps it once, for whoever opens first — not per side). A participant
+  // who never ran the LOCAL ceremony (no local firstViewedAt) must NOT see revealed / score /
+  // tier through the overlay: that is the pre-existing leak. Hold the gate at reveal_ready so
+  // the "open reveal" CTA shows and nothing is revealed until this side opens it locally.
+  if (sharedReveal.status === 'revealed' && localSnapshot.firstViewedAt === undefined) {
+    return {
+      ...localSnapshot,
+      status: 'reveal_ready',
+      revealed: false,
+      relationshipNameRevealed: false,
+      mutualScore: undefined,
+      tier: undefined,
+      firstViewedAt: undefined,
+    };
+  }
+
   // Fix A (B10): local 'revealed' wins over a less-advanced server status.
   // Happens for legacy relations where the server row is stuck at reveal_ready
   // with mutual_score IS NULL (Guard B). Absorb mutualScore/tier from the server
