@@ -15,11 +15,14 @@ import { buildPersonCardPayload, encodePersonCardPayload } from '../../lib/perso
 import { useRelationsStore } from '../../store/useRelationsStore';
 import { PrimaryNavBar } from '../../components/ui/PrimaryNavBar';
 import { b39Entries } from '../../lib/b39-buffer'; // [B39] TEMPORARY — remove by grepping [B39]
+import RevealCardLab from '../../components/dev/RevealCardLab'; // [B44] TEMPORARY — remove by grepping [B44]
 
 export default function ProfileScreen() {
   const { me, relations, updateShowBaobabCode } = useRelationsStore();
   // [B39] TEMPORARY — hidden production diagnostic panel (long-press the build stamp).
   const [b39Open, setB39Open] = useState(false);
+  // [B44] TEMPORARY — reveal-card visual test bench.
+  const [b44Open, setB44Open] = useState(false);
 
   const baobabCode = deriveBaobabCode(me.publicProfileId);
   const isCardReady = Boolean(me.publicProfileId);
@@ -148,11 +151,17 @@ export default function ProfileScreen() {
       </View>
 
       {/* Build/OTA identity — permanent, discreet. Long-press (~2s) opens the [B39] panel. */}
-      <Pressable onLongPress={() => setB39Open(true)} delayLongPress={2000}>
-        <Text style={styles.buildStamp}>
-          {`v${Updates.runtimeVersion ?? '?'} · ${(Updates.updateId ?? 'embedded').slice(0, 8)}`}
-        </Text>
-      </Pressable>
+      <View style={styles.stampRow}>
+        <Pressable onLongPress={() => setB39Open(true)} delayLongPress={2000}>
+          <Text style={styles.buildStamp}>
+            {`v${Updates.runtimeVersion ?? '?'} · ${(Updates.updateId ?? 'embedded').slice(0, 8)}`}
+          </Text>
+        </Pressable>
+        {/* [B44] TEMPORARY — reveal-card visual lab entry. Remove by grepping [B44]. */}
+        <Pressable onPress={() => setB44Open(true)} hitSlop={8}>
+          <Text style={styles.b44Link}>· essai carte</Text>
+        </Pressable>
+      </View>
 
       <View pointerEvents="none" style={styles.treeZone}>
         <View style={styles.treeGlow} />
@@ -161,6 +170,9 @@ export default function ProfileScreen() {
 
     </ScrollView>
       <PrimaryNavBar />
+
+      {/* [B44] TEMPORARY — reveal-card visual test bench. Remove by grepping [B44]. */}
+      {b44Open ? <RevealCardLab onClose={() => setB44Open(false)} /> : null}
 
       {/* [B39] TEMPORARY — hidden production diagnostic panel. Remove by grepping [B39]. */}
       {b39Open ? (
@@ -492,6 +504,20 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: colors.text.muted,
     opacity: 0.5,
+    letterSpacing: 0.3,
+  },
+  // [B44] TEMPORARY — remove by grepping [B44].
+  stampRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  b44Link: {
+    marginTop: spacing.sm,
+    fontSize: 9,
+    color: colors.accent.warmGold,
+    opacity: 0.7,
     letterSpacing: 0.3,
   },
   // [B39] TEMPORARY panel styles — remove by grepping [B39].

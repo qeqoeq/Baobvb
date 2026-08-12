@@ -17,6 +17,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@expo-google-fonts/fraunces": "^0.4.1",
+    "@expo-google-fonts/sora": "^0.4.2",
+    "@expo-google-fonts/space-grotesk": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",
     "@noble/ed25519": "^1.7.3",
     "@noble/hashes": "^1.7.1",
