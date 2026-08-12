@@ -96,7 +96,7 @@ export default function ProfileScreen() {
         }}
         activeOpacity={0.85}
       >
-        <Text style={styles.baoCardLabel}>{'MON BAO'}</Text>
+        <Text style={styles.baoCardLabel}>{'MON CODE'}</Text>
 
         {isCardReady ? (
           <View style={styles.baoQrSurface}>

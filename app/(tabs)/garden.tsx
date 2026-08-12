@@ -687,7 +687,7 @@ export default function GardenScreen() {
                 <View style={styles.emptyCard}>
                   <Text style={styles.emptyTitle}>Les liens partagés apparaîtront ici</Text>
                   <Text style={styles.emptyText}>
-                    Après une révélation mutuelle, ce jardin commence à montrer la force des liens.
+                    Après une révélation mutuelle, tes liens commencent à montrer leur force.
                   </Text>
                 </View>
               )}
