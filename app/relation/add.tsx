@@ -1,5 +1,6 @@
+import * as Contacts from 'expo-contacts';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
@@ -11,6 +12,7 @@ import {
   type PublicProfileLookupState,
 } from '../../lib/lookup-public-profile';
 import { getNormalizedPrivateLabel } from '../../lib/relation-model';
+import { resolvePickedContactName } from '../../lib/contact-display-name';
 import { useRelationsStore } from '../../store/useRelationsStore';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -111,6 +113,23 @@ export default function AddRelationScreen() {
 
   // ── Create logic ──────────────────────────────────────────────────────────
   const canSubmit = sanitizeRelationName(name).length > 0;
+
+  // B47: pick a contact only to PREFILL the name — name-only (no number, email,
+  // id or photo; nothing is sent to the server). Cancelling changes no state, so
+  // the free-text field stays fully usable (no dead-end).
+  const pickingContactRef = useRef(false);
+  const handlePickContact = async () => {
+    if (pickingContactRef.current) return;
+    pickingContactRef.current = true;
+    try {
+      const label = resolvePickedContactName(await Contacts.presentContactPickerAsync());
+      if (label !== null) setName(label);
+    } catch {
+      // Native picker error (e.g. concurrent call) — ignore; typing a name stays available.
+    } finally {
+      pickingContactRef.current = false;
+    }
+  };
 
   const handleCreate = () => {
     if (!canSubmit) return;
@@ -406,6 +425,13 @@ export default function AddRelationScreen() {
             : 'Toi seul·e le verras.'}
         </Text>
 
+        {/* B47: choosing a contact and typing a name are two equivalent, both-visible
+            paths — the picker only prefills the field below, which stays editable. */}
+        <Pressable onPress={() => void handlePickContact()} style={styles.contactPickBtn}>
+          <Text style={styles.contactPickText}>Choisir dans mes contacts</Text>
+        </Pressable>
+        <Text style={styles.contactPickHint}>Le nom reste sur ton téléphone.</Text>
+
         <TextInput
           value={name}
           onChangeText={setName}
@@ -579,6 +605,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text.primary,
+  },
+  // B47: contact picker — outline style so it reads as co-equal to typing a name.
+  contactPickBtn: {
+    borderWidth: 1,
+    borderColor: colors.accent.deepTeal + '66',
+    borderRadius: radius.md,
+    alignItems: 'center',
+    paddingVertical: spacing.sm + 2,
+  },
+  contactPickText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.accent.deepTeal,
+  },
+  contactPickHint: {
+    marginTop: spacing.xs,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.muted,
+    textAlign: 'center',
   },
   helperText: {
     marginTop: -spacing.xs,
