@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import EgoGraph from '../../components/ui/EgoGraph';
+import NetworkBackground from '../../components/ui/NetworkBackground';
 import { getFoundationalReadings } from '../../lib/foundational-reading';
 import { PrimaryNavBar } from '../../components/ui/PrimaryNavBar';
 import { getRelationSheetIdentity } from '../../lib/relation-detail-helpers';
@@ -27,12 +28,15 @@ import {
   getRelationOpenWorldLabel,
 } from '../../lib/relation-open-worlds';
 import { useRelationsStore } from '../../store/useRelationsStore';
+import { computeNetworkTemperature } from '../../lib/network-temperature';
 import { PlaceReceivedSheet } from '../../components/place/PlaceReceivedSheet';
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CircleScreen() {
   const { me, relations, evaluations, places, receivedObjects, setReceivedObjectStatus } = useRelationsStore();
+  // B46: single aggregate value feeding the reactive background (never reads axes).
+  const networkTemperature = useMemo(() => computeNetworkTemperature(relations), [relations]);
   const { width: screenWidth } = useWindowDimensions();
   const { bottom: bottomInset } = useSafeAreaInsets();
   const atlasSize = screenWidth;
@@ -194,6 +198,8 @@ export default function CircleScreen() {
 
   return (
     <View style={styles.screen}>
+      {/* B46: reactive full-screen background behind the graph (derives from network temperature). */}
+      <NetworkBackground temperature={networkTemperature} />
       <View pointerEvents="none" style={styles.glowAccent} />
 
       <View style={styles.header}>
@@ -494,7 +500,7 @@ const styles = StyleSheet.create({
 
   worldCard: {
     flex: 1,
-    backgroundColor: colors.background.secondary,
+    backgroundColor: 'transparent', // B46: let the reactive gradient show behind the graph (was background.secondary)
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.accent.warmGold + '20',
