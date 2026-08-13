@@ -1,36 +1,36 @@
 export const colors = {
     background: {
-      primary: '#141210',    // B43: warm brown-black (was cold #111313)
-      secondary: '#1C1917',  // B43: card surface (was #171A18)
-      tertiary: '#24201D',   // B43: warm elevated step (was #1D211D)
+      primary: '#1A1220',    // B45 Nuit prune: very dark plum (was warm #141210)
+      secondary: '#241A2A',  // B45: card surface
+      tertiary: '#2E2235',   // B45: elevated surface
     },
 
     accent: {
-      warmGold: '#D8A85F',   // kept (already warm)
-      softAmber: '#E8B87A',  // kept
-      deepTeal: '#C4623C',   // B43: terracotta primary accent (was teal #38C8B5); key name kept to avoid restructuring 42 call sites
-      leafGreen: '#7D9070',  // B43: sage (positive / Santé « Solide »), was #8FBC72
-      mutedSage: '#7A9E7E',  // kept (sage green)
-      dustyRose: '#B07282',
-      softCoral: '#E98F6F',
+      warmGold: '#D8A85F',   // kept — deep gold, harmonises with Nuit prune
+      softAmber: '#E8B87A',  // kept — warm amber (= primary accent value)
+      deepTeal: '#E8B87A',   // B45: PRIMARY accent = or chaud (key name kept to avoid restructuring ~42 call sites)
+      leafGreen: '#8FAF97',  // B45: muted green (unlisted — harmonised to Nuit prune, = growth)
+      mutedSage: '#8FAF97',  // B45: muted green (unlisted — harmonised)
+      dustyRose: '#A88BA6',  // B45: SECONDARY accent = mauve poudré
+      softCoral: '#E98F6F',  // kept — warm coral (unlisted — minor "nurture" status accent)
     },
 
     text: {
-      primary: '#F2EDE6',    // B43: warm white (was #F4F1EA / never pure #FFFFFF)
-      secondary: '#9A9088',  // B43: warm grey (was #B8B3A8)
-      muted: '#8B8279',      // B43-bis: lightened for ≥4.5:1 on #141210 (was #7E7A72)
+      primary: '#F2EBDF',    // B45
+      secondary: '#A89BA6',  // B45
+      muted: '#8B7F8A',      // B45
     },
 
     semantic: {
-      growth: '#7D9070',     // B43: sage positive (was #7A9E7E)
-      caution: '#D4A054',
-      alert: '#A33F2E',      // B43-bis: dark brick, separated from `trust` terracotta (was #C46B5C)
-      trust: '#C4623C',      // B43: de-tealed to terracotta (was #38C8B5)
+      growth: '#8FAF97',     // B45: muted green
+      caution: '#D8A85F',    // B45: gold
+      alert: '#A85A6B',      // B45: plum-red — never a bright red
+      trust: '#E8B87A',      // B45: aligned to primary gold (unlisted — see report)
     },
 
     border: {
-      soft: '#2E2926',       // B43: warm border (was #252C25)
-      strong: '#3A342F',     // B43: warm step (was #303830)
+      soft: '#33263A',       // B45
+      strong: '#40304A',     // B45
     },
   } as const;
 

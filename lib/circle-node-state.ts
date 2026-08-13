@@ -242,7 +242,7 @@ export const LINK_QUALITY_NODE_COLOR: Record<
   { fill: string; fillOpacity: number; stroke: string; strokeOpacity: number; strokeWidth: number }
 > = {
   strong:   { fill: colors.accent.deepTeal,     fillOpacity: 1,    stroke: colors.accent.deepTeal,  strokeOpacity: 0.80, strokeWidth: 1.5 },
-  moderate: { fill: colors.accent.mutedSage,     fillOpacity: 1,    stroke: colors.accent.mutedSage, strokeOpacity: 0.70, strokeWidth: 1   },
+  moderate: { fill: colors.accent.dustyRose,     fillOpacity: 1,    stroke: colors.accent.dustyRose, strokeOpacity: 0.70, strokeWidth: 1   },
   faint:    { fill: colors.background.secondary, fillOpacity: 1,    stroke: colors.border.strong,     strokeOpacity: 1,    strokeWidth: 1   },
 };
 

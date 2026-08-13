@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle as SvgCircle, G, Line, Text as SvgText } from 'react-native-svg';
 import { Image } from 'expo-image';
 
@@ -17,6 +17,10 @@ import {
   type EgoLayoutNodeV2,
   type MapMember,
 } from '../../lib/circle-node-state';
+
+// B45: an SVG group we can animate (opacity breathing). JS-driven — SVG attribute,
+// not native-driver eligible; amplitude is small and the period long, so it is cheap.
+const AnimatedG = Animated.createAnimatedComponent(G);
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -152,6 +156,26 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
 
   const dismissTooltip = useCallback(() => setTooltip(null), []);
 
+  // B45: slow, continuous "breathing" on node opacity (~4.2s period), split into
+  // 3 phase groups started out of sync so the graph feels alive — never a blink,
+  // no glow. Small amplitude (0.82→1.0). JS-driven (SVG opacity attribute).
+  const breathe = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
+  useEffect(() => {
+    const loops = breathe.map((v) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(v, { toValue: 1, duration: 2100, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+          Animated.timing(v, { toValue: 0, duration: 2100, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        ]),
+      ),
+    );
+    const timers = loops.map((l, i) => setTimeout(() => l.start(), i * 1400));
+    return () => {
+      timers.forEach(clearTimeout);
+      loops.forEach((l) => l.stop());
+    };
+  }, [breathe]);
+
   return (
     <View style={{ width: size, height: size, alignSelf: 'center' }} pointerEvents="box-none">
       <Svg width={size} height={size}>
@@ -163,19 +187,22 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
           if (node.id === OVERFLOW_ID) return null;
           const member = visible.find((m) => m.id === node.id);
           if (!member) return null;
+          // B45: links more visible than before (raised opacity + brighter faint),
+          // duotone gold/mauve. No glow.
           const lineOpacity =
-            member.linkQualityBand === 'strong'   ? 0.50 :
-            member.linkQualityBand === 'moderate' ? 0.30 : 0.10;
+            member.linkQualityBand === 'strong'   ? 0.72 :
+            member.linkQualityBand === 'moderate' ? 0.52 : 0.30;
           const lineColor =
-            member.linkQualityBand === 'strong'   ? colors.accent.deepTeal  :
-            member.linkQualityBand === 'moderate' ? colors.accent.mutedSage : colors.border.strong;
+            member.linkQualityBand === 'strong'   ? colors.accent.deepTeal   :
+            member.linkQualityBand === 'moderate' ? colors.accent.dustyRose  : colors.text.muted;
+          const lineWidth = member.linkQualityBand === 'faint' ? StyleSheet.hairlineWidth : 1;
           return (
             <Line
               key={`ln-${node.id}`}
               x1={cx} y1={cy}
               x2={node.cx} y2={node.cy}
               stroke={lineColor}
-              strokeWidth={StyleSheet.hairlineWidth}
+              strokeWidth={lineWidth}
               strokeOpacity={lineOpacity}
             />
           );
@@ -243,7 +270,7 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
         </SvgText>
 
         {/* Cloud nodes */}
-        {cloudNodes.map((node) => {
+        {cloudNodes.map((node, nodeIndex) => {
           // Overflow pseudo-node
           if (node.id === OVERFLOW_ID) {
             return (
@@ -285,9 +312,14 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
           // B43-bis: dark initial on the two light solid fills (strong/terracotta,
           // moderate/sage); light initial stays on the dark faint node.
           const initialColor = member.linkQualityBand === 'faint' ? colors.text.primary : '#141210';
+          // B45: staggered breathing opacity (phase group = nodeIndex % 3).
+          const breatheOpacity = breathe[nodeIndex % breathe.length].interpolate({
+            inputRange: [0, 1],
+            outputRange: isUnread ? [0.42, 0.55] : [0.82, 1],
+          });
 
           return (
-            <G key={node.id} opacity={isUnread ? 0.50 : 1}>
+            <AnimatedG key={node.id} opacity={breatheOpacity}>
               {/* Gateway indicator — fine stroke ring only.
                   B43: removed the filled glow halo (r+9); kept the thin ring. */}
               {node.gatewayAccessState === 'open' && (
@@ -337,7 +369,7 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
                   {truncName}
                 </SvgText>
               )}
-            </G>
+            </AnimatedG>
           );
         })}
       </Svg>

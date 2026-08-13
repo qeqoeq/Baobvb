@@ -864,7 +864,7 @@ export default function RelationDetailScreen() {
                     {/* B18: the counterpart's name dominates the reveal card;
                         the tier is demoted to a subtitle under it. */}
                     <View style={styles.revealNameHeader}>
-                      <Text style={styles.readingCardKicker}>{'BAOBAB · LECTURE PARTAGÉE'}</Text>
+                      <Text style={styles.readingCardKicker}>{'BAOBAB · VOS DEUX RÉPONSES'}</Text>
                       <Text style={styles.revealName}>{relationIdentity.primaryTitle}</Text>
                       <Text style={[styles.revealTierSubtitle, { color: readingAccent }]}>
                         {revealedTier ? getTierDisplayLabel(revealedTier) : sharedRevealDisplay.tier}
@@ -932,7 +932,7 @@ export default function RelationDetailScreen() {
                     ) : null}
                     {deeperSignal ? (
                       <View style={styles.deeperSignalBlock}>
-                        <Text style={styles.deeperSignalEyebrow}>Une lecture plus profonde</Text>
+                        <Text style={styles.deeperSignalEyebrow}>Plus en profondeur</Text>
                         {deeperSignal.lines.map((line, idx) => (
                           <Text key={idx} style={styles.deeperSignalLine}>{line}</Text>
                         ))}
