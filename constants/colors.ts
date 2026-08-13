@@ -18,7 +18,7 @@ export const colors = {
     text: {
       primary: '#F2EBDF',    // B45
       secondary: '#A89BA6',  // B45
-      muted: '#8B7F8A',      // B45
+      muted: '#9C90A0',      // B45-bis: lightened for ≥4.5:1 on all 3 grounds (was #8B7F8A)
     },
 
     semantic: {
