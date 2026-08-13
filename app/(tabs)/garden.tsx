@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Keyboard, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, AppState, Keyboard, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
@@ -411,7 +411,15 @@ export default function GardenScreen() {
       ]),
     );
     loop.start();
-    return () => loop.stop();
+    // B51: stop while the app is not foregrounded; resume on return (no jump).
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') loop.start();
+      else loop.stop();
+    });
+    return () => {
+      sub.remove();
+      loop.stop();
+    };
   }, [readyEntries.length, sparkPulse]);
 
   const sparkScale = sparkPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] });

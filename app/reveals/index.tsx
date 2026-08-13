@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, AppState, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
@@ -85,7 +85,15 @@ export default function RevealLinksScreen() {
       ]),
     );
     loop.start();
-    return () => loop.stop();
+    // B51: stop while the app is not foregrounded; resume on return (no jump).
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') loop.start();
+      else loop.stop();
+    });
+    return () => {
+      sub.remove();
+      loop.stop();
+    };
   }, [readyEntries.length, heroPulse]);
 
   const heroSparkScale   = heroPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.7] });

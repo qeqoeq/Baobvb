@@ -7,7 +7,7 @@
 // The whole scale stays calm (prune ↔ muted grey-violet); no red/orange/alert
 // anywhere by construction (the two endpoints below are the only colours used).
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native';
+import { Animated, AppState, Easing, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 const ALIVE = '#2A1A2E';   // t = 1 — warm prune (living network)
@@ -20,18 +20,34 @@ export default function NetworkBackground({ temperature }: { temperature: number
   const [t, setT] = useState(temperature);
   const anim = useRef(new Animated.Value(temperature)).current;
   const mounted = useRef(false);
+  const valueRef = useRef(temperature);
+  const targetRef = useRef(temperature);
+  const runningRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // Mirror the animated value into state so the SVG stops recolor in RGB space.
   useEffect(() => {
-    const id = anim.addListener(({ value }) => setT(value));
+    const id = anim.addListener(({ value }) => {
+      valueRef.current = value;
+      setT(value);
+    });
     return () => anim.removeListener(id);
   }, [anim]);
 
   // Slide toward the new temperature over ~1.2s. No animation on first render.
   useEffect(() => {
+    targetRef.current = temperature;
     if (!mounted.current) {
       mounted.current = true;
       anim.setValue(temperature);
+      valueRef.current = temperature;
+      setT(temperature);
+      return;
+    }
+    // B51: never animate while backgrounded — snap silently (not visible), so no
+    // Fabric commits run off-'active' and nothing is left mid-transition.
+    if (AppState.currentState !== 'active') {
+      anim.setValue(temperature);
+      valueRef.current = temperature;
       setT(temperature);
       return;
     }
@@ -41,9 +57,32 @@ export default function NetworkBackground({ temperature }: { temperature: number
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: false,
     });
+    runningRef.current = a;
     a.start();
     return () => a.stop();
   }, [temperature, anim]);
+
+  // B51: stop the running transition when not foregrounded; on return, resume
+  // from the current (frozen) value toward the latest target — no jump.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') {
+        runningRef.current?.stop();
+        return;
+      }
+      if (valueRef.current !== targetRef.current) {
+        const a = Animated.timing(anim, {
+          toValue: targetRef.current,
+          duration: TRANSITION_MS,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        });
+        runningRef.current = a;
+        a.start();
+      }
+    });
+    return () => sub.remove();
+  }, [anim]);
 
   const top = lerpHex(DORMANT, ALIVE, t);
   const bottom = darken(top, BOTTOM_DARKEN);

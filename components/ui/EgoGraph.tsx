@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, AppState, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle as SvgCircle, G, Line, Text as SvgText } from 'react-native-svg';
 import { Image } from 'expo-image';
 
@@ -169,10 +169,25 @@ export default function EgoGraph({ members, me, size, onOverflowTap, onNodeTap, 
         ]),
       ),
     );
-    const timers = loops.map((l, i) => setTimeout(() => l.start(), i * 1400));
-    return () => {
-      timers.forEach(clearTimeout);
+    let staggerTimers: ReturnType<typeof setTimeout>[] = [];
+    const stopAll = () => {
+      staggerTimers.forEach(clearTimeout);
+      staggerTimers = [];
       loops.forEach((l) => l.stop());
+    };
+    // Initial staggered start establishes the out-of-phase groups (unchanged behaviour while active).
+    staggerTimers = loops.map((l, i) => setTimeout(() => l.start(), i * 1400));
+    // B51: stop while the app is not foregrounded — a useNativeDriver:false loop
+    // commits Fabric mount transactions, which must not run off-'active'. Resume
+    // from the current frozen value on return: no jump, no re-stagger (the phase
+    // offset is already baked into the values, so the entrance is not replayed).
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') loops.forEach((l) => l.start());
+      else stopAll();
+    });
+    return () => {
+      sub.remove();
+      stopAll();
     };
   }, [breathe]);
 
