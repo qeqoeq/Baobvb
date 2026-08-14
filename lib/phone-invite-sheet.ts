@@ -18,42 +18,53 @@ export function showPhoneInviteSheet(params: {
   const waPhone = rawPhone.replace(/\D/g, '');
   const encodedMsg = encodeURIComponent(fullMessage);
 
+  // B53: AWAIT the native action (share sheet / openURL) before onDismiss().
+  // onDismiss triggers router.replace in the evaluate caller; running it while the
+  // UIActivityViewController / app-switch is mid-transition made react-native-screens
+  // snapshot during a mount → main-thread stall on the render server → SIGABRT
+  // (DIAG-B52). Navigation is only DEFERRED, never lost — onDismiss always runs,
+  // including on cancel and on failure.
   Alert.alert(
     'Send Bao invite',
     `Choose how to send it to ${privateLabel}.`,
     [
       {
         text: 'Messages',
-        onPress: () => {
-          Linking.openURL(`sms:${smsPhone}?body=${encodedMsg}`).catch(() => {
+        onPress: async () => {
+          try {
+            await Linking.openURL(`sms:${smsPhone}?body=${encodedMsg}`);
+          } catch {
             Alert.alert('Messages not available', 'Could not open Messages.');
-          });
+          }
           onDeliveryChannelOpened();
           onDismiss();
         },
       },
       {
         text: 'WhatsApp',
-        onPress: () => {
+        onPress: async () => {
           const waUrl = `whatsapp://send?phone=${waPhone}&text=${encodedMsg}`;
-          Linking.canOpenURL(waUrl)
-            .then((canOpen) => {
-              if (canOpen) {
-                onDeliveryChannelOpened();
-                return Linking.openURL(waUrl);
-              }
+          try {
+            if (await Linking.canOpenURL(waUrl)) {
+              onDeliveryChannelOpened();
+              await Linking.openURL(waUrl);
+            } else {
               Alert.alert('WhatsApp not available', "WhatsApp isn't available. Try Messages.");
-            })
-            .catch(() => {
-              Alert.alert('WhatsApp not available', "WhatsApp isn't available. Try Messages.");
-            });
+            }
+          } catch {
+            Alert.alert('WhatsApp not available', "WhatsApp isn't available. Try Messages.");
+          }
           onDismiss();
         },
       },
       {
         text: 'More options',
-        onPress: () => {
-          void Share.share({ message: fullMessage });
+        onPress: async () => {
+          try {
+            await Share.share({ message: fullMessage });
+          } catch {
+            // Share failed/cancelled at the native layer — must not block navigation.
+          }
           onDeliveryChannelOpened();
           onDismiss();
         },
